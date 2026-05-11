@@ -1,8 +1,8 @@
-# Todo - 计划管理与心愿兑换系统
+# Todo v1.0.1 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
-Todo 是一个基于 Flask + SQLite 的本地 Web 应用，用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。支持 macOS DMG 打包。
+Todo 是一个基于 Flask + SQLite 的本地 macOS 应用，用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生 macOS 窗口，支持应用内检查更新 (git pull)。
 
 ## 技术栈
 
@@ -172,6 +172,12 @@ python app.py
 |------|------|------|
 | GET | `/api/settings` | 获取所有设置 |
 | PUT | `/api/settings` | 批量更新设置 |
+
+### 更新 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/update` | 检查并执行 git pull 更新 |
 
 ## AI 服务 (`ai_service.py`)
 
@@ -368,6 +374,7 @@ fetchModels()       → api POST /api/ai-settings/models
 saveAiSettings()    → api PUT /api/ai-settings
 testAiConnection()  → saveAiSettings() → api POST /api/ai-settings/test
 saveValueRanges()   → api PUT /api/settings
+checkUpdate()       → api POST /api/update (git pull) → location.reload()
 ```
 
 ## 美学设计要点
@@ -389,6 +396,27 @@ saveValueRanges()   → api PUT /api/settings
 ```
 
 需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `Todo-1.0.0.dmg`。
+
+## 应用内更新
+
+设置页面底部显示当前版本号 (v1.0.1) 和"检查更新"按钮。
+- 点击后调用 `POST /api/update`，服务端执行 `git pull --rebase`
+- 有更新时自动拉取并刷新页面
+- 已是最新版本时显示提示
+- 打包版需要 git 已安装且仓库已配置远程地址
+
+**数据安全**: 数据库存储在 `~/Library/Application Support/PlanMaster/todo.db`，与应用代码完全分离，覆盖安装 DMG 不会丢失数据。
+
+## 打包 DMG
+
+```bash
+./build.sh
+```
+
+打包产物为 `PlanMaster-1.0.0.dmg`，使用 `--onedir` 模式 (秒启动)。
+运行模式区别:
+- **开发模式** (`python app.py`): 自动打开浏览器
+- **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口
 
 ## 环境要求
 
