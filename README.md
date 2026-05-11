@@ -1,4 +1,4 @@
-# Todo v1.1.1 - 计划管理与心愿兑换系统
+# Todo v1.1.2 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -405,18 +405,20 @@ checkUpdate()       → api POST /api/update (git pull) → location.reload()
 1. 开发者修改代码后推送到 GitHub: `git add -A && git commit -m "..." && git push`
 2. 用户在应用设置页点击"检查更新"
 3. 前端调用 `POST /api/update`
-4. 后端从 GitHub 下载 master 分支 zip 包，提取 `app.py`, `database.py`, `ai_service.py`, `prompts.py`, `templates/`, `static/` 到用户目录 (`~/Library/Application Support/PlanMaster/`)
-5. Flask 优先加载用户目录中的模板和静态文件，无更新文件则回退到打包版
-6. 如果有更新: 前端 2 秒后自动 `location.reload()` 刷新页面
-7. 如果已是最新: 显示"已是最新版本"
+4. **版本校验**: 后端先从 GitHub raw 获取远程 `app.py`，提取 `CURRENT_VERSION` 与本地对比
+5. 如果版本相同 → 返回"已是最新版本 vX.X.X"，不下载
+6. 如果版本不同 → 下载 master 分支 zip 包，提取 `app.py`, `database.py`, `ai_service.py`, `prompts.py`, `templates/`, `static/` 到用户目录 (`~/Library/Application Support/PlanMaster/`)
+7. Flask 优先加载用户目录中的模板和静态文件，无更新文件则回退到打包版
+8. 更新成功后前端 2 秒后自动 `location.reload()` 刷新页面
 
-**版本号 API**: `GET /api/version` 返回当前版本号，前端设置页显示。
+**版本号机制**: `CURRENT_VERSION` 变量定义在 `app.py` 顶部，`GET /api/version` 返回当前版本号，前端设置页动态显示。
 
 **远程仓库**: https://github.com/MCGAgain/PlanMaster
 
 **数据安全**: 数据库和更新文件均存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装 DMG 不会丢失数据。
 
 **版本历史**:
+- v1.1.2: 更新前校验远程版本，相同版本跳过下载
 - v1.1.1: DMG 版支持应用内更新 (从 GitHub 下载 zip)，版本号从 API 动态获取
 - v1.1.0: 应用内更新按钮、心愿防重复提交、原生 macOS 窗口 (pywebview)、onedir 秒启动
 - v1.0.1: 回收站批量操作、计划类型标签、静默 AI 评估、进度条毛玻璃效果

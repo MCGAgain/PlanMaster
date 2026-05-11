@@ -316,15 +316,32 @@ def start_flask(port):
 # ---- Update ----
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
-CURRENT_VERSION = '1.1.1'
+CURRENT_VERSION = '1.1.2'
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
     return jsonify({'version': CURRENT_VERSION})
 
+def _get_remote_version():
+    raw_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/master/app.py'
+    resp = requests.get(raw_url, timeout=10)
+    if resp.status_code != 200:
+        return None
+    for line in resp.text.splitlines():
+        if line.startswith('CURRENT_VERSION'):
+            return line.split("'")[1] if "'" in line else line.split('"')[1]
+    return None
+
 @app.route('/api/update', methods=['POST'])
 def api_update():
-    import io, zipfile, shutil
+    import io, zipfile
+    try:
+        remote_ver = _get_remote_version()
+        if remote_ver and remote_ver == CURRENT_VERSION:
+            return jsonify({'updated': False, 'message': f'已是最新版本 v{CURRENT_VERSION}'})
+    except Exception:
+        pass
+
     url = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/master.zip'
     try:
         resp = requests.get(url, timeout=30)
@@ -347,7 +364,8 @@ def api_update():
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
                 with zf.open(arc_name) as src, open(dest, 'wb') as dst:
                     dst.write(src.read())
-        return jsonify({'updated': True, 'message': f'更新成功 ({len(files_to_update)} 个文件)，即将刷新'})
+        new_ver = _get_remote_version() or remote_ver or '?'
+        return jsonify({'updated': True, 'message': f'已更新到 v{new_ver} ({len(files_to_update)} 个文件)，即将刷新'})
     except requests.exceptions.ConnectionError:
         return jsonify({'updated': False, 'message': '网络连接失败'})
     except requests.exceptions.Timeout:
