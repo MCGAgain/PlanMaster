@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo - 计划管理</title>
+    <link rel="icon" type="image/jpeg" href="/static/icon.jpg">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+    <div class="app">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h1>Todo</h1>
+                <p class="subtitle">计划管理 & 心愿兑换</p>
+            </div>
+            <div class="balance-card" id="balanceCard">
+                <span class="balance-label">虚拟价值余额</span>
+                <span class="balance-value" id="balanceValue">0</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="today" onclick="switchPage('today')">
+                    <span class="nav-icon">&#9728;</span>
+                    <span>今日待办</span>
+                </li>
+                <li class="nav-group">
+                    <div class="nav-group-header" onclick="toggleGroup(this)">
+                        <span class="nav-icon">&#128197;</span>
+                        <span>计划管理</span>
+                        <span class="arrow">&#9662;</span>
+                    </div>
+                    <ul class="nav-group-items open">
+                        <li class="nav-item" data-page="weekly" onclick="switchPage('weekly')"><span>周计划</span></li>
+                        <li class="nav-item" data-page="monthly" onclick="switchPage('monthly')"><span>月计划</span></li>
+                        <li class="nav-item" data-page="yearly" onclick="switchPage('yearly')"><span>年计划</span></li>
+                    </ul>
+                </li>
+                <li class="nav-item" data-page="wishes" onclick="switchPage('wishes')">
+                    <span class="nav-icon">&#9734;</span>
+                    <span>心愿兑换单</span>
+                </li>
+                <li class="nav-item" data-page="transactions" onclick="switchPage('transactions')">
+                    <span class="nav-icon">&#128200;</span>
+                    <span>价值流水</span>
+                </li>
+                <li class="nav-item" data-page="recycle" onclick="switchPage('recycle')">
+                    <span class="nav-icon">&#128465;</span>
+                    <span>回收站</span>
+                </li>
+                <li class="nav-item" data-page="settings" onclick="switchPage('settings')">
+                    <span class="nav-icon">&#9881;</span>
+                    <span>AI设置</span>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <!-- Plan Pages -->
+            <div class="page active" id="page-plans">
+                <div class="page-header">
+                    <h2 id="planTitle">今日待办</h2>
+                    <div class="page-actions">
+                        <button class="btn btn-glass" onclick="showAddPlanModal()">+ 新增计划</button>
+                        <button class="btn btn-gradient" onclick="aiSortPlans()">&#9889; AI智能排序</button>
+                    </div>
+                </div>
+                <div class="category-progress" id="categoryProgress">
+                    <div class="category-progress-info">
+                        <span class="category-progress-label">完成进度</span>
+                        <span class="category-progress-text" id="categoryProgressText">0%</span>
+                    </div>
+                    <div class="category-progress-track">
+                        <div class="category-progress-bar" id="categoryProgressBar" style="width:0%"></div>
+                    </div>
+                </div>
+                <div class="plan-list" id="planList">
+                    <div class="empty-state">暂无计划，点击右上角添加</div>
+                </div>
+            </div>
+
+            <!-- Wishes Page -->
+            <div class="page" id="page-wishes">
+                <div class="page-header">
+                    <h2>心愿兑换单</h2>
+                    <div class="page-actions">
+                        <button class="btn btn-glass" onclick="showAddWishModal()">+ 新增心愿</button>
+                    </div>
+                </div>
+                <div class="balance-display">
+                    <span>当前余额</span>
+                    <span class="balance-big" id="wishBalance">0</span>
+                    <span>虚拟价值</span>
+                </div>
+                <div class="wish-list" id="wishList">
+                    <div class="empty-state">暂无心愿</div>
+                </div>
+            </div>
+
+            <!-- Transactions Page -->
+            <div class="page" id="page-transactions">
+                <div class="page-header">
+                    <h2>价值流水</h2>
+                </div>
+                <div class="balance-display">
+                    <span>总余额</span>
+                    <span class="balance-big" id="txBalance">0</span>
+                    <span>虚拟价值</span>
+                </div>
+                <div class="tx-list" id="txList">
+                    <div class="empty-state">暂无流水记录</div>
+                </div>
+            </div>
+
+            <!-- Recycle Bin Page -->
+            <div class="page" id="page-recycle">
+                <div class="page-header">
+                    <h2>回收站</h2>
+                    <div class="page-actions">
+                        <button class="btn btn-glass btn-sm" onclick="toggleSelectAll()">全选</button>
+                        <button class="btn btn-danger btn-sm" onclick="batchDeleteRecycle()">批量删除</button>
+                        <button class="btn btn-glass btn-sm" onclick="batchRestoreRecycle()">批量恢复</button>
+                    </div>
+                </div>
+                <div class="plan-list" id="recycleList">
+                    <div class="empty-state">回收站为空</div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <div class="page-header">
+                    <h2>AI设置</h2>
+                </div>
+                <div class="settings-form">
+                    <div class="glass-card">
+                        <h3>大模型API配置</h3>
+                        <div class="form-group">
+                            <label>Base URL</label>
+                            <input type="text" id="setBaseUrl" placeholder="https://api.openai.com/v1">
+                            <small>OpenAI兼容接口地址</small>
+                        </div>
+                        <div class="form-group">
+                            <label>API Key</label>
+                            <input type="password" id="setApiKey" placeholder="sk-...">
+                        </div>
+                        <div class="form-group">
+                            <label>Model</label>
+                            <div class="model-select-row">
+                                <select id="setModelName" class="model-dropdown">
+                                    <option value="">-- 请先获取模型列表 --</option>
+                                </select>
+                                <input type="text" id="setModelNameManual" placeholder="或手动输入模型名称">
+                                <button class="btn btn-glass btn-sm" onclick="fetchModels()" id="fetchModelsBtn">获取模型</button>
+                            </div>
+                            <small>从API自动获取模型列表，或手动输入</small>
+                        </div>
+                        <div class="form-group">
+                            <label>额外请求头 (JSON)</label>
+                            <textarea id="setExtraHeaders" rows="2" placeholder='{"X-Custom-Header": "value"}'></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-glass" onclick="saveAiSettings()">保存设置</button>
+                            <button class="btn btn-gradient" onclick="testAiConnection()">测试连接</button>
+                        </div>
+                        <div class="test-result" id="testResult"></div>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3>虚拟价值范围</h3>
+                        <div class="range-grid">
+                            <div class="range-item">
+                                <h4>今日待办</h4>
+                                <div class="range-inputs">
+                                    <label>最小 <input type="number" id="setTodayMin" min="0" step="1"></label>
+                                    <label>最大 <input type="number" id="setTodayMax" min="0" step="1"></label>
+                                </div>
+                            </div>
+                            <div class="range-item">
+                                <h4>周计划</h4>
+                                <div class="range-inputs">
+                                    <label>最小 <input type="number" id="setWeeklyMin" min="0" step="1"></label>
+                                    <label>最大 <input type="number" id="setWeeklyMax" min="0" step="1"></label>
+                                </div>
+                            </div>
+                            <div class="range-item">
+                                <h4>月计划</h4>
+                                <div class="range-inputs">
+                                    <label>最小 <input type="number" id="setMonthlyMin" min="0" step="1"></label>
+                                    <label>最大 <input type="number" id="setMonthlyMax" min="0" step="1"></label>
+                                </div>
+                            </div>
+                            <div class="range-item">
+                                <h4>年计划</h4>
+                                <div class="range-inputs">
+                                    <label>最小 <input type="number" id="setYearlyMin" min="0" step="1"></label>
+                                    <label>最大 <input type="number" id="setYearlyMax" min="0" step="1"></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-glass" onclick="saveValueRanges()">保存范围</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3>数据管理</h3>
+                        <p class="form-hint" style="margin-top:0;margin-bottom:16px;">清零后所有虚拟价值归零，操作不可撤销（会生成一笔等额负数流水）</p>
+                        <div class="form-actions">
+                            <button class="btn btn-danger" onclick="resetBalance()">&#9888; 清零虚拟价值</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
+                        <h3>应用信息</h3>
+                        <div class="app-info">
+                            <span class="app-version">Todo v<span id="appVersion">1.0.1</span></span>
+                        </div>
+                        <div class="form-actions" style="margin-top:12px;">
+                            <button class="btn btn-glass" onclick="checkUpdate()" id="updateBtn">检查更新</button>
+                        </div>
+                        <div class="test-result" id="updateResult"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Plan Modal -->
+    <div class="modal" id="planModal">
+        <div class="modal-overlay" onclick="closeModal('planModal')"></div>
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3 id="planModalTitle">新增计划</h3>
+                <span class="modal-close" onclick="closeModal('planModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>计划标题</label>
+                    <input type="text" id="planTitleInput" placeholder="输入计划标题">
+                </div>
+                <div class="form-group">
+                    <label>计划描述</label>
+                    <textarea id="planDescInput" rows="3" placeholder="详细描述你的计划..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>优先级 (1-100)</label>
+                        <input type="number" id="planPriorityInput" min="1" max="100" step="1" placeholder="留空AI评估">
+                    </div>
+                    <div class="form-group">
+                        <label>虚拟价值</label>
+                        <input type="number" id="planValueInput" min="0" step="0.1" placeholder="留空AI评估">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>完成进度: <span id="planProgressLabel">0</span>%</label>
+                    <input type="range" id="planProgressInput" min="0" max="100" step="5" value="0" class="progress-range-input">
+                </div>
+                <small class="form-hint">优先级和价值留空时，配置AI后会自动评估；未配置AI则默认为0</small>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-glass" onclick="closeModal('planModal')">取消</button>
+                <button class="btn btn-gradient" onclick="savePlan()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Wish Modal -->
+    <div class="modal" id="wishModal">
+        <div class="modal-overlay" onclick="closeModal('wishModal')"></div>
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>新增心愿</h3>
+                <span class="modal-close" onclick="closeModal('wishModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>心愿名称</label>
+                    <input type="text" id="wishNameInput" placeholder="输入心愿名称">
+                </div>
+                <div class="form-group">
+                    <label>真实价格 (元)</label>
+                    <input type="number" id="wishPriceInput" min="0" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>所需虚拟价值 (留空则AI评估)</label>
+                    <input type="number" id="wishCostInput" min="0" step="0.1" placeholder="留空自动评估">
+                    <small>配置AI后留空会自动评估，否则默认等于真实价格</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-glass" onclick="closeModal('wishModal')">取消</button>
+                <button class="btn btn-gradient" onclick="saveWish()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
