@@ -324,7 +324,7 @@ def api_update():
             return jsonify({'updated': False, 'message': f'更新失败: {result.stderr.strip()}'})
         output = result.stdout.strip()
         if 'Already up to date' in output or '已经是最新的' in output:
-            return jsonify({'updated': False, 'message': '已是最新版本 v1.0.1'})
+            return jsonify({'updated': False, 'message': '已是最新版本 v1.1.0'})
         return jsonify({'updated': True, 'message': '更新成功，即将刷新'})
     except FileNotFoundError:
         return jsonify({'updated': False, 'message': '未安装 git，无法自动更新'})

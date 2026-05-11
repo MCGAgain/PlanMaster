@@ -1,8 +1,8 @@
-# Todo v1.0.1 - 计划管理与心愿兑换系统
+# Todo v1.1.0 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
-Todo 是一个基于 Flask + SQLite 的本地 macOS 应用，用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生 macOS 窗口，支持应用内检查更新 (git pull)。
+Todo 是一个基于 Flask + SQLite 的本地 macOS 应用，用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生 macOS 窗口，支持应用内一键检查更新。
 
 ## 技术栈
 
@@ -399,13 +399,24 @@ checkUpdate()       → api POST /api/update (git pull) → location.reload()
 
 ## 应用内更新
 
-设置页面底部显示当前版本号 (v1.0.1) 和"检查更新"按钮。
-- 点击后调用 `POST /api/update`，服务端执行 `git pull --rebase`
-- 有更新时自动拉取并刷新页面
-- 已是最新版本时显示提示
-- 打包版需要 git 已安装且仓库已配置远程地址
+设置页面底部显示当前版本号和"检查更新"按钮。
 
-**数据安全**: 数据库存储在 `~/Library/Application Support/PlanMaster/todo.db`，与应用代码完全分离，覆盖安装 DMG 不会丢失数据。
+**更新流程**:
+1. 开发者修改代码后推送到 GitHub: `git add -A && git commit -m "..." && git push`
+2. 用户在应用设置页点击"检查更新"
+3. 前端调用 `POST /api/update`
+4. 后端执行 `git pull --rebase` 拉取最新代码
+5. 如果有更新: 前端 3 秒后自动 `location.reload()` 刷新页面
+6. 如果已是最新: 显示"已是最新版本 v1.1.0"
+
+**远程仓库**: https://github.com/MCGAgain/PlanMaster
+
+**数据安全**: 数据库存储在 `~/Library/Application Support/PlanMaster/todo.db`，与应用代码完全分离，覆盖安装 DMG 或 git pull 均不会丢失数据。
+
+**版本历史**:
+- v1.1.0: 应用内更新按钮、心愿防重复提交、原生 macOS 窗口 (pywebview)、onedir 秒启动
+- v1.0.1: 回收站批量操作、计划类型标签、静默 AI 评估、进度条毛玻璃效果
+- v1.0.0: 初始版本 — 计划管理、AI 排序、心愿兑换、虚拟价值系统
 
 ## 打包 DMG
 
