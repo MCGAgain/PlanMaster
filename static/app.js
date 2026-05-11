@@ -427,6 +427,7 @@ function renderTransactions(txs) {
 async function loadSettings() {
     try {
         const [a, s] = await Promise.all([api('/api/ai-settings'), api('/api/settings')]);
+        loadVersion();
         document.getElementById('setBaseUrl').value = a.base_url || '';
         document.getElementById('setApiKey').value = a.api_key || '';
         document.getElementById('setModelNameManual').value = a.model_name || '';
@@ -477,6 +478,13 @@ async function testAiConnection() {
     catch (e) { hideLoading(); el.textContent = '失败: ' + e.message; el.className = 'test-result error'; el.style.display = 'block'; }
 }
 
+async function loadVersion() {
+    try {
+        const d = await api('/api/version');
+        document.getElementById('appVersion').textContent = d.version || '1.1.1';
+    } catch (e) {}
+}
+
 async function checkUpdate() {
     const el = document.getElementById('updateResult');
     const btn = document.getElementById('updateBtn');
@@ -485,9 +493,9 @@ async function checkUpdate() {
     try {
         const d = await api('/api/update', { method: 'POST' });
         if (d.updated) {
-            el.textContent = '发现新版本，正在更新...';
+            el.textContent = d.message;
             el.className = 'test-result success'; el.style.display = 'block';
-            setTimeout(() => location.reload(), 3000);
+            setTimeout(() => location.reload(), 2000);
         } else {
             el.textContent = d.message || '已是最新版本';
             el.className = 'test-result success'; el.style.display = 'block';

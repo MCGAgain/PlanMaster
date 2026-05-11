@@ -10,11 +10,15 @@ import ai_service
 
 if getattr(sys, 'frozen', False):
     base_dir = sys._MEIPASS
+    _user_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
+    os.makedirs(_user_dir, exist_ok=True)
 else:
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    _user_dir = base_dir
 
-app = Flask(__name__, template_folder=os.path.join(base_dir, 'templates'),
-            static_folder=os.path.join(base_dir, 'static'))
+_tpl_dir = os.path.join(_user_dir, 'templates') if os.path.isdir(os.path.join(_user_dir, 'templates')) else os.path.join(base_dir, 'templates')
+_sta_dir = os.path.join(_user_dir, 'static') if os.path.isdir(os.path.join(_user_dir, 'static')) else os.path.join(base_dir, 'static')
+app = Flask(__name__, template_folder=_tpl_dir, static_folder=_sta_dir)
 
 
 @app.route('/')
@@ -311,25 +315,43 @@ def start_flask(port):
 
 # ---- Update ----
 
+GITHUB_REPO = 'MCGAgain/PlanMaster'
+CURRENT_VERSION = '1.1.1'
+
+@app.route('/api/version', methods=['GET'])
+def api_version():
+    return jsonify({'version': CURRENT_VERSION})
+
 @app.route('/api/update', methods=['POST'])
 def api_update():
-    import subprocess
+    import io, zipfile, shutil
+    url = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/master.zip'
     try:
-        result = subprocess.run(
-            ['git', 'pull', '--rebase'],
-            capture_output=True, text=True, timeout=30,
-            cwd=os.path.dirname(os.path.abspath(__file__))
-        )
-        if result.returncode != 0:
-            return jsonify({'updated': False, 'message': f'更新失败: {result.stderr.strip()}'})
-        output = result.stdout.strip()
-        if 'Already up to date' in output or '已经是最新的' in output:
-            return jsonify({'updated': False, 'message': '已是最新版本 v1.1.0'})
-        return jsonify({'updated': True, 'message': '更新成功，即将刷新'})
-    except FileNotFoundError:
-        return jsonify({'updated': False, 'message': '未安装 git，无法自动更新'})
-    except subprocess.TimeoutExpired:
-        return jsonify({'updated': False, 'message': '更新超时，请检查网络'})
+        resp = requests.get(url, timeout=30)
+        if resp.status_code != 200:
+            return jsonify({'updated': False, 'message': f'下载失败 (HTTP {resp.status_code})'})
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+            prefix = zf.namelist()[0]
+            files_to_update = []
+            for name in zf.namelist():
+                if name.endswith('/'):
+                    continue
+                rel = name[len(prefix):]
+                if rel.startswith(('app.py', 'database.py', 'ai_service.py', 'prompts.py',
+                                   'templates/', 'static/', 'requirements.txt')):
+                    files_to_update.append((name, rel))
+            if not files_to_update:
+                return jsonify({'updated': False, 'message': '未找到可更新的文件'})
+            for arc_name, rel_path in files_to_update:
+                dest = os.path.join(_user_dir, rel_path)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                with zf.open(arc_name) as src, open(dest, 'wb') as dst:
+                    dst.write(src.read())
+        return jsonify({'updated': True, 'message': f'更新成功 ({len(files_to_update)} 个文件)，即将刷新'})
+    except requests.exceptions.ConnectionError:
+        return jsonify({'updated': False, 'message': '网络连接失败'})
+    except requests.exceptions.Timeout:
+        return jsonify({'updated': False, 'message': '下载超时'})
     except Exception as e:
         return jsonify({'updated': False, 'message': str(e)})
 
