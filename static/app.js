@@ -225,7 +225,7 @@ async function updateProgress(id, val) {
 
 async function refreshCategoryProgress() {
     try {
-        const plans = await api('/api/plans?type=' + currentPage);
+        const plans = await api('/api/plans/all?type=' + currentPage);
         updateCategoryProgress(plans);
     } catch (e) {}
 }
@@ -528,7 +528,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.1.5';
+        document.getElementById('appVersion').textContent = d.version || '1.2.0';
     } catch (e) {}
 }
 

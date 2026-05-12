@@ -5,7 +5,7 @@
 set -e
 
 APP_NAME="PlanMaster"
-VERSION="1.1.5"
+VERSION="1.2.0"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DIST_DIR="dist"
 BUILD_DIR="build"
@@ -36,6 +36,7 @@ pyinstaller \
     --name "$APP_NAME" \
     --onedir \
     --windowed \
+    --icon icon.icns \
     --add-data "templates:templates" \
     --add-data "static:static" \
     --hidden-import flask \
