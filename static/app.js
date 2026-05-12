@@ -117,12 +117,14 @@ async function loadBalance() {
 
 async function loadPlans() {
     try {
-        const [active, all] = await Promise.all([
-            api('/api/plans?type=' + currentPage),
-            api('/api/plans/all?type=' + currentPage)
-        ]);
+        const active = await api('/api/plans?type=' + currentPage);
         renderPlans(active);
-        updateCategoryProgress(all);
+        try {
+            const all = await api('/api/plans/all?type=' + currentPage);
+            updateCategoryProgress(all);
+        } catch (_) {
+            updateCategoryProgress(active);
+        }
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
 

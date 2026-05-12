@@ -337,6 +337,7 @@ def start_flask(port):
 # ---- Update ----
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
+GITHUB_BRANCH = 'main'
 CURRENT_VERSION = '1.1.4'
 
 @app.route('/api/version', methods=['GET'])
@@ -344,7 +345,7 @@ def api_version():
     return jsonify({'version': CURRENT_VERSION})
 
 def _get_remote_version():
-    raw_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/master/app.py'
+    raw_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/app.py'
     resp = requests.get(raw_url, timeout=10)
     if resp.status_code != 200:
         return None
@@ -356,6 +357,7 @@ def _get_remote_version():
 @app.route('/api/update', methods=['POST'])
 def api_update():
     import io, zipfile
+    remote_ver = None
     try:
         remote_ver = _get_remote_version()
         if remote_ver and remote_ver == CURRENT_VERSION:
@@ -363,7 +365,7 @@ def api_update():
     except Exception:
         pass
 
-    url = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/master.zip'
+    url = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip'
     try:
         resp = requests.get(url, timeout=30)
         if resp.status_code != 200:
@@ -385,14 +387,14 @@ def api_update():
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
                 with zf.open(arc_name) as src, open(dest, 'wb') as dst:
                     dst.write(src.read())
-        new_ver = _get_remote_version() or remote_ver or '?'
+        new_ver = remote_ver or '?'
         return jsonify({'updated': True, 'message': f'已更新到 v{new_ver} ({len(files_to_update)} 个文件)，即将刷新'})
     except requests.exceptions.ConnectionError:
-        return jsonify({'updated': False, 'message': '网络连接失败'})
+        return jsonify({'updated': False, 'message': '网络连接失败，请检查网络'})
     except requests.exceptions.Timeout:
-        return jsonify({'updated': False, 'message': '下载超时'})
+        return jsonify({'updated': False, 'message': '下载超时，请稍后重试'})
     except Exception as e:
-        return jsonify({'updated': False, 'message': str(e)})
+        return jsonify({'updated': False, 'message': f'更新失败: {str(e)}'})
 
 
 if __name__ == '__main__':
