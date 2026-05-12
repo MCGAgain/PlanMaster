@@ -1,4 +1,4 @@
-# Todo v1.1.4 - 计划管理与心愿兑换系统
+# Todo v1.1.5 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -437,12 +437,13 @@ showNextSignature() → 轮换显示下一条签名
 
 **版本号机制**: `CURRENT_VERSION` 变量定义在 `app.py` 顶部，`GET /api/version` 返回当前版本号，前端设置页动态显示。
 
-**远程仓库**: https://github.com/MCGAgain/PlanMaster
-
 **数据安全**: 数据库和更新文件均存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装 DMG 不会丢失数据。
 
+**远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
+
 **版本历史**:
-- v1.1.4: 修复分类进度条不更新、计划卡片显示日期标签 (今日:月日, 周:星期X, 月:X月, 年:XXXX年)
+- v1.1.5: 更新 README 文档，完善版本历史记录
+- v1.1.4: 修复分类进度条不更新 (新增 /api/plans/all 端点)、计划卡片显示日期标签 (今日:月日, 周:星期X, 月:X月, 年:XXXX年)、更新逻辑改用 main 分支、容错处理
 - v1.1.3: AI 优先级与虚拟价值解耦 (独立评估)、新增预估完成时长、个性签名轮换显示
 - v1.1.2: 更新前校验远程版本，相同版本跳过下载
 - v1.1.1: DMG 版支持应用内更新 (从 GitHub 下载 zip)，版本号从 API 动态获取
