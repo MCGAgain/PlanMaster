@@ -171,7 +171,7 @@ function renderPlans(plans) {
             </div>
             <div class="plan-card-body">
                 <div class="plan-card-header">
-                    <div class="plan-card-title">${esc(p.title)}</div>
+                    <div class="plan-card-title">${esc(p.title)}${planDateLabel(p.plan_type, p.created_at) ? `<span class="plan-date-label">${planDateLabel(p.plan_type, p.created_at)}</span>` : ''}</div>
                     <div class="plan-card-meta">
                         <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
                         ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>` : ''}
