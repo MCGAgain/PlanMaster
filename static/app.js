@@ -50,9 +50,8 @@ function hideLoading() { const e = document.getElementById('loadingOverlay'); if
 const PLAN_TYPE_LABELS = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
 const PLAN_TYPE_COLORS = { today:'#7c6ef0', weekly:'#3b82f6', monthly:'#10b981', yearly:'#f59e0b' };
 
-function planDateLabel(type, createdAt) {
-    if (!createdAt) return '';
-    const d = new Date(createdAt);
+function planDateLabel(type) {
+    const d = new Date();
     const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
     if (type === 'today') return (d.getMonth()+1) + '月' + d.getDate() + '日';
     if (type === 'weekly') return weekdays[d.getDay()];
@@ -173,7 +172,7 @@ function renderPlans(plans) {
             </div>
             <div class="plan-card-body">
                 <div class="plan-card-header">
-                    <div class="plan-card-title">${esc(p.title)}${planDateLabel(p.plan_type, p.created_at) ? `<span class="plan-date-label">${planDateLabel(p.plan_type, p.created_at)}</span>` : ''}</div>
+                    <div class="plan-card-title">${esc(p.title)}${planDateLabel(p.plan_type) ? `<span class="plan-date-label">${planDateLabel(p.plan_type)}</span>` : ''}</div>
                     <div class="plan-card-meta">
                         <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
                         ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>` : ''}
@@ -543,7 +542,16 @@ async function checkUpdate() {
         if (d.updated) {
             el.textContent = d.message;
             el.className = 'test-result success'; el.style.display = 'block';
-            setTimeout(() => location.reload(), 2000);
+            btn.textContent = '重启中...';
+            setTimeout(() => {
+                let retries = 0;
+                const tryReload = () => {
+                    fetch('/api/version').then(() => location.reload()).catch(() => {
+                        if (++retries < 10) setTimeout(tryReload, 1000);
+                    });
+                };
+                tryReload();
+            }, 3000);
         } else {
             el.textContent = d.message || '已是最新版本';
             el.className = 'test-result success'; el.style.display = 'block';
@@ -551,7 +559,7 @@ async function checkUpdate() {
     } catch (e) {
         el.textContent = '检查失败: ' + e.message;
         el.className = 'test-result error'; el.style.display = 'block';
-    } finally { btn.disabled = false; btn.textContent = '检查更新'; }
+    } finally { if (!el.textContent.includes('重启')) { btn.disabled = false; btn.textContent = '检查更新'; } }
 }
 
 async function saveValueRanges() {

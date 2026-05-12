@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import time
 import webbrowser
 import threading
 import requests
@@ -357,13 +358,15 @@ def _get_remote_version():
 @app.route('/api/update', methods=['POST'])
 def api_update():
     import io, zipfile
-    remote_ver = None
     try:
         remote_ver = _get_remote_version()
-        if remote_ver and remote_ver == CURRENT_VERSION:
-            return jsonify({'updated': False, 'message': f'已是最新版本 v{CURRENT_VERSION}'})
     except Exception:
-        pass
+        remote_ver = None
+
+    if not remote_ver:
+        return jsonify({'updated': False, 'message': '无法获取远程版本信息，请检查网络'})
+    if remote_ver == CURRENT_VERSION:
+        return jsonify({'updated': False, 'message': f'已是最新版本 v{CURRENT_VERSION}'})
 
     url = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip'
     try:
@@ -387,8 +390,16 @@ def api_update():
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
                 with zf.open(arc_name) as src, open(dest, 'wb') as dst:
                     dst.write(src.read())
-        new_ver = remote_ver or '?'
-        return jsonify({'updated': True, 'message': f'已更新到 v{new_ver} ({len(files_to_update)} 个文件)，即将刷新'})
+
+        def _restart():
+            time.sleep(1)
+            if getattr(sys, 'frozen', False):
+                os.execv(sys.executable, [sys.executable])
+            else:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+
+        threading.Thread(target=_restart, daemon=True).start()
+        return jsonify({'updated': True, 'message': f'已更新到 v{remote_ver}，应用即将重启'})
     except requests.exceptions.ConnectionError:
         return jsonify({'updated': False, 'message': '网络连接失败，请检查网络'})
     except requests.exceptions.Timeout:
