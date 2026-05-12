@@ -419,7 +419,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `Todo-1.0.0.dmg`。
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.1.5.dmg`。
 
 ## 应用内更新
 
@@ -457,7 +457,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-打包产物为 `PlanMaster-1.0.0.dmg`，使用 `--onedir` 模式 (秒启动)。
+打包产物为 `PlanMaster-1.1.5.dmg`，使用 `--onedir` 模式 (秒启动)。
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
 - **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口

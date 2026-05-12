@@ -529,7 +529,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.1.1';
+        document.getElementById('appVersion').textContent = d.version || '1.1.5';
     } catch (e) {}
 }
 
