@@ -66,6 +66,12 @@ def init_db():
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS signatures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
 
     # Migration: add progress column if missing
@@ -73,6 +79,12 @@ def init_db():
         conn.execute("SELECT progress FROM plans LIMIT 1")
     except sqlite3.OperationalError:
         conn.execute("ALTER TABLE plans ADD COLUMN progress INTEGER DEFAULT 0")
+
+    # Migration: add suggested_time column if missing
+    try:
+        conn.execute("SELECT suggested_time FROM plans LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.execute("ALTER TABLE plans ADD COLUMN suggested_time TEXT DEFAULT ''")
 
     defaults = {
         'weekly_min': '1', 'weekly_max': '10',
@@ -140,11 +152,11 @@ def get_plan(plan_id):
     return dict(row) if row else None
 
 
-def create_plan(plan_type, title, description='', priority=0, virtual_value=0, progress=0):
+def create_plan(plan_type, title, description='', priority=0, virtual_value=0, progress=0, suggested_time=''):
     conn = get_db()
     cur = conn.execute(
-        "INSERT INTO plans (plan_type, title, description, priority, virtual_value, progress) VALUES (?, ?, ?, ?, ?, ?)",
-        (plan_type, title, description, priority, virtual_value, progress)
+        "INSERT INTO plans (plan_type, title, description, priority, virtual_value, progress, suggested_time) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (plan_type, title, description, priority, virtual_value, progress, suggested_time)
     )
     plan_id = cur.lastrowid
     conn.commit()
@@ -152,7 +164,7 @@ def create_plan(plan_type, title, description='', priority=0, virtual_value=0, p
     return get_plan(plan_id)
 
 
-def update_plan(plan_id, title=None, description=None, priority=None, virtual_value=None, progress=None):
+def update_plan(plan_id, title=None, description=None, priority=None, virtual_value=None, progress=None, suggested_time=None):
     conn = get_db()
     if title is not None:
         conn.execute("UPDATE plans SET title=? WHERE id=?", (title, plan_id))
@@ -165,6 +177,8 @@ def update_plan(plan_id, title=None, description=None, priority=None, virtual_va
     if progress is not None:
         p = min(100, max(0, int(progress)))
         conn.execute("UPDATE plans SET progress=? WHERE id=?", (p, plan_id))
+    if suggested_time is not None:
+        conn.execute("UPDATE plans SET suggested_time=? WHERE id=?", (suggested_time, plan_id))
     conn.commit()
     conn.close()
     return get_plan(plan_id)
@@ -204,11 +218,11 @@ def complete_plan(plan_id):
     return get_plan(plan_id)
 
 
-def update_plan_ai(plan_id, priority, virtual_value):
+def update_plan_ai(plan_id, priority, virtual_value, suggested_time=''):
     conn = get_db()
     conn.execute(
-        "UPDATE plans SET priority=?, virtual_value=? WHERE id=?",
-        (int(priority), round(float(virtual_value), 1), plan_id)
+        "UPDATE plans SET priority=?, virtual_value=?, suggested_time=? WHERE id=?",
+        (int(priority), round(float(virtual_value), 1), suggested_time, plan_id)
     )
     conn.commit()
     conn.close()
@@ -331,6 +345,25 @@ def get_transactions():
     rows = conn.execute("SELECT * FROM transactions ORDER BY created_at DESC").fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ---- Signatures ----
+
+def get_signatures():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM signatures ORDER BY id").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def save_signatures(contents):
+    conn = get_db()
+    conn.execute("DELETE FROM signatures")
+    for c in contents:
+        if c.strip():
+            conn.execute("INSERT INTO signatures (content) VALUES (?)", (c.strip(),))
+    conn.commit()
+    conn.close()
 
 
 # ---- Settings ----

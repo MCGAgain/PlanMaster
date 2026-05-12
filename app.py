@@ -65,11 +65,11 @@ def api_create_plan():
                 min_val = float(s.get(f'{plan_type}_min', 1))
                 max_val = float(s.get(f'{plan_type}_max', 10))
                 try:
-                    pri, val, _ = ai_service.evaluate_single_plan(
+                    pri, val, stime, _ = ai_service.evaluate_single_plan(
                         ai_cfg['base_url'], ai_cfg['api_key'], ai_cfg['model_name'],
                         plan_type, title, description, min_val, max_val, extra_headers
                     )
-                    db.update_plan(plan['id'], priority=pri, virtual_value=val)
+                    db.update_plan(plan['id'], priority=pri, virtual_value=val, suggested_time=stime)
                 except Exception:
                     pass
             threading.Thread(target=_bg_eval, daemon=True).start()
@@ -158,7 +158,8 @@ def api_sort_plans():
         pid = item.get('id')
         priority = item.get('priority', 50)
         virtual_value = item.get('virtual_value', 0)
-        db.update_plan_ai(pid, priority, virtual_value)
+        suggested_time = item.get('suggested_time', '')
+        db.update_plan_ai(pid, priority, virtual_value, suggested_time)
         plan = db.get_plan(pid)
         if plan:
             plan['ai_reason'] = item.get('reason', '')
@@ -308,6 +309,20 @@ def api_update_settings():
     return jsonify({'ok': True})
 
 
+# ---- Signatures ----
+
+@app.route('/api/signatures', methods=['GET'])
+def api_get_signatures():
+    return jsonify(db.get_signatures())
+
+
+@app.route('/api/signatures', methods=['PUT'])
+def api_save_signatures():
+    data = request.json
+    db.save_signatures(data.get('contents', []))
+    return jsonify({'ok': True})
+
+
 def start_flask(port):
     db.init_db()
     app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
@@ -316,7 +331,7 @@ def start_flask(port):
 # ---- Update ----
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
-CURRENT_VERSION = '1.1.2'
+CURRENT_VERSION = '1.1.3'
 
 @app.route('/api/version', methods=['GET'])
 def api_version():

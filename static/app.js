@@ -1,6 +1,8 @@
 let currentPage = 'today';
 let editingPlanId = null;
 let planSaving = false;
+let signatures = [];
+let sigIndex = 0;
 
 function switchPage(page) {
     currentPage = page;
@@ -14,6 +16,7 @@ function switchPage(page) {
         const t = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
         document.getElementById('planTitle').textContent = t[page];
         loadPlans();
+        showNextSignature();
     } else if (page === 'wishes') { document.getElementById('page-wishes').classList.add('active'); loadWishes(); }
     else if (page === 'transactions') { document.getElementById('page-transactions').classList.add('active'); loadTransactions(); }
     else if (page === 'recycle') { document.getElementById('page-recycle').classList.add('active'); loadRecycleBin(); }
@@ -60,6 +63,33 @@ function priColorLight(p) {
     p = Math.min(100, Math.max(1, p));
     const h = 120 - (p / 100) * 120;
     return `hsl(${h}, 72%, 92%)`;
+}
+
+function showNextSignature() {
+    const bar = document.getElementById('signatureBar');
+    if (!bar) return;
+    if (!signatures.length) { bar.classList.remove('show'); bar.textContent = ''; return; }
+    bar.textContent = signatures[sigIndex % signatures.length];
+    bar.classList.add('show');
+    sigIndex++;
+}
+
+async function loadSignatures() {
+    try {
+        const rows = await api('/api/signatures');
+        signatures = rows.map(r => r.content);
+        showNextSignature();
+    } catch (e) {}
+}
+
+async function saveSignatures() {
+    const raw = document.getElementById('signaturesInput').value;
+    const contents = raw.split('\n');
+    try {
+        await api('/api/signatures', { method: 'PUT', body: JSON.stringify({ contents }) });
+        signatures = contents.filter(c => c.trim());
+        toast('签名已保存');
+    } catch (e) { toast('保存失败: ' + e.message, true); }
 }
 
 async function loadBalance() {
@@ -130,6 +160,7 @@ function renderPlans(plans) {
                     <div class="plan-card-title">${esc(p.title)}</div>
                     <div class="plan-card-meta">
                         <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
+                        ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>` : ''}
                         ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
                     </div>
                 </div>
@@ -426,8 +457,9 @@ function renderTransactions(txs) {
 
 async function loadSettings() {
     try {
-        const [a, s] = await Promise.all([api('/api/ai-settings'), api('/api/settings')]);
+        const [a, s, sigs] = await Promise.all([api('/api/ai-settings'), api('/api/settings'), api('/api/signatures')]);
         loadVersion();
+        document.getElementById('signaturesInput').value = sigs.map(r => r.content).join('\n');
         document.getElementById('setBaseUrl').value = a.base_url || '';
         document.getElementById('setApiKey').value = a.api_key || '';
         document.getElementById('setModelNameManual').value = a.model_name || '';
@@ -541,4 +573,4 @@ document.addEventListener('DOMContentLoaded', () => {
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''; }
 
-document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); });
+document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); loadSignatures(); });

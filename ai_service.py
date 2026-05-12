@@ -87,7 +87,8 @@ def evaluate_single_plan(base_url, api_key, model, plan_type, title, description
     )
     priority = min(100, max(1, int(result.get('priority', 50))))
     virtual_value = round(float(result.get('virtual_value', min_value)), 1)
-    return priority, virtual_value, result.get('reason', '')
+    suggested_time = str(result.get('suggested_time', '')).strip()
+    return priority, virtual_value, suggested_time, result.get('reason', '')
 
 
 def sort_plans(base_url, api_key, model, plans, plan_type, min_value, max_value, extra_headers=None):
@@ -116,6 +117,7 @@ def sort_plans(base_url, api_key, model, plans, plan_type, min_value, max_value,
     for item in sorted_plans:
         item['priority'] = min(100, max(1, int(item.get('priority', 50))))
         item['virtual_value'] = round(float(item.get('virtual_value', min_value)), 1)
+        item['suggested_time'] = str(item.get('suggested_time', '')).strip()
     return sorted_plans
 
 

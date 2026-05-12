@@ -1,4 +1,4 @@
-# Todo v1.1.2 - 计划管理与心愿兑换系统
+# Todo v1.1.3 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -60,6 +60,7 @@ python app.py
 | priority | INTEGER | 综合优先级评分 1-100 (越高越优先，0=未评估) |
 | virtual_value | REAL | 虚拟价值 (小数点后1位) |
 | progress | INTEGER | 完成进度 0-100 |
+| suggested_time | TEXT | AI 建议完成时间 (如 "14:00", "周三", "15日前", "6月前") |
 | completed | INTEGER | 是否完成 0/1 |
 | created_at | TIMESTAMP | 创建时间 |
 | completed_at | TIMESTAMP | 完成时间 |
@@ -105,6 +106,14 @@ python app.py
 | weekly_min / weekly_max | 1 / 10 | 周计划虚拟价值范围 |
 | monthly_min / monthly_max | 10 / 20 | 月计划虚拟价值范围 |
 | yearly_min / yearly_max | 20 / 100 | 年计划虚拟价值范围 |
+
+### signatures 表 - 个性签名
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增主键 |
+| content | TEXT | 签名内容 |
+| created_at | TIMESTAMP | 创建时间 |
 
 **数据库迁移**: `init_db()` 使用 `ALTER TABLE` 检测并添加缺失列 (如 `progress`)，兼容旧数据库。
 
@@ -173,11 +182,18 @@ python app.py
 | GET | `/api/settings` | 获取所有设置 |
 | PUT | `/api/settings` | 批量更新设置 |
 
+### 签名 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/signatures` | 获取所有签名 |
+| PUT | `/api/signatures` | 保存签名 (body: `{"contents": ["签名1", "签名2"]}`) |
+
 ### 更新 API
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/update` | 检查并执行 git pull 更新 |
+| POST | `/api/update` | 检查并从 GitHub 下载更新 |
 
 ## AI 服务 (`ai_service.py`)
 
@@ -188,21 +204,23 @@ python app.py
 | `_call_llm(base_url, api_key, model, messages, extra_headers)` | API 配置 + 消息列表 | dict (JSON 解析后的响应) | 调用 OpenAI 兼容 chat completions API，强制 `json_object` 响应格式 |
 | `fetch_models(base_url, api_key, extra_headers)` | API 配置 | list[str] (模型 ID 列表) | 调用 `/v1/models` 获取可用模型 |
 | `test_connection(base_url, api_key, model, extra_headers)` | API 配置 | (bool, str) (成功/失败, 消息) | 发送简单请求测试连通性 |
-| `evaluate_single_plan(base_url, api_key, model, plan_type, title, description, min_value, max_value, extra_headers)` | API 配置 + 计划信息 + 价值范围 | (int, float, str) (priority, virtual_value, reason) | 评估单条计划的优先级和价值 |
-| `sort_plans(base_url, api_key, model, plans, plan_type, min_value, max_value, extra_headers)` | API 配置 + 计划列表 + 价值范围 | list[dict] (id, priority, virtual_value, reason) | 批量排序和评估多条计划 |
+| `evaluate_single_plan(base_url, api_key, model, plan_type, title, description, min_value, max_value, extra_headers)` | API 配置 + 计划信息 + 价值范围 | (int, float, str, str) (priority, virtual_value, suggested_time, reason) | 评估单条计划的优先级、价值和建议时间 |
+| `sort_plans(base_url, api_key, model, plans, plan_type, min_value, max_value, extra_headers)` | API 配置 + 计划列表 + 价值范围 | list[dict] (id, priority, virtual_value, suggested_time, reason) | 批量排序和评估多条计划 |
 | `evaluate_wish(base_url, api_key, model, name, price, extra_headers)` | API 配置 + 心愿信息 | (float, str) (virtual_cost, reason) | 评估心愿的虚拟兑换价值 |
 
 ### Prompt 设计
 
 **计划排序 Prompt (`PLAN_SORT_PROMPT`)**:
 - 输入: 计划类型名称 + 计划列表 JSON + 价值范围
-- 评分依据: 紧急程度(40%) + 重要程度(30%) + 执行难度(20%) + 依赖关系(10%)
-- 评分标准: 80-100 极紧急 → 60-79 重要 → 40-59 中等 → 20-39 低 → 1-19 最低
-- 输出格式: `{"sorted_plans": [{"id": int, "priority": 1-100, "virtual_value": float, "reason": str}]}`
+- **两个独立维度**: 优先级 (决定执行顺序) 和虚拟价值 (完成奖励)，二者不挂钩
+- 优先级评分依据: 紧急程度(40%) + 重要程度(30%) + 执行难度(20%) + 依赖关系(10%)
+- 虚拟价值评估依据: 执行难度、时间精力投入、个人成长收益 (与优先级无关)
+- 建议完成时间: 根据计划类型返回 (今日:HH:MM, 周:周X, 月:X日前, 年:X月前)
+- 输出格式: `{"sorted_plans": [{"id": int, "priority": 1-100, "virtual_value": float, "suggested_time": str, "reason": str}]}`
 
 **单条计划评估 Prompt (`PLAN_SINGLE_EVAL_PROMPT`)**:
 - 与批量排序相同的评分标准，但只评估一条计划
-- 输出格式: `{"priority": 1-100, "virtual_value": float, "reason": str}`
+- 输出格式: `{"priority": 1-100, "virtual_value": float, "suggested_time": str, "reason": str}`
 
 **心愿评估 Prompt (`WISH_EVAL_PROMPT`)**:
 - 基础兑换率: 1元 ≈ 1虚拟价值
@@ -223,8 +241,8 @@ python app.py
 | `get_plans(plan_type, include_completed)` | 获取计划列表 (默认排除已完成，按 priority DESC 排序) |
 | `get_completed_plans()` | 获取所有已完成计划 (回收站，按完成时间倒序) |
 | `get_plan(plan_id)` | 获取单条计划 |
-| `create_plan(plan_type, title, description, priority, virtual_value, progress)` | 创建计划 |
-| `update_plan(plan_id, title, description, priority, virtual_value, progress)` | 更新计划 (仅更新非 None 字段) |
+| `create_plan(plan_type, title, description, priority, virtual_value, progress, suggested_time)` | 创建计划 |
+| `update_plan(plan_id, title, description, priority, virtual_value, progress, suggested_time)` | 更新计划 (仅更新非 None 字段) |
 | `delete_plan(plan_id)` | 删除单条计划 |
 | `batch_delete_plans(plan_ids)` | 批量删除计划 (返回删除数量) |
 | `complete_plan(plan_id)` | 标记完成 + 生成收入流水 |
@@ -240,6 +258,8 @@ python app.py
 | `reset_balance()` | 清零余额 (生成负数流水) |
 | `get_transactions()` | 获取流水记录 |
 | `get_settings()` / `update_settings()` | 系统设置读写 |
+| `get_signatures()` | 获取所有签名 |
+| `save_signatures(contents)` | 清空并重新保存签名列表 |
 
 ## 前端设计
 
@@ -345,11 +365,11 @@ python app.py
 
 ```
 switchPage(page)
-  ├── loadPlans()        → api GET /api/plans → renderPlans() + updateCategoryProgress()
+  ├── loadPlans()        → api GET /api/plans → renderPlans() + updateCategoryProgress() + showNextSignature()
   ├── loadWishes()       → api GET /api/wishes + /api/balance → renderWishes()
   ├── loadTransactions() → api GET /api/transactions → renderTransactions()
   ├── loadRecycleBin()   → api GET /api/plans/completed → renderRecycleBin()
-  └── loadSettings()     → api GET /api/ai-settings + /api/settings
+  └── loadSettings()     → api GET /api/ai-settings + /api/settings + /api/signatures
 
 savePlan()
   ├── (新建) api POST /api/plans → loadPlans() + setTimeout(loadPlans, 3000) (静默AI评估后刷新)
@@ -374,7 +394,10 @@ fetchModels()       → api POST /api/ai-settings/models
 saveAiSettings()    → api PUT /api/ai-settings
 testAiConnection()  → saveAiSettings() → api POST /api/ai-settings/test
 saveValueRanges()   → api PUT /api/settings
-checkUpdate()       → api POST /api/update (git pull) → location.reload()
+checkUpdate()       → api POST /api/update → location.reload()
+loadSignatures()    → api GET /api/signatures → showNextSignature()
+saveSignatures()    → api PUT /api/signatures
+showNextSignature() → 轮换显示下一条签名
 ```
 
 ## 美学设计要点
@@ -418,6 +441,7 @@ checkUpdate()       → api POST /api/update (git pull) → location.reload()
 **数据安全**: 数据库和更新文件均存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装 DMG 不会丢失数据。
 
 **版本历史**:
+- v1.1.3: AI 优先级与虚拟价值解耦 (独立评估)、新增预估完成时长、个性签名轮换显示
 - v1.1.2: 更新前校验远程版本，相同版本跳过下载
 - v1.1.1: DMG 版支持应用内更新 (从 GitHub 下载 zip)，版本号从 API 动态获取
 - v1.1.0: 应用内更新按钮、心愿防重复提交、原生 macOS 窗口 (pywebview)、onedir 秒启动
