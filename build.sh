@@ -18,9 +18,14 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+# Activate venv
+if [ -d "venv" ]; then
+    source venv/bin/activate
+fi
+
 # Install dependencies
 echo "Installing dependencies..."
-pip3 install pyinstaller flask requests pywebview --quiet
+pip install pyinstaller flask requests pywebview --quiet
 
 # Clean previous builds
 rm -rf "$DIST_DIR" "$BUILD_DIR" "*.spec"
