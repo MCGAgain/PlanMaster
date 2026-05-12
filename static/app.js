@@ -50,6 +50,17 @@ function hideLoading() { const e = document.getElementById('loadingOverlay'); if
 const PLAN_TYPE_LABELS = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
 const PLAN_TYPE_COLORS = { today:'#7c6ef0', weekly:'#3b82f6', monthly:'#10b981', yearly:'#f59e0b' };
 
+function planDateLabel(type, createdAt) {
+    if (!createdAt) return '';
+    const d = new Date(createdAt);
+    const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+    if (type === 'today') return (d.getMonth()+1) + '月' + d.getDate() + '日';
+    if (type === 'weekly') return weekdays[d.getDay()];
+    if (type === 'monthly') return (d.getMonth()+1) + '月';
+    if (type === 'yearly') return d.getFullYear() + '年';
+    return '';
+}
+
 // Priority color: green(1) -> yellow(50) -> red(100)
 function priColor(p) {
     if (!p || p <= 0) return null;
@@ -106,9 +117,12 @@ async function loadBalance() {
 
 async function loadPlans() {
     try {
-        const plans = await api('/api/plans?type=' + currentPage);
-        renderPlans(plans);
-        updateCategoryProgress(plans);
+        const [active, all] = await Promise.all([
+            api('/api/plans?type=' + currentPage),
+            api('/api/plans/all?type=' + currentPage)
+        ]);
+        renderPlans(active);
+        updateCategoryProgress(all);
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
 

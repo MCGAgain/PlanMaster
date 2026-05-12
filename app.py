@@ -34,6 +34,12 @@ def api_get_plans():
     return jsonify(db.get_plans(plan_type, include_completed=False))
 
 
+@app.route('/api/plans/all', methods=['GET'])
+def api_get_all_plans():
+    plan_type = request.args.get('type')
+    return jsonify(db.get_plans(plan_type, include_completed=True))
+
+
 @app.route('/api/plans/completed', methods=['GET'])
 def api_get_completed_plans():
     return jsonify(db.get_completed_plans())
