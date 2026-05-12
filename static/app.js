@@ -5,6 +5,7 @@ let signatures = [];
 let sigIndex = 0;
 
 function switchPage(page) {
+    Object.keys(timers).forEach(id => stopTimer(parseInt(id)));
     currentPage = page;
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const a = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -49,6 +50,66 @@ function hideLoading() { const e = document.getElementById('loadingOverlay'); if
 
 const PLAN_TYPE_LABELS = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
 const PLAN_TYPE_COLORS = { today:'#7c6ef0', weekly:'#3b82f6', monthly:'#10b981', yearly:'#f59e0b' };
+
+// ---- Countdown Timer ----
+const timers = {};
+
+function parseSuggestedTime(str) {
+    if (!str) return 0;
+    const m = str.match(/([\d.]+)\s*(秒|分钟|小时)/);
+    if (!m) return 0;
+    const v = parseFloat(m[1]);
+    return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : v * 3600;
+}
+
+function fmtCountdown(s) {
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+}
+
+function startTimer(id, totalSec) {
+    if (timers[id]) return;
+    timers[id] = { remaining: totalSec, total: totalSec };
+    const interval = setInterval(() => {
+        const t = timers[id];
+        if (!t) { clearInterval(interval); return; }
+        t.remaining--;
+        const prog = Math.min(99, Math.round((1 - t.remaining / t.total) * 100));
+        const card = document.querySelector(`.plan-card[data-id="${id}"]`);
+        if (card) {
+            const bar = card.querySelector('.plan-progress-bar');
+            const txt = card.querySelector('.plan-progress-text');
+            const input = card.querySelector('.plan-progress-input');
+            const btn = card.querySelector('.timer-btn');
+            if (bar) bar.style.width = prog + '%';
+            if (txt) txt.textContent = prog + '%';
+            if (input) input.value = prog;
+            if (btn) btn.textContent = fmtCountdown(t.remaining);
+        }
+        if (t.remaining <= 0) {
+            clearInterval(interval);
+            delete timers[id];
+            if (card) {
+                const btn = card.querySelector('.timer-btn');
+                if (btn) { btn.textContent = '开始'; btn.classList.remove('counting'); }
+            }
+        }
+    }, 1000);
+    timers[id].interval = interval;
+}
+
+function stopTimer(id) {
+    if (!timers[id]) return;
+    clearInterval(timers[id].interval);
+    delete timers[id];
+}
+
+function toggleTimer(id, timeStr) {
+    id = parseInt(id);
+    if (timers[id]) { stopTimer(id); return; }
+    const sec = parseSuggestedTime(timeStr);
+    if (sec > 0) startTimer(id, sec);
+}
 
 function planDateLabel(type) {
     const d = new Date();
@@ -147,7 +208,8 @@ function renderPlans(plans) {
         const colorLight = priColorLight(p.priority);
         // SVG progress ring
         const r = 24; const circ = 2 * Math.PI * r;
-        const prog = Math.min(100, Math.max(0, p.progress || 0));
+        const timerProg = timers[p.id] ? Math.min(99, Math.round((1 - timers[p.id].remaining / timers[p.id].total) * 100)) : null;
+        const prog = timerProg !== null ? timerProg : Math.min(100, Math.max(0, p.progress || 0));
         const offset = circ - (prog / 100) * circ;
         const ringColor = color || 'rgba(168,163,191,0.4)';
 
@@ -175,7 +237,8 @@ function renderPlans(plans) {
                     <div class="plan-card-title">${esc(p.title)}${planDateLabel(p.plan_type) ? `<span class="plan-date-label">${planDateLabel(p.plan_type)}</span>` : ''}</div>
                     <div class="plan-card-meta">
                         <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
-                        ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>` : ''}
+                        ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>
+                        <button class="btn timer-btn${timers[p.id] ? ' counting' : ''}" data-id="${p.id}" data-time="${esc(p.suggested_time)}" onclick="toggleTimer(this.dataset.id,this.dataset.time)">${timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始'}</button>` : ''}
                         ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
                     </div>
                 </div>
@@ -209,6 +272,7 @@ function previewProgress(input) {
 
 async function updateProgress(id, val) {
     const v = parseInt(val);
+    if (v >= 100) stopTimer(id);
     try {
         await api('/api/plans/' + id, { method: 'PUT', body: JSON.stringify({ progress: v }) });
         // Update SVG ring on this card only
@@ -528,7 +592,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.2.0';
+        document.getElementById('appVersion').textContent = d.version || '1.2.1';
     } catch (e) {}
 }
 
