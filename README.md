@@ -1,4 +1,4 @@
-# Todo v1.1.3 - 计划管理与心愿兑换系统
+# Todo v1.1.4 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -123,7 +123,8 @@ python app.py
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/plans?type={type}` | 获取计划列表 (可选 type 过滤) |
+| GET | `/api/plans?type={type}` | 获取未完成计划列表 (可选 type 过滤) |
+| GET | `/api/plans/all?type={type}` | 获取所有计划列表 (含已完成，用于进度计算) |
 | POST | `/api/plans` | 创建计划 (自动 AI 评估) |
 | PUT | `/api/plans/{id}` | 更新计划 (标题/描述/优先级/价值/进度) |
 | DELETE | `/api/plans/{id}` | 删除计划 |
@@ -441,6 +442,7 @@ showNextSignature() → 轮换显示下一条签名
 **数据安全**: 数据库和更新文件均存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装 DMG 不会丢失数据。
 
 **版本历史**:
+- v1.1.4: 修复分类进度条不更新、计划卡片显示日期标签 (今日:月日, 周:星期X, 月:X月, 年:XXXX年)
 - v1.1.3: AI 优先级与虚拟价值解耦 (独立评估)、新增预估完成时长、个性签名轮换显示
 - v1.1.2: 更新前校验远程版本，相同版本跳过下载
 - v1.1.1: DMG 版支持应用内更新 (从 GitHub 下载 zip)，版本号从 API 动态获取
