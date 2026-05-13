@@ -1,7 +1,8 @@
 import sqlite3
 import os
 import sys
-from datetime import datetime
+import math
+from datetime import datetime, date
 
 if getattr(sys, 'frozen', False):
     _data_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
@@ -72,6 +73,23 @@ def init_db():
             content TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS checkin_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS checkin_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL,
+            check_date TEXT NOT NULL,
+            streak INTEGER DEFAULT 1,
+            value REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (item_id) REFERENCES checkin_items(id),
+            UNIQUE(item_id, check_date)
+        );
     """)
 
     # Migration: add progress column if missing
@@ -91,6 +109,8 @@ def init_db():
         'monthly_min': '10', 'monthly_max': '20',
         'yearly_min': '20', 'yearly_max': '100',
         'today_min': '1', 'today_max': '10',
+        'checkin_daily_increment': '1',
+        'checkin_max_value': '30',
     }
     for k, v in defaults.items():
         conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
@@ -379,5 +399,159 @@ def update_settings(settings_dict):
     conn = get_db()
     for k, v in settings_dict.items():
         conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v)))
+    conn.commit()
+    conn.close()
+
+
+# ---- Check-in ----
+
+def _checkin_value(streak, daily_inc, max_val):
+    """Value = sqrt(streak) * daily_inc, capped at max_val."""
+    if streak <= 0:
+        return 0
+    return min(round(math.sqrt(streak) * daily_inc, 1), max_val)
+
+
+def get_checkin_items():
+    conn = get_db()
+    s = get_settings()
+    daily_inc = float(s.get('checkin_daily_increment', 1))
+    max_val = float(s.get('checkin_max_value', 30))
+    items = conn.execute("SELECT * FROM checkin_items ORDER BY created_at DESC").fetchall()
+    today_str = date.today().isoformat()
+    result = []
+    for item in items:
+        last = conn.execute(
+            "SELECT check_date, streak FROM checkin_records WHERE item_id=? ORDER BY check_date DESC LIMIT 1",
+            (item['id'],)
+        ).fetchone()
+        streak = 0
+        checked_today = False
+        if last:
+            last_date = date.fromisoformat(last['check_date'])
+            days_diff = (date.today() - last_date).days
+            if days_diff == 0:
+                streak = last['streak']
+                checked_today = True
+            elif days_diff == 1:
+                streak = last['streak']
+            else:
+                streak = 0
+        val = _checkin_value(streak, daily_inc, max_val) if streak > 0 else 0
+        if streak > 0 and not checked_today:
+            val = _checkin_value(streak, daily_inc, max_val)
+        result.append({
+            'id': item['id'],
+            'name': item['name'],
+            'created_at': item['created_at'],
+            'streak': streak,
+            'current_value': val,
+            'checked_today': checked_today,
+        })
+    conn.close()
+    return result
+
+
+def create_checkin_item(name):
+    conn = get_db()
+    cur = conn.execute("INSERT INTO checkin_items (name) VALUES (?)", (name,))
+    item_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {'id': item_id, 'name': name}
+
+
+def delete_checkin_item(item_id):
+    conn = get_db()
+    conn.execute("DELETE FROM checkin_records WHERE item_id=?", (item_id,))
+    conn.execute("DELETE FROM checkin_items WHERE id=?", (item_id,))
+    conn.commit()
+    conn.close()
+
+
+def checkin_today(item_id):
+    """Record a check-in for today. Returns (item_dict, error_msg)."""
+    conn = get_db()
+    s = get_settings()
+    daily_inc = float(s.get('checkin_daily_increment', 1))
+    max_val = float(s.get('checkin_max_value', 30))
+
+    item = conn.execute("SELECT * FROM checkin_items WHERE id=?", (item_id,)).fetchone()
+    if not item:
+        conn.close()
+        return None, '打卡项目不存在'
+
+    today_str = date.today().isoformat()
+    existing = conn.execute(
+        "SELECT * FROM checkin_records WHERE item_id=? AND check_date=?",
+        (item_id, today_str)
+    ).fetchone()
+    if existing:
+        conn.close()
+        return None, '今天已打卡'
+
+    last = conn.execute(
+        "SELECT check_date, streak FROM checkin_records WHERE item_id=? ORDER BY check_date DESC LIMIT 1",
+        (item_id,)
+    ).fetchone()
+
+    if last:
+        last_date = date.fromisoformat(last['check_date'])
+        days_diff = (date.today() - last_date).days
+        if days_diff == 1:
+            new_streak = last['streak'] + 1
+        else:
+            new_streak = 1
+    else:
+        new_streak = 1
+
+    val = _checkin_value(new_streak, daily_inc, max_val)
+    conn.execute(
+        "INSERT INTO checkin_records (item_id, check_date, streak, value) VALUES (?, ?, ?, ?)",
+        (item_id, today_str, new_streak, val)
+    )
+    if val > 0:
+        conn.execute(
+            "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'checkin', ?, ?)",
+            (val, item_id, f"打卡: {item['name']} (连续{new_streak}天)")
+        )
+    conn.commit()
+    conn.close()
+    return {
+        'id': item['id'],
+        'name': item['name'],
+        'streak': new_streak,
+        'current_value': val,
+        'checked_today': True,
+    }, None
+
+
+def checkin_missed_penalty():
+    """Check for missed days and apply penalty. Called on app startup."""
+    conn = get_db()
+    s = get_settings()
+    daily_inc = float(s.get('checkin_daily_increment', 1))
+    max_val = float(s.get('checkin_max_value', 30))
+    today_str = date.today().isoformat()
+
+    items = conn.execute("SELECT * FROM checkin_items").fetchall()
+    for item in items:
+        last = conn.execute(
+            "SELECT check_date, streak FROM checkin_records WHERE item_id=? ORDER BY check_date DESC LIMIT 1",
+            (item['id'],)
+        ).fetchone()
+        if not last:
+            continue
+        last_date = date.fromisoformat(last['check_date'])
+        days_diff = (date.today() - last_date).days
+        if days_diff <= 1:
+            continue
+        # Missed: penalty = the value they had on their last check-in day
+        old_val = _checkin_value(last['streak'], daily_inc, max_val)
+        if old_val > 0:
+            conn.execute(
+                "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'checkin_penalty', ?, ?)",
+                (-old_val, item['id'], f"断签扣除: {item['name']} (连续{last['streak']}天中断)")
+            )
     conn.commit()
     conn.close()

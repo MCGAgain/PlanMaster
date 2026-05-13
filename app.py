@@ -316,6 +316,37 @@ def api_update_settings():
     return jsonify({'ok': True})
 
 
+# ---- Check-in ----
+
+@app.route('/api/checkin-items', methods=['GET'])
+def api_get_checkin_items():
+    return jsonify(db.get_checkin_items())
+
+
+@app.route('/api/checkin-items', methods=['POST'])
+def api_create_checkin_item():
+    data = request.json
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({'error': '请输入名称'}), 400
+    item = db.create_checkin_item(name)
+    return jsonify(item), 201
+
+
+@app.route('/api/checkin-items/<int:item_id>', methods=['DELETE'])
+def api_delete_checkin_item(item_id):
+    db.delete_checkin_item(item_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/checkin/<int:item_id>', methods=['POST'])
+def api_checkin(item_id):
+    result, error = db.checkin_today(item_id)
+    if error:
+        return jsonify({'error': error}), 400
+    return jsonify(result)
+
+
 # ---- Signatures ----
 
 @app.route('/api/signatures', methods=['GET'])
@@ -332,6 +363,7 @@ def api_save_signatures():
 
 def start_flask(port):
     db.init_db()
+    db.checkin_missed_penalty()
     app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
 
 
@@ -339,7 +371,7 @@ def start_flask(port):
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
-CURRENT_VERSION = '1.2.1'
+CURRENT_VERSION = '1.2.2'
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
@@ -426,6 +458,7 @@ if __name__ == '__main__':
         webview.start()
     else:
         db.init_db()
+        db.checkin_missed_penalty()
         threading.Timer(1.0, lambda: webbrowser.open(f'http://localhost:{port}')).start()
         print(f"Todo 启动中... 浏览器将自动打开 http://localhost:{port}")
         app.run(host='127.0.0.1', port=port, debug=False)

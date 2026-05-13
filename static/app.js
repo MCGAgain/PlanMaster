@@ -11,17 +11,23 @@ function switchPage(page) {
     const a = document.querySelector(`.nav-item[data-page="${page}"]`);
     if (a) a.classList.add('active');
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-    const planPages = ['today', 'weekly', 'monthly', 'yearly'];
-    if (planPages.includes(page)) {
-        document.getElementById('page-plans').classList.add('active');
-        const t = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
-        document.getElementById('planTitle').textContent = t[page];
-        loadPlans();
+    if (page === 'checkin') {
+        document.getElementById('page-checkin').classList.add('active');
+        loadCheckins();
         showNextSignature();
-    } else if (page === 'wishes') { document.getElementById('page-wishes').classList.add('active'); loadWishes(); }
-    else if (page === 'transactions') { document.getElementById('page-transactions').classList.add('active'); loadTransactions(); }
-    else if (page === 'recycle') { document.getElementById('page-recycle').classList.add('active'); loadRecycleBin(); }
-    else if (page === 'settings') { document.getElementById('page-settings').classList.add('active'); loadSettings(); }
+    } else {
+        const planPages = ['today', 'weekly', 'monthly', 'yearly'];
+        if (planPages.includes(page)) {
+            document.getElementById('page-plans').classList.add('active');
+            const t = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
+            document.getElementById('planTitle').textContent = t[page];
+            loadPlans();
+            showNextSignature();
+        } else if (page === 'wishes') { document.getElementById('page-wishes').classList.add('active'); loadWishes(); }
+        else if (page === 'transactions') { document.getElementById('page-transactions').classList.add('active'); loadTransactions(); }
+        else if (page === 'recycle') { document.getElementById('page-recycle').classList.add('active'); loadRecycleBin(); }
+        else if (page === 'settings') { document.getElementById('page-settings').classList.add('active'); loadSettings(); }
+    }
 }
 
 function toggleGroup(h) { h.classList.toggle('collapsed'); h.nextElementSibling.classList.toggle('open'); }
@@ -345,11 +351,19 @@ async function savePlan() {
             const body = { plan_type: currentPage, title, description: desc, progress: parseInt(prog) };
             if (pri !== '') body.priority = parseInt(pri);
             if (val !== '') body.virtual_value = parseFloat(val);
-            await api('/api/plans', { method: 'POST', body: JSON.stringify(body) });
+            const newPlan = await api('/api/plans', { method: 'POST', body: JSON.stringify(body) });
             toast('计划已创建');
             closeModal('planModal'); loadPlans();
-            if (pri === '' && val === '') {
-                setTimeout(() => loadPlans(), 3000);
+            if (pri === '' && val === '' && newPlan && newPlan.id) {
+                let polls = 0;
+                const poll = setInterval(async () => {
+                    try {
+                        const plans = await api('/api/plans?type=' + currentPage);
+                        const found = plans.find(p => p.id === newPlan.id);
+                        if (found && found.priority > 0) { clearInterval(poll); loadPlans(); }
+                    } catch (_) {}
+                    if (++polls >= 15) clearInterval(poll);
+                }, 1000);
             }
         }
     } catch (e) { toast('保存失败: ' + e.message, true); }
@@ -551,6 +565,8 @@ async function loadSettings() {
         document.getElementById('setMonthlyMax').value = s.monthly_max || 20;
         document.getElementById('setYearlyMin').value = s.yearly_min || 20;
         document.getElementById('setYearlyMax').value = s.yearly_max || 100;
+        document.getElementById('setCheckinDailyInc').value = s.checkin_daily_increment || 1;
+        document.getElementById('setCheckinMaxVal').value = s.checkin_max_value || 30;
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
 
@@ -592,7 +608,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.2.1';
+        document.getElementById('appVersion').textContent = d.version || '1.2.2';
     } catch (e) {}
 }
 
@@ -650,6 +666,93 @@ async function resetBalance() {
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show')); });
+
+// ---- Check-in ----
+
+async function loadCheckins() {
+    try {
+        const items = await api('/api/checkin-items');
+        renderCheckins(items);
+    } catch (e) { toast('加载失败: ' + e.message, true); }
+}
+
+function renderCheckins(items) {
+    const c = document.getElementById('checkinList');
+    if (!items.length) { c.innerHTML = '<div class="empty-state">暂无打卡项目，点击右上角添加</div>'; return; }
+    c.innerHTML = items.map(item => {
+        const pct = Math.min(100, Math.round((item.current_value / 30) * 100));
+        return `
+        <div class="plan-card" data-id="${item.id}">
+            <div class="checkin-icon">${item.checked_today ? '&#9989;' : '&#9744;'}</div>
+            <div class="plan-card-body">
+                <div class="plan-card-header">
+                    <div class="plan-card-title">${esc(item.name)}
+                        <span class="plan-badge badge-checkin-streak">连续 ${item.streak} 天</span>
+                        ${item.current_value > 0 ? `<span class="plan-badge badge-checkin-value">${item.current_value} 价值</span>` : ''}
+                    </div>
+                </div>
+                <div class="plan-progress">
+                    <div class="plan-progress-track">
+                        <div class="plan-progress-bar checkin-bar" style="width:${pct}%"></div>
+                    </div>
+                    <span class="plan-progress-text">${item.current_value}</span>
+                </div>
+                <div class="plan-card-actions">
+                    ${!item.checked_today ? `<button class="btn btn-success btn-sm" onclick="doCheckin(${item.id})">&#9989; 打卡</button>` : '<span class="checkin-done">今日已打卡</span>'}
+                    <button class="btn btn-danger btn-sm" onclick="deleteCheckinItem(${item.id})">删除</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showAddCheckinModal() {
+    document.getElementById('checkinNameInput').value = '';
+    document.getElementById('checkinModal').classList.add('show');
+}
+
+let checkinSaving = false;
+async function saveCheckin() {
+    const name = document.getElementById('checkinNameInput').value.trim();
+    if (!name) { toast('请输入打卡名称', true); return; }
+    if (checkinSaving) return;
+    checkinSaving = true;
+    try {
+        await api('/api/checkin-items', { method: 'POST', body: JSON.stringify({ name }) });
+        toast('打卡项目已创建');
+        closeModal('checkinModal');
+        loadCheckins();
+    } catch (e) { toast('创建失败: ' + e.message, true); }
+    finally { checkinSaving = false; }
+}
+
+async function doCheckin(id) {
+    try {
+        await api('/api/checkin/' + id, { method: 'POST' });
+        toast('打卡成功！');
+        loadCheckins();
+        loadBalance();
+    } catch (e) { toast(e.message, true); }
+}
+
+async function deleteCheckinItem(id) {
+    if (!confirm('确定删除此打卡项目？所有记录将被清除。')) return;
+    try {
+        await api('/api/checkin-items/' + id, { method: 'DELETE' });
+        toast('已删除');
+        loadCheckins();
+    } catch (e) { toast('删除失败: ' + e.message, true); }
+}
+
+async function saveCheckinSettings() {
+    try {
+        await api('/api/settings', { method: 'PUT', body: JSON.stringify({
+            checkin_daily_increment: document.getElementById('setCheckinDailyInc').value,
+            checkin_max_value: document.getElementById('setCheckinMaxVal').value,
+        })});
+        toast('打卡设置已保存');
+    } catch (e) { toast('保存失败: ' + e.message, true); }
+}
 
 // Progress slider label sync in modal
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,4 +1,4 @@
-# Todo v1.2.1 - 计划管理与心愿兑换系统
+# Todo v1.2.2 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -419,7 +419,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.2.1.dmg`。
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.2.2.dmg`。
 
 ## 应用内更新
 
@@ -442,6 +442,7 @@ showNextSignature() → 轮换显示下一条签名
 **远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
 
 **版本历史**:
+- v1.2.2: 新增打卡功能 (独立价值体系: sqrt(连续天数)×增量)、修复计划子页面AI评估后数值不显示 (轮询替代固定延迟)、打卡设置 (每日增量/最大价值)
 - v1.2.1: 新增任务倒计时功能 (开始按钮 + 自动进度条 + 停在99%)、修复进度条交互 bug (refreshCategoryProgress 使用 /api/plans/all)、统一所有版本号
 - v1.2.0: 修复日期标签使用当前时间 (非创建时间)、更新后自动重启应用 (os.execv)、修复拖动进度条影响总进度条、统一所有版本号引用、DMG 打包使用 venv 和 icon.icns
 - v1.1.5: 更新 README 文档，完善版本历史记录
@@ -459,7 +460,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-打包产物为 `PlanMaster-1.2.1.dmg`，使用 `--onedir` 模式 (秒启动)。
+打包产物为 `PlanMaster-1.2.2.dmg`，使用 `--onedir` 模式 (秒启动)。
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
 - **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口

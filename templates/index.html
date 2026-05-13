@@ -24,6 +24,10 @@
                 <span class="balance-value" id="balanceValue">0</span>
             </div>
             <ul class="nav-menu">
+                <li class="nav-item" data-page="checkin" onclick="switchPage('checkin')">
+                    <span class="nav-icon">&#9745;</span>
+                    <span>打卡</span>
+                </li>
                 <li class="nav-item active" data-page="today" onclick="switchPage('today')">
                     <span class="nav-icon">&#9728;</span>
                     <span>今日待办</span>
@@ -60,6 +64,19 @@
         </nav>
 
         <main class="content">
+            <!-- Check-in Page -->
+            <div class="page" id="page-checkin">
+                <div class="page-header">
+                    <h2>打卡</h2>
+                    <div class="page-actions">
+                        <button class="btn btn-glass" onclick="showAddCheckinModal()">+ 新增打卡</button>
+                    </div>
+                </div>
+                <div class="checkin-list" id="checkinList">
+                    <div class="empty-state">暂无打卡项目，点击右上角添加</div>
+                </div>
+            </div>
+
             <!-- Plan Pages -->
             <div class="page active" id="page-plans">
                 <div class="page-header">
@@ -209,6 +226,28 @@
                     </div>
 
                     <div class="glass-card">
+                        <h3>打卡价值设置</h3>
+                        <p class="form-hint" style="margin-top:0;margin-bottom:12px;">打卡价值 = sqrt(连续天数) × 每日增量，上限为最大价值。断签后扣除上次打卡所得价值。</p>
+                        <div class="range-grid">
+                            <div class="range-item">
+                                <h4>每日增量</h4>
+                                <div class="range-inputs">
+                                    <label>增量 <input type="number" id="setCheckinDailyInc" min="0" step="0.5"></label>
+                                </div>
+                            </div>
+                            <div class="range-item">
+                                <h4>最大价值</h4>
+                                <div class="range-inputs">
+                                    <label>上限 <input type="number" id="setCheckinMaxVal" min="0" step="1"></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn btn-glass" onclick="saveCheckinSettings()">保存</button>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
                         <h3>数据管理</h3>
                         <p class="form-hint" style="margin-top:0;margin-bottom:16px;">清零后所有虚拟价值归零，操作不可撤销（会生成一笔等额负数流水）</p>
                         <div class="form-actions">
@@ -230,7 +269,7 @@
                     <div class="glass-card">
                         <h3>应用信息</h3>
                         <div class="app-info">
-                            <span class="app-version">Todo v<span id="appVersion">1.2.1</span></span>
+                            <span class="app-version">Todo v<span id="appVersion">1.2.2</span></span>
                         </div>
                         <div class="form-actions" style="margin-top:12px;">
                             <button class="btn btn-glass" onclick="checkUpdate()" id="updateBtn">检查更新</button>
@@ -308,6 +347,27 @@
             <div class="modal-footer">
                 <button class="btn btn-glass" onclick="closeModal('wishModal')">取消</button>
                 <button class="btn btn-gradient" onclick="saveWish()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Check-in Modal -->
+    <div class="modal" id="checkinModal">
+        <div class="modal-overlay" onclick="closeModal('checkinModal')"></div>
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>新增打卡</h3>
+                <span class="modal-close" onclick="closeModal('checkinModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>打卡名称</label>
+                    <input type="text" id="checkinNameInput" placeholder="如：早起、运动、阅读...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-glass" onclick="closeModal('checkinModal')">取消</button>
+                <button class="btn btn-gradient" onclick="saveCheckin()">保存</button>
             </div>
         </div>
     </div>
