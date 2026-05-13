@@ -1,0 +1,61 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install flask requests pyinstaller
+
+      - name: Build EXE
+        run: |
+          pyinstaller --name PlanMaster --onedir --windowed --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --noconfirm --clean app.py
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlanMaster-Windows
+          path: dist/PlanMaster/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install flask requests pyinstaller pywebview
+
+      - name: Build app
+        run: |
+          pyinstaller --name PlanMaster --onedir --windowed --icon icon.icns --add-data "templates:templates" --add-data "static:static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.cocoa --noconfirm --clean app.py
+
+      - name: Create DMG
+        run: |
+          mkdir -p dist/dmg_temp
+          cp -r dist/PlanMaster.app dist/dmg_temp/
+          ln -sf /Applications dist/dmg_temp/Applications
+          hdiutil create -volname PlanMaster -srcfolder dist/dmg_temp -ov -format UDZO PlanMaster.dmg
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlanMaster-macOS
+          path: PlanMaster.dmg
