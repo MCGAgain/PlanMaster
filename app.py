@@ -364,7 +364,7 @@ def api_save_signatures():
 def start_flask(port):
     db.init_db()
     db.checkin_missed_penalty()
-    app.run(host='127.0.0.1', port=port, debug=False, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 
 # ---- Update ----
@@ -461,4 +461,4 @@ if __name__ == '__main__':
         db.checkin_missed_penalty()
         threading.Timer(1.0, lambda: webbrowser.open(f'http://localhost:{port}')).start()
         print(f"Todo 启动中... 浏览器将自动打开 http://localhost:{port}")
-        app.run(host='127.0.0.1', port=port, debug=False)
+        app.run(host='0.0.0.0', port=port, debug=False)
