@@ -23,29 +23,52 @@
                 <span class="balance-label">虚拟价值余额</span>
                 <span class="balance-value" id="balanceValue">0</span>
             </div>
-            <div class="sub-nav" id="subNav"></div>
-            <div class="bottom-tabs">
-                <div class="tab-item active" data-tab="todo" onclick="switchTab('todo')">
-                    <span class="tab-icon">&#9728;</span>
-                    <span class="tab-label">待办</span>
-                </div>
-                <div class="tab-item" data-tab="plans" onclick="switchTab('plans')">
-                    <span class="tab-icon">&#128197;</span>
-                    <span class="tab-label">待办集</span>
-                </div>
-                <div class="tab-item" data-tab="focus" onclick="switchTab('focus')">
-                    <span class="tab-icon">&#128274;</span>
-                    <span class="tab-label">锁机</span>
-                </div>
-                <div class="tab-item" data-tab="stats" onclick="switchTab('stats')">
-                    <span class="tab-icon">&#128202;</span>
-                    <span class="tab-label">统计数据</span>
-                </div>
-                <div class="tab-item" data-tab="my" onclick="switchTab('my')">
-                    <span class="tab-icon">&#128100;</span>
-                    <span class="tab-label">我的</span>
-                </div>
-            </div>
+            <ul class="nav-menu">
+                <li class="nav-item" data-page="checkin" onclick="switchPage('checkin')">
+                    <span class="nav-icon">&#9745;</span>
+                    <span>打卡</span>
+                </li>
+                <li class="nav-item active" data-page="today" onclick="switchPage('today')">
+                    <span class="nav-icon">&#9728;</span>
+                    <span>今日待办</span>
+                </li>
+                <li class="nav-group">
+                    <div class="nav-group-header" onclick="toggleGroup(this)">
+                        <span class="nav-icon">&#128197;</span>
+                        <span>计划管理</span>
+                        <span class="arrow">&#9662;</span>
+                    </div>
+                    <ul class="nav-group-items open">
+                        <li class="nav-item" data-page="weekly" onclick="switchPage('weekly')"><span>周计划</span></li>
+                        <li class="nav-item" data-page="monthly" onclick="switchPage('monthly')"><span>月计划</span></li>
+                        <li class="nav-item" data-page="yearly" onclick="switchPage('yearly')"><span>年计划</span></li>
+                    </ul>
+                </li>
+                <li class="nav-item" data-page="stats" onclick="switchPage('stats')">
+                    <span class="nav-icon">&#128202;</span>
+                    <span>统计数据</span>
+                </li>
+                <li class="nav-item" data-page="focus" onclick="switchPage('focus')">
+                    <span class="nav-icon">&#9201;</span>
+                    <span>专注模式</span>
+                </li>
+                <li class="nav-item" data-page="wishes" onclick="switchPage('wishes')">
+                    <span class="nav-icon">&#9734;</span>
+                    <span>心愿兑换单</span>
+                </li>
+                <li class="nav-item" data-page="transactions" onclick="switchPage('transactions')">
+                    <span class="nav-icon">&#128200;</span>
+                    <span>价值流水</span>
+                </li>
+                <li class="nav-item" data-page="recycle" onclick="switchPage('recycle')">
+                    <span class="nav-icon">&#128465;</span>
+                    <span>回收站</span>
+                </li>
+                <li class="nav-item" data-page="settings" onclick="switchPage('settings')">
+                    <span class="nav-icon">&#9881;</span>
+                    <span>AI设置</span>
+                </li>
+            </ul>
         </nav>
 
         <main class="content">
@@ -254,7 +277,7 @@
                     <div class="glass-card">
                         <h3>应用信息</h3>
                         <div class="app-info">
-                            <span class="app-version">Todo v<span id="appVersion">1.3.2</span></span>
+                            <span class="app-version">Todo v<span id="appVersion">1.3.3</span></span>
                         </div>
                         <div class="form-actions" style="margin-top:12px;">
                             <button class="btn btn-glass" onclick="checkUpdate()" id="updateBtn">检查更新</button>
@@ -333,15 +356,60 @@
                 </div>
             </div>
 
-            <!-- Focus Lock Page (placeholder) -->
+            <!-- Focus Timer Page -->
             <div class="page" id="page-focus">
                 <div class="page-header">
-                    <h2>锁机模式</h2>
+                    <h2>专注模式</h2>
                 </div>
-                <div class="empty-state">
-                    <p style="font-size:48px;margin-bottom:16px;">&#128274;</p>
-                    <p>锁机模式即将上线</p>
-                    <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">专注模式将帮助你排除干扰，高效完成任务</p>
+                <div class="focus-setup glass-card" id="focusSetup">
+                    <div class="form-group">
+                        <label>任务名称</label>
+                        <input type="text" id="focusTaskInput" placeholder="输入你要专注的任务，如：高数作业">
+                    </div>
+                    <div class="focus-mode-select">
+                        <button class="focus-mode-btn active" data-mode="unlimited" onclick="selectFocusMode('unlimited')">不限时</button>
+                        <button class="focus-mode-btn" data-mode="countdown" onclick="selectFocusMode('countdown')">倒计时</button>
+                    </div>
+                    <div class="focus-duration-input" id="focusDurationGroup" style="display:none">
+                        <label>时长</label>
+                        <div class="duration-row">
+                            <input type="number" id="focusHours" min="0" max="12" value="0" placeholder="0">
+                            <span>小时</span>
+                            <input type="number" id="focusMinutes" min="0" max="59" value="30" placeholder="30">
+                            <span>分钟</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-gradient focus-start-btn" onclick="startFocusTimer()">&#9654; 开始专注</button>
+                </div>
+                <div class="focus-timer-area" id="focusTimerArea" style="display:none">
+                    <div class="focus-task-label" id="focusTaskLabel"></div>
+                    <div class="focus-timer-ring">
+                        <svg viewBox="0 0 280 280">
+                            <defs>
+                                <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#7c6ef0"/>
+                                    <stop offset="100%" style="stop-color:#a78bfa"/>
+                                </linearGradient>
+                            </defs>
+                            <circle class="focus-ring-bg" cx="140" cy="140" r="120"/>
+                            <circle class="focus-ring-fill" id="focusRingFill" cx="140" cy="140" r="120"/>
+                        </svg>
+                        <div class="focus-timer-display" id="focusTimerDisplay">00:00:00</div>
+                    </div>
+                    <div class="focus-timer-info">
+                        <span id="focusModeLabel">专注中</span>
+                    </div>
+                    <div class="focus-actions">
+                        <button class="btn btn-danger focus-stop-btn" onclick="stopFocusTimer()">&#9632; 结束专注</button>
+                        <button class="btn btn-glass focus-cancel-btn" onclick="cancelFocusTimer()">取消</button>
+                    </div>
+                </div>
+                <div class="focus-complete" id="focusComplete" style="display:none">
+                    <div class="focus-complete-icon">&#10003;</div>
+                    <div class="focus-complete-title" id="focusCompleteTitle">专注完成</div>
+                    <div class="focus-complete-duration" id="focusCompleteDuration"></div>
+                    <div class="focus-complete-category" id="focusCompleteCategory"></div>
+                    <button class="btn btn-gradient" onclick="resetFocusPage()">继续专注</button>
                 </div>
             </div>
         </main>

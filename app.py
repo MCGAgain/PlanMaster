@@ -452,7 +452,7 @@ def start_flask(port):
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
-CURRENT_VERSION = '1.3.2'
+CURRENT_VERSION = '1.3.3'
 
 @app.route('/api/version', methods=['GET'])
 def api_version():

@@ -1,68 +1,15 @@
 let currentPage = 'today';
-let currentTab = 'todo';
 let editingPlanId = null;
 let planSaving = false;
 let signatures = [];
 let sigIndex = 0;
 
-const TAB_CONFIG = {
-    todo: {
-        pages: ['checkin', 'today'],
-        labels: { checkin: '打卡', today: '今日待办' },
-        defaultPage: 'today'
-    },
-    plans: {
-        pages: ['weekly', 'monthly', 'yearly'],
-        labels: { weekly: '周计划', monthly: '月计划', yearly: '年计划' },
-        defaultPage: 'weekly'
-    },
-    focus: {
-        pages: ['focus'],
-        labels: { focus: '锁机模式' },
-        defaultPage: 'focus'
-    },
-    stats: {
-        pages: ['stats'],
-        labels: { stats: '统计数据' },
-        defaultPage: 'stats'
-    },
-    my: {
-        pages: ['wishes', 'transactions', 'recycle', 'settings'],
-        labels: { wishes: '心愿兑换', transactions: '价值流水', recycle: '回收站', settings: 'AI设置' },
-        defaultPage: 'settings'
-    }
-};
-
-function switchTab(tab) {
-    currentTab = tab;
-    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-    const tabEl = document.querySelector(`.tab-item[data-tab="${tab}"]`);
-    if (tabEl) tabEl.classList.add('active');
-    renderSubNav(tab);
-    switchPage(TAB_CONFIG[tab].defaultPage);
-}
-
-function renderSubNav(tab) {
-    const config = TAB_CONFIG[tab];
-    const subNav = document.getElementById('subNav');
-    if (!config || config.pages.length <= 1) {
-        subNav.innerHTML = '';
-        return;
-    }
-    subNav.innerHTML = config.pages.map(p => `
-        <div class="sub-nav-item${currentPage === p ? ' active' : ''}"
-             data-page="${p}" onclick="switchPage('${p}')">
-            ${config.labels[p]}
-        </div>
-    `).join('');
-}
-
 function switchPage(page) {
     Object.keys(timers).forEach(id => stopTimer(parseInt(id)));
     currentPage = page;
-    document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
-    const subItem = document.querySelector(`.sub-nav-item[data-page="${page}"]`);
-    if (subItem) subItem.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const a = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (a) a.classList.add('active');
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     if (page === 'checkin') {
         document.getElementById('page-checkin').classList.add('active');
@@ -73,6 +20,18 @@ function switchPage(page) {
         loadStatsPage();
     } else if (page === 'focus') {
         document.getElementById('page-focus').classList.add('active');
+        renderFocusPage();
+        if (focusState === 'running') {
+            const display = document.getElementById('focusTimerDisplay');
+            if (display) {
+                if (focusMode === 'countdown') {
+                    display.textContent = fmtHMS(Math.max(0, focusTotalSec - focusElapsed));
+                } else {
+                    display.textContent = fmtHMS(focusElapsed);
+                }
+            }
+            updateFocusTimerRing();
+        }
     } else {
         const planPages = ['today', 'weekly', 'monthly', 'yearly'];
         if (planPages.includes(page)) {
@@ -92,6 +51,178 @@ function toggleGroup(h) { h.classList.toggle('collapsed'); h.nextElementSibling.
 
 // ---- Focus Sessions ----
 let activeFocusSession = null;
+let focusMode = 'unlimited';
+let focusTotalSec = 0;
+let focusState = 'setup'; // setup | running | complete
+let focusStartTime = null;
+let focusElapsed = 0;
+let focusTimerInterval = null;
+let focusCurrentSessionId = null;
+let focusCurrentTask = '';
+const FOCUS_RING_CIRCUMFERENCE = 2 * Math.PI * 120;
+
+function selectFocusMode(mode) {
+    focusMode = mode;
+    document.querySelectorAll('.focus-mode-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.focus-mode-btn[data-mode="${mode}"]`).classList.add('active');
+    document.getElementById('focusDurationGroup').style.display = mode === 'countdown' ? '' : 'none';
+}
+
+function renderFocusPage() {
+    const setup = document.getElementById('focusSetup');
+    const timer = document.getElementById('focusTimerArea');
+    const complete = document.getElementById('focusComplete');
+    setup.style.display = focusState === 'setup' ? '' : 'none';
+    timer.style.display = focusState === 'running' ? '' : 'none';
+    complete.style.display = focusState === 'complete' ? '' : 'none';
+}
+
+function fmtHMS(totalSec) {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function updateFocusTimerRing() {
+    const ring = document.getElementById('focusRingFill');
+    if (!ring) return;
+    if (focusMode === 'unlimited') {
+        const segments = Math.floor(focusElapsed / 3600);
+        const segProgress = (focusElapsed % 3600) / 3600;
+        const offset = FOCUS_RING_CIRCUMFERENCE * (1 - segProgress);
+        ring.style.strokeDashoffset = offset;
+    } else {
+        const remaining = Math.max(0, focusTotalSec - focusElapsed);
+        const progress = focusElapsed / focusTotalSec;
+        const offset = FOCUS_RING_CIRCUMFERENCE * (1 - progress);
+        ring.style.strokeDashoffset = offset;
+    }
+}
+
+function startFocusTimerTick() {
+    if (focusTimerInterval) return;
+    focusTimerInterval = setInterval(() => {
+        focusElapsed = Math.floor((Date.now() - focusStartTime.getTime()) / 1000);
+        if (focusMode === 'countdown' && focusElapsed >= focusTotalSec) {
+            focusElapsed = focusTotalSec;
+            clearInterval(focusTimerInterval);
+            focusTimerInterval = null;
+            finishFocusTimer();
+            return;
+        }
+        if (currentPage === 'focus') {
+            const display = document.getElementById('focusTimerDisplay');
+            if (display) {
+                if (focusMode === 'countdown') {
+                    display.textContent = fmtHMS(Math.max(0, focusTotalSec - focusElapsed));
+                } else {
+                    display.textContent = fmtHMS(focusElapsed);
+                }
+            }
+            updateFocusTimerRing();
+        }
+        updatePlanCardFocusBtn();
+    }, 1000);
+}
+
+function updatePlanCardFocusBtn() {
+    if (!activeFocusSession) return;
+    const card = document.querySelector(`.plan-card[data-id="${activeFocusSession.plan_id}"]`);
+    if (card) {
+        const btn = card.querySelector('.focus-btn');
+        if (btn) {
+            btn.textContent = fmtHMS(focusElapsed).substring(3);
+            btn.classList.add('focusing');
+        }
+    }
+}
+
+async function startFocusTimer() {
+    const task = document.getElementById('focusTaskInput').value.trim();
+    if (!task) { toast('请输入任务名称', true); return; }
+
+    if (focusMode === 'countdown') {
+        const h = parseInt(document.getElementById('focusHours').value) || 0;
+        const m = parseInt(document.getElementById('focusMinutes').value) || 0;
+        focusTotalSec = h * 3600 + m * 60;
+        if (focusTotalSec <= 0) { toast('请设置倒计时时长', true); return; }
+    }
+
+    try {
+        const session = await api('/api/sessions', {
+            method: 'POST',
+            body: JSON.stringify({ plan_id: null, start_time: new Date().toISOString() })
+        });
+        focusCurrentSessionId = session.id;
+        focusCurrentTask = task;
+        focusStartTime = new Date(session.start_time);
+        focusElapsed = 0;
+        focusState = 'running';
+
+        document.getElementById('focusTaskLabel').textContent = task;
+        const infoEl = document.getElementById('focusModeLabel');
+        if (focusMode === 'countdown') {
+            infoEl.textContent = '倒计时 ' + fmtHMS(focusTotalSec);
+        } else {
+            infoEl.textContent = '不限时专注中';
+        }
+
+        renderFocusPage();
+        startFocusTimerTick();
+
+        if (focusMode === 'countdown') {
+            const display = document.getElementById('focusTimerDisplay');
+            if (display) display.textContent = fmtHMS(focusTotalSec);
+        }
+        updateFocusTimerRing();
+    } catch (e) { toast('启动失败: ' + e.message, true); }
+}
+
+async function stopFocusTimer() {
+    if (!focusCurrentSessionId) return;
+    if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null; }
+
+    const endTime = new Date().toISOString();
+    try {
+        await api('/api/sessions/' + focusCurrentSessionId, {
+            method: 'PUT',
+            body: JSON.stringify({ end_time: endTime })
+        });
+        toast('专注已结束');
+    } catch (e) { toast('结束失败: ' + e.message, true); }
+
+    focusState = 'complete';
+    document.getElementById('focusCompleteTitle').textContent =
+        focusMode === 'countdown' && focusElapsed >= focusTotalSec ? '倒计时结束' : '专注完成';
+    document.getElementById('focusCompleteDuration').textContent = fmtHMS(focusElapsed);
+    document.getElementById('focusCompleteCategory').textContent = '任务: ' + focusCurrentTask;
+    renderFocusPage();
+
+    focusCurrentSessionId = null;
+    activeFocusSession = null;
+}
+
+function cancelFocusTimer() {
+    if (focusCurrentSessionId) {
+        if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null; }
+        api('/api/sessions/' + focusCurrentSessionId, { method: 'DELETE' }).catch(() => {});
+        focusCurrentSessionId = null;
+    }
+    activeFocusSession = null;
+    resetFocusPage();
+}
+
+function resetFocusPage() {
+    focusState = 'setup';
+    focusElapsed = 0;
+    focusStartTime = null;
+    focusCurrentTask = '';
+    if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null; }
+    const ring = document.getElementById('focusRingFill');
+    if (ring) ring.style.strokeDashoffset = FOCUS_RING_CIRCUMFERENCE;
+    renderFocusPage();
+}
 
 async function startFocus(planId) {
     try {
@@ -100,8 +231,8 @@ async function startFocus(planId) {
             body: JSON.stringify({ plan_id: planId, start_time: new Date().toISOString() })
         });
         activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date(session.start_time), interval: null };
-        activeFocusSession.interval = setInterval(() => updateFocusDisplay(), 1000);
-        updateFocusDisplay();
+        activeFocusSession.interval = setInterval(() => updateFocusCardDisplay(), 1000);
+        updateFocusCardDisplay();
         toast('专注已开始');
     } catch (e) { toast('启动失败: ' + e.message, true); }
 }
@@ -120,16 +251,14 @@ async function stopFocus() {
     loadPlans();
 }
 
-function updateFocusDisplay() {
+function updateFocusCardDisplay() {
     if (!activeFocusSession) return;
     const elapsed = Math.floor((Date.now() - activeFocusSession.start_time.getTime()) / 1000);
     const card = document.querySelector(`.plan-card[data-id="${activeFocusSession.plan_id}"]`);
     if (card) {
         const btn = card.querySelector('.focus-btn');
         if (btn) {
-            const m = Math.floor(elapsed / 60);
-            const s = elapsed % 60;
-            btn.textContent = m + ':' + String(s).padStart(2, '0');
+            btn.textContent = fmtHMS(elapsed).substring(3);
             btn.classList.add('focusing');
         }
     }
@@ -712,7 +841,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.2';
+        document.getElementById('appVersion').textContent = d.version || '1.3.3';
     } catch (e) {}
 }
 
@@ -1084,4 +1213,4 @@ document.addEventListener('DOMContentLoaded', () => {
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''; }
 
-document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadSignatures(); switchTab('todo'); });
+document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); loadSignatures(); });
