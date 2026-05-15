@@ -10,6 +10,19 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
+CURRENT_VERSION = '1.3.3'
+
+def _read_version_from_file(path):
+    try:
+        with open(path) as f:
+            for line in f:
+                if line.startswith('CURRENT_VERSION'):
+                    q = "'" if "'" in line else '"'
+                    return line.split(q)[1]
+    except Exception:
+        pass
+    return '0.0.0'
+
 if getattr(sys, 'frozen', False):
     base_dir = sys._MEIPASS
     _user_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
@@ -18,8 +31,14 @@ else:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     _user_dir = base_dir
 
-_tpl_dir = os.path.join(_user_dir, 'templates') if os.path.isdir(os.path.join(_user_dir, 'templates')) else os.path.join(base_dir, 'templates')
-_sta_dir = os.path.join(_user_dir, 'static') if os.path.isdir(os.path.join(_user_dir, 'static')) else os.path.join(base_dir, 'static')
+_use_user_dir = False
+if os.path.isdir(os.path.join(_user_dir, 'templates')) and os.path.isdir(os.path.join(_user_dir, 'static')):
+    user_ver = _read_version_from_file(os.path.join(_user_dir, 'app.py'))
+    if user_ver >= CURRENT_VERSION:
+        _use_user_dir = True
+
+_tpl_dir = os.path.join(_user_dir, 'templates') if _use_user_dir else os.path.join(base_dir, 'templates')
+_sta_dir = os.path.join(_user_dir, 'static') if _use_user_dir else os.path.join(base_dir, 'static')
 app = Flask(__name__, template_folder=_tpl_dir, static_folder=_sta_dir)
 
 
@@ -452,7 +471,6 @@ def start_flask(port):
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
-CURRENT_VERSION = '1.3.3'
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
