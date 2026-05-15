@@ -17,11 +17,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install flask requests pyinstaller
+          pip install flask requests pyinstaller pywebview
 
       - name: Build EXE
         run: |
-          pyinstaller --name PlanMaster --onedir --windowed --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --noconfirm --clean app.py
+          pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --noconfirm --clean app.py
         shell: bash
 
       - name: Upload artifact
