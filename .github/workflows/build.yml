@@ -52,18 +52,26 @@ jobs:
         run: |
           pyinstaller --name PlanMaster --onedir --windowed --icon icon.icns --add-data "templates:templates" --add-data "static:static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.cocoa --noconfirm --clean app.py
 
-      - name: Create DMG
+      - name: Create DMG and ZIP
         run: |
+          VERSION=$(grep "CURRENT_VERSION" app.py | head -1 | sed "s/.*'\(.*\)'.*/\1/")
           mkdir -p dist/dmg_temp
           cp -r dist/PlanMaster.app dist/dmg_temp/
           ln -sf /Applications dist/dmg_temp/Applications
           hdiutil create -volname PlanMaster -srcfolder dist/dmg_temp -ov -format UDZO PlanMaster.dmg
+          cd dist && zip -r -y "PlanMaster-macOS-v${VERSION}.zip" PlanMaster.app
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
           name: PlanMaster-macOS
           path: PlanMaster.dmg
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlanMaster-macOS-ZIP
+          path: dist/PlanMaster-macOS-v*.zip
 
   release:
     needs: [build-windows, build-macos]
@@ -79,6 +87,11 @@ jobs:
         with:
           path: artifacts
 
+      - name: Rename Windows Setup with version
+        run: |
+          VERSION=$(grep "CURRENT_VERSION" app.py | head -1 | sed "s/.*'\\(.*\\)'.*/\\1/")
+          mv artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup.exe "artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup-v${VERSION}.exe"
+
       - name: Check version and create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,5 +105,5 @@ jobs:
           gh release create "v$VERSION" \
             --title "PlanMaster v$VERSION" \
             --generate-notes \
-            artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup.exe \
-            artifacts/PlanMaster-macOS/PlanMaster.dmg
+            "artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup-v${VERSION}.exe" \
+            artifacts/PlanMaster-macOS-ZIP/PlanMaster-macOS-v${VERSION}.zip

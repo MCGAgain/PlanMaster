@@ -854,18 +854,16 @@ function window_updateDownloadProgress(pct) {
     const pLabel = document.getElementById('updateProgressLabel');
     const pPct = document.getElementById('updateProgressPct');
     if (!wrap) return;
+    wrap.style.display = 'block';
     if (pct < 0) {
-        wrap.style.display = 'block';
         pLabel.textContent = '准备更新...';
         pPct.textContent = '';
         bar.style.width = '0%';
         return;
     }
-    wrap.style.display = 'block';
     bar.style.width = pct + '%';
     pPct.textContent = pct + '%';
     if (pct >= 100) {
-        pLabel.textContent = '正在重启安装...';
         pPct.textContent = '100%';
     }
 }
@@ -897,19 +895,34 @@ async function checkUpdate() {
 async function pollUpdateStatus() {
     const el = document.getElementById('updateResult');
     const btn = document.getElementById('updateBtn');
+    const pLabel = document.getElementById('updateProgressLabel');
+    const prog = document.getElementById('updateProgress');
+    let failCount = 0;
     const poll = setInterval(async () => {
         try {
             const d = await api('/api/update/status');
-            if (d.status === 'idle') { clearInterval(poll); btn.disabled = false; btn.textContent = '检查更新'; return; }
+            failCount = 0;
+            if (pLabel && d.message) pLabel.textContent = d.message;
+            if (d.status === 'idle') {
+                clearInterval(poll);
+                btn.disabled = false; btn.textContent = '检查更新';
+                if (prog) prog.style.display = 'none';
+                return;
+            }
             if (d.status === 'error') {
                 clearInterval(poll);
                 el.textContent = d.message || '更新失败';
                 el.className = 'test-result error'; el.style.display = 'block';
                 btn.disabled = false; btn.textContent = '检查更新';
-                document.getElementById('updateProgress').style.display = 'none';
+                if (prog) prog.style.display = 'none';
             }
-        } catch { clearInterval(poll); btn.disabled = false; btn.textContent = '检查更新'; }
-    }, 2000);
+        } catch {
+            failCount++;
+            if (failCount > 5) {
+                clearInterval(poll);
+            }
+        }
+    }, 1000);
 }
 
 async function saveValueRanges() {

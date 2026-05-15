@@ -500,6 +500,7 @@ p{font-size:13px;opacity:.5}
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
 _update_state = {'status': 'idle', 'percent': 0, 'message': ''}
+PROGRESS_FILE = os.path.join(tempfile.gettempdir(), 'planmaster_update_progress.txt')
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
@@ -515,8 +516,25 @@ def _get_remote_version():
             return line.split("'")[1] if "'" in line else line.split('"')[1]
     return None
 
-def _push_progress(pct):
+def _write_progress(msg):
+    try:
+        with open(PROGRESS_FILE, 'w') as f:
+            f.write(msg)
+    except Exception:
+        pass
+
+def _read_progress():
+    try:
+        with open(PROGRESS_FILE, 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return ''
+
+def _push_progress(pct, msg=None):
     _update_state['percent'] = pct
+    if msg:
+        _update_state['message'] = msg
+        _write_progress(msg)
     try:
         from webview.windows import windows
         if windows:
@@ -534,29 +552,31 @@ def _get_asset_download_url():
     is_windows = platform.system() == 'Windows'
     for asset in data.get('assets', []):
         name = asset.get('name', '')
-        if is_windows and ('Setup' in name or 'setup' in name):
+        if is_windows and name.endswith('.exe'):
             return asset['browser_download_url'], remote_ver
-        if not is_windows and name.endswith('.dmg'):
+        if not is_windows and name.endswith('.zip') and 'macOS' in name:
             return asset['browser_download_url'], remote_ver
     return None, remote_ver
 
 def _stream_download(url, dest_path):
     resp = requests.get(url, stream=True, timeout=30, allow_redirects=True)
     if resp.status_code != 200:
-        _update_state['status'] = 'error'
-        _update_state['message'] = f'下载失败 (HTTP {resp.status_code})'
+        _push_progress(0, f'下载失败 (HTTP {resp.status_code})')
         return False
     total = int(resp.headers.get('content-length', 0))
     downloaded = 0
     with open(dest_path, 'wb') as f:
-        for chunk in resp.iter_content(chunk_size=8192):
+        for chunk in resp.iter_content(chunk_size=65536):
             if not chunk:
                 continue
             f.write(chunk)
             downloaded += len(chunk)
             if total > 0:
-                _push_progress(min(99, int(downloaded * 100 / total)))
-    _push_progress(100)
+                pct = min(99, int(downloaded * 100 / total))
+                mb_done = downloaded / 1048576
+                mb_total = total / 1048576
+                _push_progress(pct, f'下载中 {mb_done:.1f}/{mb_total:.1f} MB ({pct}%)')
+    _push_progress(100, '下载完成')
     return True
 
 def _install_and_restart():
@@ -566,79 +586,101 @@ def _install_and_restart():
     if is_windows:
         setup_path = os.path.join(tmpdir, 'PlanMaster-Setup.exe')
         if not os.path.isfile(setup_path):
-            _update_state['status'] = 'error'
-            _update_state['message'] = '安装包不存在'
+            _push_progress(0, '安装包不存在')
             return
+        _write_progress('正在启动安装程序...')
         subprocess.Popen(
             [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
             cwd=tmpdir
         )
+        os._exit(0)
     else:
-        dmg_path = os.path.join(tmpdir, 'PlanMaster.dmg')
-        if not os.path.isfile(dmg_path):
-            _update_state['status'] = 'error'
-            _update_state['message'] = '安装包不存在'
-            return
         if not getattr(sys, 'frozen', False):
-            _update_state['status'] = 'error'
-            _update_state['message'] = 'macOS 更新仅支持打包版本'
+            _push_progress(0, 'macOS 更新仅支持打包版本')
             return
+        zip_path = os.path.join(tmpdir, 'PlanMaster-macOS.zip')
         app_path = os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
         script_path = os.path.join(tmpdir, 'update_planmaster.sh')
-        script_content = '#!/bin/bash\n' + (
+        script_content = (
+            '#!/bin/bash\n'
+            'PROGRESS="{progress}"\n'
+            'ZIP="{zip}"\n'
+            'APP="{app}"\n'
+            'EXTRACT_DIR="{tmpdir}/PlanMasterUpdate"\n'
+            'echo "等待主程序退出..." > "$PROGRESS"\n'
             'sleep 2\n'
-            'hdiutil detach -quiet /Volumes/PlanMasterUpdate 2>/dev/null\n'
-            'hdiutil attach -nobrowse -quiet "{dmg}" -mountpoint /Volumes/PlanMasterUpdate\n'
+            'echo "正在解压缩..." > "$PROGRESS"\n'
+            'rm -rf "$EXTRACT_DIR"\n'
+            'mkdir -p "$EXTRACT_DIR"\n'
+            'unzip -o -q "$ZIP" -d "$EXTRACT_DIR"\n'
             'if [ $? -ne 0 ]; then\n'
-            '  open -a "{app}"\n'
-            '  rm -- "$0"\n'
+            '  echo "解压失败" > "$PROGRESS"\n'
             '  exit 1\n'
             'fi\n'
-            'rm -rf "{app}"\n'
-            'cp -R "/Volumes/PlanMasterUpdate/PlanMaster.app" "{app}"\n'
-            'hdiutil detach -quiet /Volumes/PlanMasterUpdate\n'
-            'rm -f "{dmg}"\n'
-            'open -a "{app}"\n'
+            'NEW_APP="$EXTRACT_DIR/PlanMaster.app"\n'
+            'if [ ! -d "$NEW_APP" ]; then\n'
+            '  FOUND=$(find "$EXTRACT_DIR" -maxdepth 2 -name "PlanMaster.app" -type d | head -1)\n'
+            '  if [ -n "$FOUND" ]; then\n'
+            '    NEW_APP="$FOUND"\n'
+            '  else\n'
+            '    echo "未找到 PlanMaster.app" > "$PROGRESS"\n'
+            '    exit 1\n'
+            '  fi\n'
+            'fi\n'
+            'echo "正在替换应用..." > "$PROGRESS"\n'
+            'rm -rf "$APP"\n'
+            'cp -R "$NEW_APP" "$APP"\n'
+            'if [ $? -ne 0 ]; then\n'
+            '  echo "替换失败" > "$PROGRESS"\n'
+            '  exit 1\n'
+            'fi\n'
+            'echo "清理临时文件..." > "$PROGRESS"\n'
+            'rm -rf "$EXTRACT_DIR"\n'
+            'rm -f "$ZIP"\n'
+            'echo "正在启动新版本..." > "$PROGRESS"\n'
+            'open -a "$APP"\n'
+            'sleep 1\n'
+            'rm -f "$PROGRESS"\n'
             'rm -- "$0"\n'
-        ).format(dmg=dmg_path, app=app_path)
+        ).format(
+            progress=PROGRESS_FILE, zip=zip_path, app=app_path, tmpdir=tmpdir
+        )
         with open(script_path, 'w') as f:
             f.write(script_content)
         os.chmod(script_path, 0o755)
+        _write_progress('正在启动安装程序...')
         subprocess.Popen([script_path], start_new_session=True)
-
-    os._exit(0)
+        os._exit(0)
 
 def _download_and_install():
     try:
-        _push_progress(-1)
-        _update_state['message'] = '正在获取更新信息...'
+        _push_progress(-1, '正在获取更新信息...')
         url, remote_ver = _get_asset_download_url()
         if not url:
+            _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
             _update_state['status'] = 'error'
-            _update_state['message'] = '未找到安装包，请前往 GitHub 手动下载'
             return
 
-        _update_state['message'] = f'正在下载 v{remote_ver}...'
-        _push_progress(0)
         tmpdir = tempfile.gettempdir()
         is_windows = platform.system() == 'Windows'
-        dest = os.path.join(tmpdir, 'PlanMaster-Setup.exe' if is_windows else 'PlanMaster.dmg')
+        dest = os.path.join(tmpdir, 'PlanMaster-Setup.exe' if is_windows else 'PlanMaster-macOS.zip')
 
+        _push_progress(0, f'准备下载 v{remote_ver}...')
         if not _stream_download(url, dest):
+            _update_state['status'] = 'error'
             return
 
-        _update_state['message'] = '下载完成，正在安装...'
         time.sleep(0.5)
         _install_and_restart()
     except requests.exceptions.ConnectionError:
+        _push_progress(0, '网络连接失败')
         _update_state['status'] = 'error'
-        _update_state['message'] = '网络连接失败'
     except requests.exceptions.Timeout:
+        _push_progress(0, '下载超时')
         _update_state['status'] = 'error'
-        _update_state['message'] = '下载超时'
     except Exception as e:
+        _push_progress(0, f'更新失败: {str(e)}')
         _update_state['status'] = 'error'
-        _update_state['message'] = f'更新失败: {str(e)}'
 
 @app.route('/api/update', methods=['POST'])
 def api_update():
@@ -661,15 +703,17 @@ def api_update():
     _update_state['status'] = 'downloading'
     _update_state['percent'] = 0
     _update_state['message'] = f'准备下载 v{remote_ver}...'
+    _write_progress(f'准备下载 v{remote_ver}...')
     threading.Thread(target=_download_and_install, daemon=True).start()
     return jsonify({'updated': False, 'downloading': True, 'message': f'发现新版本 v{remote_ver}，开始下载...'})
 
 @app.route('/api/update/status', methods=['GET'])
 def api_update_status():
+    file_msg = _read_progress()
     return jsonify({
         'status': _update_state['status'],
         'percent': _update_state['percent'],
-        'message': _update_state['message'],
+        'message': file_msg or _update_state['message'],
     })
 
 
