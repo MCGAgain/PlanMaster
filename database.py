@@ -2,7 +2,8 @@ import sqlite3
 import os
 import sys
 import math
-from datetime import datetime, date
+import re
+from datetime import datetime, date, timedelta
 
 if getattr(sys, 'frozen', False):
     _data_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
@@ -90,6 +91,19 @@ def init_db():
             FOREIGN KEY (item_id) REFERENCES checkin_items(id),
             UNIQUE(item_id, check_date)
         );
+
+        CREATE TABLE IF NOT EXISTS focus_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plan_id INTEGER,
+            category TEXT NOT NULL DEFAULT '',
+            start_time TIMESTAMP NOT NULL,
+            end_time TIMESTAMP,
+            duration INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (plan_id) REFERENCES plans(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_focus_sessions_start ON focus_sessions(start_time);
+        CREATE INDEX IF NOT EXISTS idx_focus_sessions_category ON focus_sessions(category);
     """)
 
     # Migration: add progress column if missing
@@ -555,3 +569,182 @@ def checkin_missed_penalty():
             )
     conn.commit()
     conn.close()
+
+
+# ---- Category Extraction ----
+
+def _plan_type_label(plan_type):
+    labels = {
+        'today': '今日待办', 'weekly': '周计划',
+        'monthly': '月计划', 'yearly': '年计划'
+    }
+    return labels.get(plan_type, '未分类')
+
+
+def extract_category(title, plan_type=''):
+    """Extract category from plan title using prefix patterns."""
+    if not title:
+        return _plan_type_label(plan_type)
+
+    # Pattern 1: 【xxx】rest
+    m = re.match(r'^[【\[](.*?)[】\]]', title)
+    if m:
+        return m.group(1).strip()
+
+    # Pattern 2: xxx: rest  or  xxx：rest (fullwidth colon)
+    m = re.match(r'^([^:：]+)\s*[:：]', title)
+    if m and len(m.group(1).strip()) <= 10:
+        return m.group(1).strip()
+
+    # Pattern 3: xxx-rest (dash separator, short prefix)
+    m = re.match(r'^([^-]+)\s*-\s*', title)
+    if m and len(m.group(1).strip()) <= 10:
+        return m.group(1).strip()
+
+    # Fallback: use plan type label
+    return _plan_type_label(plan_type)
+
+
+# ---- Focus Sessions ----
+
+def create_focus_session(plan_id, category, start_time):
+    conn = get_db()
+    cur = conn.execute(
+        "INSERT INTO focus_sessions (plan_id, category, start_time) VALUES (?, ?, ?)",
+        (plan_id, category, start_time)
+    )
+    session_id = cur.lastrowid
+    conn.commit()
+    row = conn.execute("SELECT * FROM focus_sessions WHERE id=?", (session_id,)).fetchone()
+    conn.close()
+    return dict(row)
+
+
+def end_focus_session(session_id, end_time, duration):
+    conn = get_db()
+    conn.execute(
+        "UPDATE focus_sessions SET end_time=?, duration=? WHERE id=?",
+        (end_time, int(duration), session_id)
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM focus_sessions WHERE id=?", (session_id,)).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_focus_sessions(plan_id=None, date_str=None, category=None):
+    conn = get_db()
+    query = "SELECT * FROM focus_sessions WHERE 1=1"
+    params = []
+    if plan_id is not None:
+        query += " AND plan_id=?"
+        params.append(plan_id)
+    if date_str:
+        query += " AND DATE(start_time)=?"
+        params.append(date_str)
+    if category:
+        query += " AND category=?"
+        params.append(category)
+    query += " ORDER BY start_time DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def delete_focus_session(session_id):
+    conn = get_db()
+    conn.execute("DELETE FROM focus_sessions WHERE id=?", (session_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_cumulative_stats():
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COUNT(*) as count, COALESCE(SUM(duration), 0) as total_duration, "
+        "MIN(DATE(start_time)) as first_date FROM focus_sessions"
+    ).fetchone()
+    count = row['count']
+    total_duration = row['total_duration']
+    first_date = row['first_date']
+    conn.close()
+
+    daily_avg = 0
+    if first_date and total_duration > 0:
+        days = (date.today() - date.fromisoformat(first_date)).days + 1
+        daily_avg = total_duration // max(1, days)
+
+    return {
+        'count': count,
+        'total_duration': total_duration,
+        'first_date': first_date or '',
+        'daily_avg': daily_avg
+    }
+
+
+def get_daily_stats(date_str):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COUNT(*) as count, COALESCE(SUM(duration), 0) as duration "
+        "FROM focus_sessions WHERE DATE(start_time)=?",
+        (date_str,)
+    ).fetchone()
+    conn.close()
+    return {'count': row['count'], 'duration': row['duration']}
+
+
+def get_distribution_stats(period, date_str, start_date=None, end_date=None):
+    conn = get_db()
+    query = "SELECT category, SUM(duration) as total_duration, COUNT(*) as count FROM focus_sessions WHERE "
+    params = []
+
+    if period == 'day':
+        query += "DATE(start_time)=?"
+        params.append(date_str)
+    elif period == 'week':
+        d = date.fromisoformat(date_str)
+        sd = (d - timedelta(days=6)).isoformat()
+        query += "DATE(start_time) BETWEEN ? AND ?"
+        params.extend([sd, date_str])
+    elif period == 'month':
+        month_prefix = date_str[:7]
+        query += "strftime('%Y-%m', start_time)=?"
+        params.append(month_prefix)
+    elif period == 'custom' and start_date and end_date:
+        query += "DATE(start_time) BETWEEN ? AND ?"
+        params.extend([start_date, end_date])
+    else:
+        query += "DATE(start_time)=?"
+        params.append(date_str)
+
+    query += " GROUP BY category ORDER BY total_duration DESC"
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+
+    items = [dict(r) for r in rows]
+    total = sum(i['total_duration'] for i in items)
+    for i in items:
+        i['percentage'] = round(i['total_duration'] / total * 100, 1) if total > 0 else 0
+
+    return {'items': items, 'total_duration': total}
+
+
+def get_monthly_daily_stats(year_month):
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT strftime('%d', start_time) as day, SUM(duration) as duration "
+        "FROM focus_sessions WHERE strftime('%Y-%m', start_time)=? "
+        "GROUP BY day ORDER BY day",
+        (year_month,)
+    ).fetchall()
+    conn.close()
+
+    result_map = {r['day']: r['duration'] for r in rows}
+    y, m = int(year_month[:4]), int(year_month[5:7])
+    import calendar
+    days_in_month = calendar.monthrange(y, m)[1]
+    result = []
+    for d in range(1, days_in_month + 1):
+        day_str = str(d).zfill(2)
+        result.append({'day': day_str, 'duration': result_map.get(day_str, 0)})
+    return result

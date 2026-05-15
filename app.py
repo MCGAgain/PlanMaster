@@ -4,6 +4,7 @@ import os
 import time
 import webbrowser
 import threading
+from datetime import datetime, date
 import requests
 from flask import Flask, render_template, request, jsonify
 import database as db
@@ -347,6 +348,86 @@ def api_checkin(item_id):
     return jsonify(result)
 
 
+# ---- Focus Sessions ----
+
+@app.route('/api/sessions', methods=['POST'])
+def api_create_session():
+    data = request.json
+    plan_id = data.get('plan_id')
+    start_time = data.get('start_time', datetime.now().isoformat())
+    category = '未分类'
+    if plan_id:
+        plan = db.get_plan(plan_id)
+        if plan:
+            category = db.extract_category(plan['title'], plan.get('plan_type', ''))
+    session = db.create_focus_session(plan_id, category, start_time)
+    return jsonify(session), 201
+
+
+@app.route('/api/sessions/<int:session_id>', methods=['PUT'])
+def api_end_session(session_id):
+    data = request.json
+    end_time = data.get('end_time', datetime.now().isoformat())
+    sessions = db.get_focus_sessions()
+    session = None
+    for s in sessions:
+        if s['id'] == session_id:
+            session = s
+            break
+    if not session:
+        return jsonify({'error': '会话不存在'}), 404
+    start = datetime.fromisoformat(session['start_time'])
+    end = datetime.fromisoformat(end_time)
+    duration = (end - start).total_seconds()
+    result = db.end_focus_session(session_id, end_time, duration)
+    return jsonify(result)
+
+
+@app.route('/api/sessions', methods=['GET'])
+def api_get_sessions():
+    plan_id = request.args.get('plan_id', type=int)
+    date_str = request.args.get('date')
+    category = request.args.get('category')
+    return jsonify(db.get_focus_sessions(plan_id, date_str, category))
+
+
+@app.route('/api/sessions/<int:session_id>', methods=['DELETE'])
+def api_delete_session(session_id):
+    db.delete_focus_session(session_id)
+    return jsonify({'ok': True})
+
+
+# ---- Statistics ----
+
+@app.route('/api/stats/cumulative', methods=['GET'])
+def api_stats_cumulative():
+    return jsonify(db.get_cumulative_stats())
+
+
+@app.route('/api/stats/daily', methods=['GET'])
+def api_stats_daily():
+    date_str = request.args.get('date', date.today().isoformat())
+    return jsonify(db.get_daily_stats(date_str))
+
+
+@app.route('/api/stats/distribution', methods=['GET'])
+def api_stats_distribution():
+    period = request.args.get('period', 'day')
+    date_str = request.args.get('date', date.today().isoformat())
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    return jsonify(db.get_distribution_stats(period, date_str, start_date, end_date))
+
+
+@app.route('/api/stats/monthly', methods=['GET'])
+def api_stats_monthly():
+    month = request.args.get('month')
+    if not month:
+        today = date.today()
+        month = f"{today.year}-{today.month:02d}"
+    return jsonify(db.get_monthly_daily_stats(month))
+
+
 # ---- Signatures ----
 
 @app.route('/api/signatures', methods=['GET'])
@@ -371,7 +452,7 @@ def start_flask(port):
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
-CURRENT_VERSION = '1.2.2'
+CURRENT_VERSION = '1.3.2'
 
 @app.route('/api/version', methods=['GET'])
 def api_version():

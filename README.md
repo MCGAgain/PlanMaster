@@ -1,4 +1,4 @@
-# Todo v1.2.2 - 计划管理与心愿兑换系统
+# Todo v1.3.2 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -115,6 +115,18 @@ python app.py
 | content | TEXT | 签名内容 |
 | created_at | TIMESTAMP | 创建时间 |
 
+### focus_sessions 表 - 专注会话
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增主键 |
+| plan_id | INTEGER | 关联计划ID (可为空) |
+| category | TEXT | 分类 (从标题前缀自动提取) |
+| start_time | TIMESTAMP | 开始时间 |
+| end_time | TIMESTAMP | 结束时间 |
+| duration | INTEGER | 专注时长 (秒) |
+| created_at | TIMESTAMP | 创建时间 |
+
 **数据库迁移**: `init_db()` 使用 `ALTER TABLE` 检测并添加缺失列 (如 `progress`)，兼容旧数据库。
 
 ## API 设计
@@ -189,6 +201,24 @@ python app.py
 |------|------|------|
 | GET | `/api/signatures` | 获取所有签名 |
 | PUT | `/api/signatures` | 保存签名 (body: `{"contents": ["签名1", "签名2"]}`) |
+
+### 专注会话 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/sessions` | 创建专注会话 (body: `{"plan_id": int, "start_time": ISO}`) |
+| PUT | `/api/sessions/{id}` | 结束专注会话 (body: `{"end_time": ISO}`) |
+| GET | `/api/sessions` | 获取会话列表 (可选参数: plan_id, date, category) |
+| DELETE | `/api/sessions/{id}` | 删除会话 |
+
+### 统计 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/stats/cumulative` | 获取累计统计 (次数/总时长/日均时长) |
+| GET | `/api/stats/daily?date=YYYY-MM-DD` | 获取某日统计 |
+| GET | `/api/stats/distribution?period=day\|week\|month&date=YYYY-MM-DD` | 获取分类时长分布 |
+| GET | `/api/stats/monthly?month=YYYY-MM` | 获取月度每日统计 |
 
 ### 更新 API
 
@@ -270,13 +300,16 @@ python app.py
 
 **页面列表**:
 1. **今日待办** (`today`) - 计划页面，plan_type=today
-2. **周计划** (`weekly`) - 计划页面，plan_type=weekly
-3. **月计划** (`monthly`) - 计划页面，plan_type=monthly
-4. **年计划** (`yearly`) - 计划页面，plan_type=yearly
-5. **心愿兑换单** (`wishes`) - 心愿管理
-6. **价值流水** (`transactions`) - 流水记录
-7. **回收站** (`recycle`) - 已完成计划 (可恢复/永久删除)
-8. **AI设置** (`settings`) - AI 配置 + 价值范围 + 数据管理
+2. **打卡** (`checkin`) - 打卡管理
+3. **周计划** (`weekly`) - 计划页面，plan_type=weekly
+4. **月计划** (`monthly`) - 计划页面，plan_type=monthly
+5. **年计划** (`yearly`) - 计划页面，plan_type=yearly
+6. **锁机模式** (`focus`) - 专注锁定 (占位)
+7. **统计数据** (`stats`) - 专注统计 (累计/每日/饼图/柱状图)
+8. **心愿兑换单** (`wishes`) - 心愿管理
+9. **价值流水** (`transactions`) - 流水记录
+10. **回收站** (`recycle`) - 已完成计划 (可恢复/永久删除)
+11. **AI设置** (`settings`) - AI 配置 + 价值范围 + 数据管理
 
 **计划页面共享同一个 DOM 容器** (`#page-plans`)，通过 `currentPage` 状态变量区分。
 
@@ -365,12 +398,17 @@ python app.py
 ### JavaScript 函数依赖
 
 ```
+switchTab(tab) → renderSubNav() + switchPage()
 switchPage(page)
   ├── loadPlans()        → api GET /api/plans → renderPlans() + updateCategoryProgress() + showNextSignature()
   ├── loadWishes()       → api GET /api/wishes + /api/balance → renderWishes()
   ├── loadTransactions() → api GET /api/transactions → renderTransactions()
   ├── loadRecycleBin()   → api GET /api/plans/completed → renderRecycleBin()
-  └── loadSettings()     → api GET /api/ai-settings + /api/settings + /api/signatures
+  ├── loadSettings()     → api GET /api/ai-settings + /api/settings + /api/signatures
+  └── loadStatsPage()    → loadCumulativeStats() + loadDailyStats() + loadDistributionStats() + loadMonthlyStats()
+
+startFocus(planId) → api POST /api/sessions → updateFocusDisplay()
+stopFocus()        → api PUT /api/sessions/{id} → loadPlans()
 
 savePlan()
   ├── (新建) api POST /api/plans → loadPlans() + setTimeout(loadPlans, 3000) (静默AI评估后刷新)
@@ -419,7 +457,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.2.2.dmg`。
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.3.2.dmg`。
 
 ## 应用内更新
 
@@ -442,6 +480,7 @@ showNextSignature() → 轮换显示下一条签名
 **远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
 
 **版本历史**:
+- v1.3.2: 新增统计数据页面 (累计统计、每日专注、专注时长分布饼图、月度柱状图)、侧边栏底部Tab导航 (待办/待办集/锁机/统计数据/我的)、专注会话记录 (手动开始/结束)、任务标题前缀自动分类
 - v1.2.2: 新增打卡功能 (独立价值体系: sqrt(连续天数)×增量)、修复计划子页面AI评估后数值不显示 (轮询替代固定延迟)、打卡设置 (每日增量/最大价值)
 - v1.2.1: 新增任务倒计时功能 (开始按钮 + 自动进度条 + 停在99%)、修复进度条交互 bug (refreshCategoryProgress 使用 /api/plans/all)、统一所有版本号
 - v1.2.0: 修复日期标签使用当前时间 (非创建时间)、更新后自动重启应用 (os.execv)、修复拖动进度条影响总进度条、统一所有版本号引用、DMG 打包使用 venv 和 icon.icns
@@ -460,7 +499,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-打包产物为 `PlanMaster-1.2.2.dmg`，使用 `--onedir` 模式 (秒启动)。
+打包产物为 `PlanMaster-1.3.2.dmg`，使用 `--onedir` 模式 (秒启动)。
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
 - **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口

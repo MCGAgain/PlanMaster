@@ -23,44 +23,29 @@
                 <span class="balance-label">虚拟价值余额</span>
                 <span class="balance-value" id="balanceValue">0</span>
             </div>
-            <ul class="nav-menu">
-                <li class="nav-item" data-page="checkin" onclick="switchPage('checkin')">
-                    <span class="nav-icon">&#9745;</span>
-                    <span>打卡</span>
-                </li>
-                <li class="nav-item active" data-page="today" onclick="switchPage('today')">
-                    <span class="nav-icon">&#9728;</span>
-                    <span>今日待办</span>
-                </li>
-                <li class="nav-group">
-                    <div class="nav-group-header" onclick="toggleGroup(this)">
-                        <span class="nav-icon">&#128197;</span>
-                        <span>计划管理</span>
-                        <span class="arrow">&#9662;</span>
-                    </div>
-                    <ul class="nav-group-items open">
-                        <li class="nav-item" data-page="weekly" onclick="switchPage('weekly')"><span>周计划</span></li>
-                        <li class="nav-item" data-page="monthly" onclick="switchPage('monthly')"><span>月计划</span></li>
-                        <li class="nav-item" data-page="yearly" onclick="switchPage('yearly')"><span>年计划</span></li>
-                    </ul>
-                </li>
-                <li class="nav-item" data-page="wishes" onclick="switchPage('wishes')">
-                    <span class="nav-icon">&#9734;</span>
-                    <span>心愿兑换单</span>
-                </li>
-                <li class="nav-item" data-page="transactions" onclick="switchPage('transactions')">
-                    <span class="nav-icon">&#128200;</span>
-                    <span>价值流水</span>
-                </li>
-                <li class="nav-item" data-page="recycle" onclick="switchPage('recycle')">
-                    <span class="nav-icon">&#128465;</span>
-                    <span>回收站</span>
-                </li>
-                <li class="nav-item" data-page="settings" onclick="switchPage('settings')">
-                    <span class="nav-icon">&#9881;</span>
-                    <span>AI设置</span>
-                </li>
-            </ul>
+            <div class="sub-nav" id="subNav"></div>
+            <div class="bottom-tabs">
+                <div class="tab-item active" data-tab="todo" onclick="switchTab('todo')">
+                    <span class="tab-icon">&#9728;</span>
+                    <span class="tab-label">待办</span>
+                </div>
+                <div class="tab-item" data-tab="plans" onclick="switchTab('plans')">
+                    <span class="tab-icon">&#128197;</span>
+                    <span class="tab-label">待办集</span>
+                </div>
+                <div class="tab-item" data-tab="focus" onclick="switchTab('focus')">
+                    <span class="tab-icon">&#128274;</span>
+                    <span class="tab-label">锁机</span>
+                </div>
+                <div class="tab-item" data-tab="stats" onclick="switchTab('stats')">
+                    <span class="tab-icon">&#128202;</span>
+                    <span class="tab-label">统计数据</span>
+                </div>
+                <div class="tab-item" data-tab="my" onclick="switchTab('my')">
+                    <span class="tab-icon">&#128100;</span>
+                    <span class="tab-label">我的</span>
+                </div>
+            </div>
         </nav>
 
         <main class="content">
@@ -269,13 +254,94 @@
                     <div class="glass-card">
                         <h3>应用信息</h3>
                         <div class="app-info">
-                            <span class="app-version">Todo v<span id="appVersion">1.2.2</span></span>
+                            <span class="app-version">Todo v<span id="appVersion">1.3.2</span></span>
                         </div>
                         <div class="form-actions" style="margin-top:12px;">
                             <button class="btn btn-glass" onclick="checkUpdate()" id="updateBtn">检查更新</button>
                         </div>
                         <div class="test-result" id="updateResult"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Statistics Page -->
+            <div class="page" id="page-stats">
+                <div class="page-header">
+                    <h2>统计数据</h2>
+                </div>
+                <div class="stats-cumulative glass-card">
+                    <h3 class="stats-section-title">统计数据 <span id="statsSinceDate" style="font-size:13px;font-weight:500;color:var(--text-soft)"></span></h3>
+                    <div class="stats-cumulative-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="statTotalCount">0</span>
+                            <span class="stat-label">次数</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="statTotalDuration">0小时0分钟</span>
+                            <span class="stat-label">时长</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="statDailyAvg">0小时0分钟</span>
+                            <span class="stat-label">日均时长</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-daily glass-card">
+                    <div class="stats-date-nav">
+                        <button class="btn btn-glass btn-sm" onclick="statsDatePrev()">&#9664;</button>
+                        <span class="stats-date-label" id="statsDateLabel"></span>
+                        <button class="btn btn-glass btn-sm" onclick="statsDateNext()">&#9654;</button>
+                    </div>
+                    <div class="stats-daily-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="statDailyCount">0</span>
+                            <span class="stat-label">专注次数</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="statDailyDuration">0小时0分钟</span>
+                            <span class="stat-label">专注时长</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-distribution glass-card">
+                    <div class="stats-section-header">
+                        <h3>专注时长分布</h3>
+                        <span class="stats-date-badge" id="statsDistDate"></span>
+                    </div>
+                    <div class="stats-period-tabs">
+                        <button class="period-tab active" data-period="day" onclick="switchStatsPeriod('day')">日</button>
+                        <button class="period-tab" data-period="week" onclick="switchStatsPeriod('week')">周</button>
+                        <button class="period-tab" data-period="month" onclick="switchStatsPeriod('month')">月</button>
+                    </div>
+                    <div class="stats-chart-container">
+                        <canvas id="donutChart" width="280" height="280"></canvas>
+                    </div>
+                    <div class="stats-legend" id="donutLegend"></div>
+                </div>
+                <div class="stats-monthly glass-card">
+                    <div class="stats-section-header">
+                        <h3>本月专注时段分布</h3>
+                        <div class="stats-date-nav" style="margin:0">
+                            <button class="btn btn-glass btn-sm" onclick="statsMonthPrev()">&#9664;</button>
+                            <span id="statsMonthLabel"></span>
+                            <button class="btn btn-glass btn-sm" onclick="statsMonthNext()">&#9654;</button>
+                        </div>
+                    </div>
+                    <div class="stats-chart-container stats-bar-container">
+                        <canvas id="barChart" width="600" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Focus Lock Page (placeholder) -->
+            <div class="page" id="page-focus">
+                <div class="page-header">
+                    <h2>锁机模式</h2>
+                </div>
+                <div class="empty-state">
+                    <p style="font-size:48px;margin-bottom:16px;">&#128274;</p>
+                    <p>锁机模式即将上线</p>
+                    <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">专注模式将帮助你排除干扰，高效完成任务</p>
                 </div>
             </div>
         </main>
@@ -373,6 +439,7 @@
     </div>
 
     <div class="toast" id="toast"></div>
+    <script src="/static/chart.umd.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

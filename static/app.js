@@ -1,20 +1,78 @@
 let currentPage = 'today';
+let currentTab = 'todo';
 let editingPlanId = null;
 let planSaving = false;
 let signatures = [];
 let sigIndex = 0;
 
+const TAB_CONFIG = {
+    todo: {
+        pages: ['checkin', 'today'],
+        labels: { checkin: '打卡', today: '今日待办' },
+        defaultPage: 'today'
+    },
+    plans: {
+        pages: ['weekly', 'monthly', 'yearly'],
+        labels: { weekly: '周计划', monthly: '月计划', yearly: '年计划' },
+        defaultPage: 'weekly'
+    },
+    focus: {
+        pages: ['focus'],
+        labels: { focus: '锁机模式' },
+        defaultPage: 'focus'
+    },
+    stats: {
+        pages: ['stats'],
+        labels: { stats: '统计数据' },
+        defaultPage: 'stats'
+    },
+    my: {
+        pages: ['wishes', 'transactions', 'recycle', 'settings'],
+        labels: { wishes: '心愿兑换', transactions: '价值流水', recycle: '回收站', settings: 'AI设置' },
+        defaultPage: 'settings'
+    }
+};
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    const tabEl = document.querySelector(`.tab-item[data-tab="${tab}"]`);
+    if (tabEl) tabEl.classList.add('active');
+    renderSubNav(tab);
+    switchPage(TAB_CONFIG[tab].defaultPage);
+}
+
+function renderSubNav(tab) {
+    const config = TAB_CONFIG[tab];
+    const subNav = document.getElementById('subNav');
+    if (!config || config.pages.length <= 1) {
+        subNav.innerHTML = '';
+        return;
+    }
+    subNav.innerHTML = config.pages.map(p => `
+        <div class="sub-nav-item${currentPage === p ? ' active' : ''}"
+             data-page="${p}" onclick="switchPage('${p}')">
+            ${config.labels[p]}
+        </div>
+    `).join('');
+}
+
 function switchPage(page) {
     Object.keys(timers).forEach(id => stopTimer(parseInt(id)));
     currentPage = page;
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    const a = document.querySelector(`.nav-item[data-page="${page}"]`);
-    if (a) a.classList.add('active');
+    document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
+    const subItem = document.querySelector(`.sub-nav-item[data-page="${page}"]`);
+    if (subItem) subItem.classList.add('active');
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     if (page === 'checkin') {
         document.getElementById('page-checkin').classList.add('active');
         loadCheckins();
         showNextSignature();
+    } else if (page === 'stats') {
+        document.getElementById('page-stats').classList.add('active');
+        loadStatsPage();
+    } else if (page === 'focus') {
+        document.getElementById('page-focus').classList.add('active');
     } else {
         const planPages = ['today', 'weekly', 'monthly', 'yearly'];
         if (planPages.includes(page)) {
@@ -31,6 +89,51 @@ function switchPage(page) {
 }
 
 function toggleGroup(h) { h.classList.toggle('collapsed'); h.nextElementSibling.classList.toggle('open'); }
+
+// ---- Focus Sessions ----
+let activeFocusSession = null;
+
+async function startFocus(planId) {
+    try {
+        const session = await api('/api/sessions', {
+            method: 'POST',
+            body: JSON.stringify({ plan_id: planId, start_time: new Date().toISOString() })
+        });
+        activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date(session.start_time), interval: null };
+        activeFocusSession.interval = setInterval(() => updateFocusDisplay(), 1000);
+        updateFocusDisplay();
+        toast('专注已开始');
+    } catch (e) { toast('启动失败: ' + e.message, true); }
+}
+
+async function stopFocus() {
+    if (!activeFocusSession) return;
+    clearInterval(activeFocusSession.interval);
+    try {
+        await api('/api/sessions/' + activeFocusSession.id, {
+            method: 'PUT',
+            body: JSON.stringify({ end_time: new Date().toISOString() })
+        });
+        toast('专注已结束');
+    } catch (e) { toast('结束失败: ' + e.message, true); }
+    activeFocusSession = null;
+    loadPlans();
+}
+
+function updateFocusDisplay() {
+    if (!activeFocusSession) return;
+    const elapsed = Math.floor((Date.now() - activeFocusSession.start_time.getTime()) / 1000);
+    const card = document.querySelector(`.plan-card[data-id="${activeFocusSession.plan_id}"]`);
+    if (card) {
+        const btn = card.querySelector('.focus-btn');
+        if (btn) {
+            const m = Math.floor(elapsed / 60);
+            const s = elapsed % 60;
+            btn.textContent = m + ':' + String(s).padStart(2, '0');
+            btn.classList.add('focusing');
+        }
+    }
+}
 
 async function api(url, opts = {}) {
     const r = await fetch(url, { headers: {'Content-Type':'application/json'}, ...opts });
@@ -245,6 +348,7 @@ function renderPlans(plans) {
                         <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
                         ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>
                         <button class="btn timer-btn${timers[p.id] ? ' counting' : ''}" data-id="${p.id}" data-time="${esc(p.suggested_time)}" onclick="toggleTimer(this.dataset.id,this.dataset.time)">${timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始'}</button>` : ''}
+                        <button class="btn focus-btn btn-sm${activeFocusSession && activeFocusSession.plan_id === p.id ? ' focusing' : ''}" onclick="${activeFocusSession && activeFocusSession.plan_id === p.id ? 'stopFocus()' : 'startFocus(' + p.id + ')'}">${activeFocusSession && activeFocusSession.plan_id === p.id ? '...' : '&#9654; 专注'}</button>
                         ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
                     </div>
                 </div>
@@ -608,7 +712,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.2.2';
+        document.getElementById('appVersion').textContent = d.version || '1.3.2';
     } catch (e) {}
 }
 
@@ -754,6 +858,222 @@ async function saveCheckinSettings() {
     } catch (e) { toast('保存失败: ' + e.message, true); }
 }
 
+// ---- Statistics Page ----
+let statsDate = new Date();
+let statsMonth = new Date();
+let statsPeriod = 'day';
+let donutChart = null;
+let barChart = null;
+
+const CHART_COLORS = [
+    '#7c6ef0', '#a78bfa', '#c4b5fd', '#3b82f6', '#60a5fa',
+    '#10b981', '#34d399', '#f59e0b', '#fbbf24', '#f87171',
+    '#ec4899', '#8b5cf6'
+];
+
+function fmtDuration(seconds) {
+    if (!seconds || seconds <= 0) return '0小时0分钟';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0 && m > 0) return h + '小时' + m + '分钟';
+    if (h > 0) return h + '小时';
+    return m + '分钟';
+}
+
+function fmtDate(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function fmtMonth(d) {
+    return d.getFullYear() + '年' + String(d.getMonth() + 1).padStart(2, '0') + '月';
+}
+
+function fmtMonthParam(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+async function loadStatsPage() {
+    statsDate = new Date();
+    statsMonth = new Date();
+    document.getElementById('statsDateLabel').textContent = fmtDate(statsDate);
+    document.getElementById('statsDistDate').textContent = fmtDate(statsDate);
+    document.getElementById('statsMonthLabel').textContent = fmtMonth(statsMonth);
+    await Promise.all([
+        loadCumulativeStats(),
+        loadDailyStats(),
+        loadDistributionStats(),
+        loadMonthlyStats()
+    ]);
+}
+
+async function loadCumulativeStats() {
+    try {
+        const d = await api('/api/stats/cumulative');
+        document.getElementById('statTotalCount').textContent = d.count;
+        document.getElementById('statTotalDuration').textContent = fmtDuration(d.total_duration);
+        document.getElementById('statDailyAvg').textContent = fmtDuration(d.daily_avg);
+        const sinceEl = document.getElementById('statsSinceDate');
+        if (d.first_date) sinceEl.textContent = '自 ' + d.first_date + ' 起';
+        else sinceEl.textContent = '';
+    } catch (e) {}
+}
+
+async function loadDailyStats() {
+    try {
+        const d = await api('/api/stats/daily?date=' + fmtDate(statsDate));
+        document.getElementById('statDailyCount').textContent = d.count;
+        document.getElementById('statDailyDuration').textContent = fmtDuration(d.duration);
+    } catch (e) {}
+}
+
+function statsDatePrev() {
+    statsDate.setDate(statsDate.getDate() - 1);
+    document.getElementById('statsDateLabel').textContent = fmtDate(statsDate);
+    loadDailyStats();
+}
+
+function statsDateNext() {
+    statsDate.setDate(statsDate.getDate() + 1);
+    document.getElementById('statsDateLabel').textContent = fmtDate(statsDate);
+    loadDailyStats();
+}
+
+function switchStatsPeriod(period) {
+    statsPeriod = period;
+    document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.period-tab[data-period="${period}"]`).classList.add('active');
+    loadDistributionStats();
+}
+
+async function loadDistributionStats() {
+    try {
+        const d = await api('/api/stats/distribution?period=' + statsPeriod + '&date=' + fmtDate(statsDate));
+        renderDonutChart(d.items, d.total_duration);
+    } catch (e) {}
+}
+
+function renderDonutChart(items, totalDuration) {
+    const ctx = document.getElementById('donutChart').getContext('2d');
+    if (donutChart) { donutChart.destroy(); donutChart = null; }
+    const legend = document.getElementById('donutLegend');
+    if (!items || !items.length) {
+        legend.innerHTML = '<div class="empty-state" style="padding:20px">暂无数据</div>';
+        return;
+    }
+    donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: items.map(i => i.category),
+            datasets: [{
+                data: items.map(i => i.total_duration),
+                backgroundColor: items.map((_, idx) => CHART_COLORS[idx % CHART_COLORS.length]),
+                borderColor: 'rgba(255,255,255,.6)',
+                borderWidth: 2,
+                hoverBorderWidth: 3,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: false,
+            cutout: '60%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(255,255,255,.9)',
+                    titleColor: '#2d2655',
+                    bodyColor: '#2d2655',
+                    borderColor: 'rgba(124,110,240,.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: { label: function(ctx) { return ctx.label + ': ' + fmtDuration(ctx.raw); } }
+                }
+            }
+        }
+    });
+    legend.innerHTML = items.map((item, idx) => {
+        const color = CHART_COLORS[idx % CHART_COLORS.length];
+        return `<div class="legend-item" data-idx="${idx}" onclick="toggleDonutSector(${idx})">
+            <div class="legend-left"><span class="legend-color" style="background:${color}"></span><span class="legend-name">${esc(item.category)}</span></div>
+            <div class="legend-right"><span class="legend-duration">${fmtDuration(item.total_duration)}</span><span class="legend-pct">${item.percentage}%</span></div>
+        </div>`;
+    }).join('');
+}
+
+function toggleDonutSector(idx) {
+    if (!donutChart) return;
+    const meta = donutChart.getDatasetMeta(0);
+    meta.data[idx].hidden = !meta.data[idx].hidden;
+    donutChart.update();
+    const legendItem = document.querySelector(`.legend-item[data-idx="${idx}"]`);
+    if (legendItem) legendItem.classList.toggle('disabled');
+}
+
+async function loadMonthlyStats() {
+    try {
+        const d = await api('/api/stats/monthly?month=' + fmtMonthParam(statsMonth));
+        renderBarChart(d);
+    } catch (e) {}
+}
+
+function statsMonthPrev() {
+    statsMonth.setMonth(statsMonth.getMonth() - 1);
+    document.getElementById('statsMonthLabel').textContent = fmtMonth(statsMonth);
+    loadMonthlyStats();
+}
+
+function statsMonthNext() {
+    statsMonth.setMonth(statsMonth.getMonth() + 1);
+    document.getElementById('statsMonthLabel').textContent = fmtMonth(statsMonth);
+    loadMonthlyStats();
+}
+
+function renderBarChart(data) {
+    const canvas = document.getElementById('barChart');
+    const ctx = canvas.getContext('2d');
+    if (barChart) { barChart.destroy(); barChart = null; }
+    const labels = data.map(d => d.day);
+    const values = data.map(d => Math.round(d.duration / 60));
+    const chartWidth = Math.max(600, data.length * 24);
+    canvas.style.width = chartWidth + 'px';
+    canvas.width = chartWidth;
+    barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: 'rgba(124,110,240,.6)',
+                borderColor: 'rgba(124,110,240,.8)',
+                borderWidth: 1,
+                borderRadius: 4,
+                hoverBackgroundColor: 'rgba(124,110,240,.85)'
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(255,255,255,.9)',
+                    titleColor: '#2d2655',
+                    bodyColor: '#2d2655',
+                    borderColor: 'rgba(124,110,240,.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: { label: function(ctx) { return ctx.raw + ' 分钟'; } }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#7a7494', font: { size: 11 } } },
+                y: { grid: { color: 'rgba(124,110,240,.08)', drawBorder: false }, ticks: { color: '#7a7494', font: { size: 11 }, callback: function(val) { return val + ' min'; } }, beginAtZero: true }
+            }
+        }
+    });
+}
+
 // Progress slider label sync in modal
 document.addEventListener('DOMContentLoaded', () => {
     const pi = document.getElementById('planProgressInput');
@@ -764,4 +1084,4 @@ document.addEventListener('DOMContentLoaded', () => {
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''; }
 
-document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); loadSignatures(); });
+document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadSignatures(); switchTab('todo'); });

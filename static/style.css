@@ -253,3 +253,69 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe 
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(124,110,240,.2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(124,110,240,.35); }
+
+/* ---- Bottom Tabs ---- */
+.bottom-tabs {
+    display: flex;
+    border-top: 1px solid rgba(255,255,255,.3);
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+}
+.tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 0 8px;
+    cursor: pointer;
+    color: var(--text-soft);
+    font-size: 11px;
+    transition: var(--transition);
+    position: relative;
+}
+.tab-item:hover { color: var(--primary); background: rgba(124,110,240,.08); }
+.tab-item.active { color: var(--primary); font-weight: 600; }
+.tab-item.active::after { content:''; position: absolute; top: 0; left: 20%; right: 20%; height: 2px; background: var(--primary); border-radius: 0 0 2px 2px; }
+.tab-icon { font-size: 18px; line-height: 1; }
+.tab-label { font-size: 10px; white-space: nowrap; }
+
+/* ---- Sub-navigation ---- */
+.sub-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+.sub-nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 24px; cursor: pointer; font-size: 14px; color: var(--text-soft); transition: var(--transition); border-left: 3px solid transparent; }
+.sub-nav-item:hover { background: rgba(124,110,240,.08); color: var(--primary); }
+.sub-nav-item.active { border-left-color: var(--primary); color: var(--primary); font-weight: 600; background: linear-gradient(90deg,rgba(124,110,240,.1),transparent); }
+
+/* ---- Statistics Page ---- */
+.stats-cumulative-grid, .stats-daily-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 16px; }
+.stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.3); border-radius: var(--radius-sm); }
+.stat-value { font-size: 24px; font-weight: 800; background: linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.stat-label { font-size: 12px; color: var(--text-soft); font-weight: 500; }
+.stats-section-title { text-align: center; font-size: 18px; font-weight: 700; background: linear-gradient(135deg,var(--text),var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.stats-date-nav { display: flex; align-items: center; gap: 12px; justify-content: center; margin: 12px 0; }
+.stats-date-label { font-size: 15px; font-weight: 600; color: var(--text); min-width: 100px; text-align: center; }
+.stats-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.stats-section-header h3 { font-size: 18px; font-weight: 700; background: linear-gradient(135deg,var(--text),var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.stats-date-badge { font-size: 13px; color: var(--text-soft); background: rgba(124,110,240,.1); padding: 4px 12px; border-radius: 12px; }
+.stats-period-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: rgba(255,255,255,.2); border-radius: var(--radius-sm); padding: 4px; }
+.period-tab { flex: 1; padding: 8px 12px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-soft); border-radius: 8px; transition: var(--transition); }
+.period-tab:hover { background: rgba(124,110,240,.1); color: var(--primary); }
+.period-tab.active { background: linear-gradient(135deg,var(--primary),#a78bfa); color: #fff; box-shadow: 0 2px 8px var(--primary-glow); }
+.stats-chart-container { display: flex; justify-content: center; align-items: center; padding: 16px 0; }
+.stats-bar-container { overflow-x: auto; justify-content: flex-start; }
+.stats-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.3); }
+.legend-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,.15); border-radius: 8px; cursor: pointer; transition: var(--transition); }
+.legend-item:hover { background: rgba(255,255,255,.25); }
+.legend-item.disabled { opacity: .4; }
+.legend-left { display: flex; align-items: center; gap: 8px; }
+.legend-color { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.legend-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.legend-right { display: flex; align-items: center; gap: 12px; }
+.legend-duration { font-size: 13px; font-weight: 700; color: var(--primary); }
+.legend-pct { font-size: 12px; color: var(--text-soft); min-width: 40px; text-align: right; }
+
+/* ---- Focus Button ---- */
+.focus-btn { padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid rgba(16,185,129,.3); background: rgba(16,185,129,.1); color: #10b981; backdrop-filter: blur(8px); transition: all .2s; }
+.focus-btn:hover { background: rgba(16,185,129,.2); transform: scale(1.05); }
+.focus-btn.focusing { background: rgba(239,68,68,.1); color: #ef4444; border-color: rgba(239,68,68,.3); animation: timerPulse 1s infinite; }
