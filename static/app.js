@@ -857,7 +857,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.4.0';
+        document.getElementById('appVersion').textContent = d.version || '1.4.1';
     } catch (e) {}
 }
 
@@ -984,6 +984,8 @@ async function checkUpdate() {
         if (d.downloading) {
             el.textContent = d.message;
             el.className = 'test-result success'; el.style.display = 'block';
+            if (prog) prog.style.display = 'block';
+            btn.disabled = true; btn.textContent = '更新中...';
             pollUpdateStatus();
             return;
         }
@@ -999,6 +1001,8 @@ async function pollUpdateStatus() {
     const el = document.getElementById('updateResult');
     const btn = document.getElementById('updateBtn');
     const pLabel = document.getElementById('updateProgressLabel');
+    const pPct = document.getElementById('updateProgressPct');
+    const bar = document.getElementById('updateProgressBar');
     const prog = document.getElementById('updateProgress');
     let failCount = 0;
     const poll = setInterval(async () => {
@@ -1006,6 +1010,10 @@ async function pollUpdateStatus() {
             const d = await api('/api/update/status');
             failCount = 0;
             if (pLabel && d.message) pLabel.textContent = d.message;
+            if (d.percent >= 0) {
+                if (bar) bar.style.width = d.percent + '%';
+                if (pPct) pPct.textContent = d.percent + '%';
+            }
             if (d.status === 'restarting') {
                 pLabel.textContent = d.message || '正在重启安装...';
                 return;
