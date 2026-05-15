@@ -13,7 +13,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.9'
+CURRENT_VERSION = '1.3.10'
 
 def _read_version_from_file(path):
     try:
@@ -583,73 +583,90 @@ def _install_and_restart():
     tmpdir = tempfile.gettempdir()
     is_windows = platform.system() == 'Windows'
 
+    _update_state['status'] = 'restarting'
+
     if is_windows:
         setup_path = os.path.join(tmpdir, 'PlanMaster-Setup.exe')
         if not os.path.isfile(setup_path):
             _push_progress(0, '安装包不存在')
+            _update_state['status'] = 'error'
             return
         _write_progress('正在启动安装程序...')
         subprocess.Popen(
             [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
-            cwd=tmpdir
+            cwd=tmpdir, close_fds=True
         )
         os._exit(0)
     else:
         if not getattr(sys, 'frozen', False):
             _push_progress(0, 'macOS 更新仅支持打包版本')
+            _update_state['status'] = 'error'
             return
         zip_path = os.path.join(tmpdir, 'PlanMaster-macOS.zip')
+        if not os.path.isfile(zip_path):
+            _push_progress(0, '安装包不存在')
+            _update_state['status'] = 'error'
+            return
         app_path = os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
+        parent_pid = os.getpid()
         script_path = os.path.join(tmpdir, 'update_planmaster.sh')
         script_content = (
             '#!/bin/bash\n'
+            'set -e\n'
             'PROGRESS="{progress}"\n'
             'ZIP="{zip}"\n'
             'APP="{app}"\n'
-            'EXTRACT_DIR="{tmpdir}/PlanMasterUpdate"\n'
-            'echo "等待主程序退出..." > "$PROGRESS"\n'
-            'sleep 2\n'
-            'echo "正在解压缩..." > "$PROGRESS"\n'
+            'PARENT_PID={parent_pid}\n'
+            'EXTRACT_DIR="{tmpdir}/pm_update_extract"\n'
+            'log() {{ echo "$1" > "$PROGRESS"; }}\n'
+            'log "等待主程序退出..."\n'
+            'WAIT=0\n'
+            'while kill -0 "$PARENT_PID" 2>/dev/null && [ "$WAIT" -lt 10 ]; do\n'
+            '  sleep 0.5\n'
+            '  WAIT=$((WAIT + 1))\n'
+            'done\n'
+            'sleep 1\n'
+            'log "正在解压缩..."\n'
             'rm -rf "$EXTRACT_DIR"\n'
             'mkdir -p "$EXTRACT_DIR"\n'
-            'unzip -o -q "$ZIP" -d "$EXTRACT_DIR"\n'
-            'if [ $? -ne 0 ]; then\n'
-            '  echo "解压失败" > "$PROGRESS"\n'
-            '  exit 1\n'
-            'fi\n'
+            'ditto -x -k "$ZIP" "$EXTRACT_DIR"\n'
             'NEW_APP="$EXTRACT_DIR/PlanMaster.app"\n'
             'if [ ! -d "$NEW_APP" ]; then\n'
             '  FOUND=$(find "$EXTRACT_DIR" -maxdepth 2 -name "PlanMaster.app" -type d | head -1)\n'
             '  if [ -n "$FOUND" ]; then\n'
             '    NEW_APP="$FOUND"\n'
             '  else\n'
-            '    echo "未找到 PlanMaster.app" > "$PROGRESS"\n'
+            '    log "错误: 未找到 PlanMaster.app"\n'
             '    exit 1\n'
             '  fi\n'
             'fi\n'
-            'echo "正在替换应用..." > "$PROGRESS"\n'
+            'log "正在替换应用..."\n'
             'rm -rf "$APP"\n'
             'cp -R "$NEW_APP" "$APP"\n'
-            'if [ $? -ne 0 ]; then\n'
-            '  echo "替换失败" > "$PROGRESS"\n'
-            '  exit 1\n'
-            'fi\n'
-            'echo "清理临时文件..." > "$PROGRESS"\n'
+            'log "清理临时文件..."\n'
             'rm -rf "$EXTRACT_DIR"\n'
             'rm -f "$ZIP"\n'
-            'echo "正在启动新版本..." > "$PROGRESS"\n'
-            'open -a "$APP"\n'
+            'log "正在启动新版本..."\n'
+            'open "$APP"\n'
             'sleep 1\n'
             'rm -f "$PROGRESS"\n'
-            'rm -- "$0"\n'
+            'rm -f "$0"\n'
         ).format(
-            progress=PROGRESS_FILE, zip=zip_path, app=app_path, tmpdir=tmpdir
+            progress=PROGRESS_FILE, zip=zip_path, app=app_path,
+            parent_pid=parent_pid, tmpdir=tmpdir
         )
         with open(script_path, 'w') as f:
             f.write(script_content)
         os.chmod(script_path, 0o755)
         _write_progress('正在启动安装程序...')
-        subprocess.Popen([script_path], start_new_session=True)
+        subprocess.Popen(
+            ['/bin/bash', script_path],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+        )
         os._exit(0)
 
 def _download_and_install():

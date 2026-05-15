@@ -1,4 +1,4 @@
-# Todo v1.3.9 - 计划管理与心愿兑换系统
+# Todo v1.3.10 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -457,7 +457,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.3.9.dmg`。
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.3.10.dmg`。
 
 ## 应用内更新
 
@@ -480,6 +480,7 @@ showNextSignature() → 轮换显示下一条签名
 **远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
 
 **版本历史**:
+- v1.3.10: 修复更新功能 (ditto解压替代unzip、kill -0等待进程退出、重定向fd防SIGHUP、restarting状态、完整路径open)
 - v1.3.9: 重构计时器交互 (点开始→再点清零→第三下重新开始，去掉暂停/恢复)
 - v1.3.8: 修复统计数据页面各板块间距缺失 (glass-card 粘连)
 - v1.3.7: 重构自动更新 (流式下载+进度条+Inno Setup静默安装+自动重启)、CI自动发布GitHub Release
@@ -506,7 +507,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-打包产物为 `PlanMaster-1.3.9.dmg`，使用 `--onedir` 模式 (秒启动)。
+打包产物为 `PlanMaster-1.3.10.dmg`，使用 `--onedir` 模式 (秒启动)。
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
 - **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口

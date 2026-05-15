@@ -844,7 +844,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.9';
+        document.getElementById('appVersion').textContent = d.version || '1.3.10';
     } catch (e) {}
 }
 
@@ -903,6 +903,10 @@ async function pollUpdateStatus() {
             const d = await api('/api/update/status');
             failCount = 0;
             if (pLabel && d.message) pLabel.textContent = d.message;
+            if (d.status === 'restarting') {
+                pLabel.textContent = d.message || '正在重启安装...';
+                return;
+            }
             if (d.status === 'idle') {
                 clearInterval(poll);
                 btn.disabled = false; btn.textContent = '检查更新';
@@ -920,6 +924,7 @@ async function pollUpdateStatus() {
             failCount++;
             if (failCount > 5) {
                 clearInterval(poll);
+                if (pLabel) pLabel.textContent = '应用即将重启...';
             }
         }
     }, 1000);
