@@ -24,11 +24,16 @@ jobs:
           pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --noconfirm --clean app.py
         shell: bash
 
+      - name: Build Setup
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build_setup.iss
+        shell: cmd
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlanMaster-Windows
-          path: dist/PlanMaster/
+          name: PlanMaster-Windows-Setup
+          path: dist/PlanMaster-Setup.exe
 
   build-macos:
     runs-on: macos-latest
