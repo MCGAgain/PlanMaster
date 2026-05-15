@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.5'
+CURRENT_VERSION = '1.3.6'
 
 def _read_version_from_file(path):
     try:
@@ -467,6 +467,31 @@ def start_flask(port):
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 
+def _wait_for_port(port, timeout=30):
+    """Poll local port until it accepts connections."""
+    import socket
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(('127.0.0.1', port), timeout=0.1):
+                return True
+        except OSError:
+            time.sleep(0.1)
+    return False
+
+
+_LOADING_HTML = '''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+body{margin:0;background:#222;color:#eee;font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;gap:16px}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#a78bfa;
+border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+h1{font-size:20px;font-weight:600;opacity:.9}
+p{font-size:13px;opacity:.5}
+</style></head><body><div class="spinner"></div><h1>服务初始化中...</h1><p>正在启动 PlanMaster</p></body></html>'''
+
+
 # ---- Update ----
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
@@ -536,17 +561,24 @@ if __name__ == '__main__':
 
     if getattr(sys, 'frozen', False):
         import webview
+
         flask_thread = threading.Thread(target=start_flask, args=(port,), daemon=True)
         flask_thread.start()
+
         window = webview.create_window(
             'Todo - 计划管理',
-            f'http://127.0.0.1:{port}',
+            html=_LOADING_HTML,
             width=1200,
             height=800,
             min_size=(800, 600),
             text_select=True,
         )
-        webview.start()
+
+        def _on_loaded():
+            _wait_for_port(port)
+            window.load_url(f'http://127.0.0.1:{port}')
+
+        webview.start(_on_loaded)
     else:
         db.init_db()
         db.checkin_missed_penalty()

@@ -1,6 +1,6 @@
 [Setup]
 AppName=PlanMaster
-AppVersion=1.3.5
+AppVersion=1.3.6
 DefaultDirName={autopf}\PlanMaster
 DefaultGroupName=PlanMaster
 OutputBaseFilename=PlanMaster-Setup
