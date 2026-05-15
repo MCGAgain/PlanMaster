@@ -13,7 +13,14 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.10'
+CURRENT_VERSION = '1.3.11'
+
+def _parse_version(v):
+    """解析版本号为元组用于语义比较"""
+    try:
+        return tuple(int(x) for x in v.split('.'))
+    except (ValueError, AttributeError):
+        return (0, 0, 0)
 
 def _read_version_from_file(path):
     try:
@@ -37,7 +44,7 @@ else:
 _use_user_dir = False
 if os.path.isdir(os.path.join(_user_dir, 'templates')) and os.path.isdir(os.path.join(_user_dir, 'static')):
     user_ver = _read_version_from_file(os.path.join(_user_dir, 'app.py'))
-    if user_ver >= CURRENT_VERSION:
+    if _parse_version(user_ver) >= _parse_version(CURRENT_VERSION):
         _use_user_dir = True
 
 _tpl_dir = os.path.join(_user_dir, 'templates') if _use_user_dir else os.path.join(base_dir, 'templates')
@@ -507,13 +514,28 @@ def api_version():
     return jsonify({'version': CURRENT_VERSION})
 
 def _get_remote_version():
+    """获取远程版本号，优先从 raw 文件读取，失败则从 GitHub API 获取"""
+    # 方法1: 从 raw 文件读取 CURRENT_VERSION
     raw_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/app.py'
-    resp = requests.get(raw_url, timeout=10)
-    if resp.status_code != 200:
-        return None
-    for line in resp.text.splitlines():
-        if line.startswith('CURRENT_VERSION'):
-            return line.split("'")[1] if "'" in line else line.split('"')[1]
+    try:
+        resp = requests.get(raw_url, timeout=10)
+        if resp.status_code == 200:
+            for line in resp.text.splitlines():
+                if line.startswith('CURRENT_VERSION'):
+                    return line.split("'")[1] if "'" in line else line.split('"')[1]
+    except Exception:
+        pass
+
+    # 方法2: 从 GitHub API 获取最新 release tag
+    try:
+        api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
+        resp = requests.get(api_url, timeout=10, headers={'Accept': 'application/vnd.github.v3+json'})
+        if resp.status_code == 200:
+            tag = resp.json().get('tag_name', '')
+            return tag.lstrip('v') if tag else None
+    except Exception:
+        pass
+
     return None
 
 def _write_progress(msg):
@@ -711,7 +733,7 @@ def api_update():
 
     if not remote_ver:
         return jsonify({'updated': False, 'message': '无法获取远程版本信息，请检查网络'})
-    if remote_ver <= CURRENT_VERSION:
+    if _parse_version(remote_ver) <= _parse_version(CURRENT_VERSION):
         return jsonify({'updated': False, 'message': f'已是最新版本 v{CURRENT_VERSION}'})
 
     if not getattr(sys, 'frozen', False):
