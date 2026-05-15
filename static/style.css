@@ -288,6 +288,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe 
 .sub-nav-item.active { border-left-color: var(--primary); color: var(--primary); font-weight: 600; background: linear-gradient(90deg,rgba(124,110,240,.1),transparent); }
 
 /* ---- Statistics Page ---- */
+#page-stats > .glass-card { margin-top: 24px; }
+#page-stats > .glass-card:first-of-type { margin-top: 0; }
 .stats-cumulative-grid, .stats-daily-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-top: 16px; }
 .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px; background: rgba(255,255,255,.2); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.3); border-radius: var(--radius-sm); }
 .stat-value { font-size: 24px; font-weight: 800; background: linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
