@@ -2,6 +2,9 @@ import json
 import sys
 import os
 import time
+import platform
+import tempfile
+import subprocess
 import webbrowser
 import threading
 from datetime import datetime, date
@@ -496,7 +499,7 @@ p{font-size:13px;opacity:.5}
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
-_update_state = {'status': 'idle', 'percent': 0, 'message': '', 'setup_path': None}
+_update_state = {'status': 'idle', 'percent': 0, 'message': ''}
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
@@ -512,63 +515,121 @@ def _get_remote_version():
             return line.split("'")[1] if "'" in line else line.split('"')[1]
     return None
 
-def _push_progress(pct, label=None):
+def _push_progress(pct):
     _update_state['percent'] = pct
-    if label:
-        _update_state['message'] = label
     try:
         from webview.windows import windows
         if windows:
-            js = f'window.updateDownloadProgress({pct})'
-            windows[0].evaluate_js(js)
+            windows[0].evaluate_js(f'window.updateDownloadProgress({pct})')
     except Exception:
         pass
 
-def _get_setup_download_url():
+def _get_asset_download_url():
     api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
     resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
     if resp.status_code != 200:
         return None, None
     data = resp.json()
     remote_ver = data.get('tag_name', '').lstrip('v')
+    is_windows = platform.system() == 'Windows'
     for asset in data.get('assets', []):
-        if 'Setup' in asset.get('name', '') or 'setup' in asset.get('name', ''):
+        name = asset.get('name', '')
+        if is_windows and ('Setup' in name or 'setup' in name):
+            return asset['browser_download_url'], remote_ver
+        if not is_windows and name.endswith('.dmg'):
             return asset['browser_download_url'], remote_ver
     return None, remote_ver
 
+def _stream_download(url, dest_path):
+    resp = requests.get(url, stream=True, timeout=30, allow_redirects=True)
+    if resp.status_code != 200:
+        _update_state['status'] = 'error'
+        _update_state['message'] = f'下载失败 (HTTP {resp.status_code})'
+        return False
+    total = int(resp.headers.get('content-length', 0))
+    downloaded = 0
+    with open(dest_path, 'wb') as f:
+        for chunk in resp.iter_content(chunk_size=8192):
+            if not chunk:
+                continue
+            f.write(chunk)
+            downloaded += len(chunk)
+            if total > 0:
+                _push_progress(min(99, int(downloaded * 100 / total)))
+    _push_progress(100)
+    return True
+
+def _install_and_restart():
+    tmpdir = tempfile.gettempdir()
+    is_windows = platform.system() == 'Windows'
+
+    if is_windows:
+        setup_path = os.path.join(tmpdir, 'PlanMaster-Setup.exe')
+        if not os.path.isfile(setup_path):
+            _update_state['status'] = 'error'
+            _update_state['message'] = '安装包不存在'
+            return
+        subprocess.Popen(
+            [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
+            cwd=tmpdir
+        )
+    else:
+        dmg_path = os.path.join(tmpdir, 'PlanMaster.dmg')
+        if not os.path.isfile(dmg_path):
+            _update_state['status'] = 'error'
+            _update_state['message'] = '安装包不存在'
+            return
+        if not getattr(sys, 'frozen', False):
+            _update_state['status'] = 'error'
+            _update_state['message'] = 'macOS 更新仅支持打包版本'
+            return
+        app_path = os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
+        script_path = os.path.join(tmpdir, 'update_planmaster.sh')
+        script_content = '#!/bin/bash\n' + (
+            'sleep 2\n'
+            'hdiutil detach -quiet /Volumes/PlanMasterUpdate 2>/dev/null\n'
+            'hdiutil attach -nobrowse -quiet "{dmg}" -mountpoint /Volumes/PlanMasterUpdate\n'
+            'if [ $? -ne 0 ]; then\n'
+            '  open -a "{app}"\n'
+            '  rm -- "$0"\n'
+            '  exit 1\n'
+            'fi\n'
+            'rm -rf "{app}"\n'
+            'cp -R "/Volumes/PlanMasterUpdate/PlanMaster.app" "{app}"\n'
+            'hdiutil detach -quiet /Volumes/PlanMasterUpdate\n'
+            'rm -f "{dmg}"\n'
+            'open -a "{app}"\n'
+            'rm -- "$0"\n'
+        ).format(dmg=dmg_path, app=app_path)
+        with open(script_path, 'w') as f:
+            f.write(script_content)
+        os.chmod(script_path, 0o755)
+        subprocess.Popen([script_path], start_new_session=True)
+
+    os._exit(0)
+
 def _download_and_install():
     try:
-        _push_progress(-1, '正在获取更新信息...')
-        url, remote_ver = _get_setup_download_url()
+        _push_progress(-1)
+        _update_state['message'] = '正在获取更新信息...'
+        url, remote_ver = _get_asset_download_url()
         if not url:
             _update_state['status'] = 'error'
             _update_state['message'] = '未找到安装包，请前往 GitHub 手动下载'
             return
 
-        _push_progress(0, f'正在下载 v{remote_ver}...')
-        resp = requests.get(url, stream=True, timeout=30, allow_redirects=True)
-        if resp.status_code != 200:
-            _update_state['status'] = 'error'
-            _update_state['message'] = f'下载失败 (HTTP {resp.status_code})'
+        _update_state['message'] = f'正在下载 v{remote_ver}...'
+        _push_progress(0)
+        tmpdir = tempfile.gettempdir()
+        is_windows = platform.system() == 'Windows'
+        dest = os.path.join(tmpdir, 'PlanMaster-Setup.exe' if is_windows else 'PlanMaster.dmg')
+
+        if not _stream_download(url, dest):
             return
 
-        total = int(resp.headers.get('content-length', 0))
-        downloaded = 0
-        setup_path = os.path.join(__import__('tempfile').gettempdir(), 'PlanMaster-Setup.exe')
-        with open(setup_path, 'wb') as f:
-            for chunk in resp.iter_content(chunk_size=8192):
-                if not chunk:
-                    continue
-                f.write(chunk)
-                downloaded += len(chunk)
-                if total > 0:
-                    pct = min(99, int(downloaded * 100 / total))
-                    _push_progress(pct)
-
-        _update_state['setup_path'] = setup_path
-        _push_progress(100, '下载完成')
+        _update_state['message'] = '下载完成，正在安装...'
         time.sleep(0.5)
-        _launch_installer(setup_path)
+        _install_and_restart()
     except requests.exceptions.ConnectionError:
         _update_state['status'] = 'error'
         _update_state['message'] = '网络连接失败'
@@ -578,17 +639,6 @@ def _download_and_install():
     except Exception as e:
         _update_state['status'] = 'error'
         _update_state['message'] = f'更新失败: {str(e)}'
-
-def _launch_installer(setup_path):
-    import subprocess
-    try:
-        subprocess.Popen(
-            [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS'],
-            cwd=os.path.dirname(setup_path)
-        )
-    except Exception:
-        pass
-    os._exit(0)
 
 @app.route('/api/update', methods=['POST'])
 def api_update():

@@ -862,7 +862,8 @@ function window_updateDownloadProgress(pct) {
     const pPct = document.getElementById('updateProgressPct');
     if (!wrap) return;
     if (pct < 0) {
-        pLabel.textContent = pct === -1 ? '安装包准备中，请稍候...' : '下载失败';
+        wrap.style.display = 'block';
+        pLabel.textContent = '准备更新...';
         pPct.textContent = '';
         bar.style.width = '0%';
         return;
@@ -871,7 +872,7 @@ function window_updateDownloadProgress(pct) {
     bar.style.width = pct + '%';
     pPct.textContent = pct + '%';
     if (pct >= 100) {
-        pLabel.textContent = '下载完成，即将安装并重启...';
+        pLabel.textContent = '正在重启安装...';
         pPct.textContent = '100%';
     }
 }
