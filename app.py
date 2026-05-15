@@ -13,7 +13,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.4.1'
+CURRENT_VERSION = '1.4.2'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
