@@ -64,3 +64,33 @@ jobs:
         with:
           name: PlanMaster-macOS
           path: PlanMaster.dmg
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Check version and create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(grep "CURRENT_VERSION" app.py | head -1 | sed "s/.*'\\(.*\\)'.*/\\1/")
+          echo "Version: $VERSION"
+          if gh release view "v$VERSION" &>/dev/null; then
+            echo "Release v$VERSION already exists, skipping"
+            exit 0
+          fi
+          gh release create "v$VERSION" \
+            --title "PlanMaster v$VERSION" \
+            --generate-notes \
+            artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup.exe \
+            artifacts/PlanMaster-macOS/PlanMaster.dmg

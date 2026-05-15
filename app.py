@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.6'
+CURRENT_VERSION = '1.3.7'
 
 def _read_version_from_file(path):
     try:
@@ -496,6 +496,7 @@ p{font-size:13px;opacity:.5}
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
+_update_state = {'status': 'idle', 'percent': 0, 'message': '', 'setup_path': None}
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
@@ -511,9 +512,89 @@ def _get_remote_version():
             return line.split("'")[1] if "'" in line else line.split('"')[1]
     return None
 
+def _push_progress(pct, label=None):
+    _update_state['percent'] = pct
+    if label:
+        _update_state['message'] = label
+    try:
+        from webview.windows import windows
+        if windows:
+            js = f'window.updateDownloadProgress({pct})'
+            windows[0].evaluate_js(js)
+    except Exception:
+        pass
+
+def _get_setup_download_url():
+    api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
+    resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
+    if resp.status_code != 200:
+        return None, None
+    data = resp.json()
+    remote_ver = data.get('tag_name', '').lstrip('v')
+    for asset in data.get('assets', []):
+        if 'Setup' in asset.get('name', '') or 'setup' in asset.get('name', ''):
+            return asset['browser_download_url'], remote_ver
+    return None, remote_ver
+
+def _download_and_install():
+    try:
+        _push_progress(-1, '正在获取更新信息...')
+        url, remote_ver = _get_setup_download_url()
+        if not url:
+            _update_state['status'] = 'error'
+            _update_state['message'] = '未找到安装包，请前往 GitHub 手动下载'
+            return
+
+        _push_progress(0, f'正在下载 v{remote_ver}...')
+        resp = requests.get(url, stream=True, timeout=30, allow_redirects=True)
+        if resp.status_code != 200:
+            _update_state['status'] = 'error'
+            _update_state['message'] = f'下载失败 (HTTP {resp.status_code})'
+            return
+
+        total = int(resp.headers.get('content-length', 0))
+        downloaded = 0
+        setup_path = os.path.join(__import__('tempfile').gettempdir(), 'PlanMaster-Setup.exe')
+        with open(setup_path, 'wb') as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                f.write(chunk)
+                downloaded += len(chunk)
+                if total > 0:
+                    pct = min(99, int(downloaded * 100 / total))
+                    _push_progress(pct)
+
+        _update_state['setup_path'] = setup_path
+        _push_progress(100, '下载完成')
+        time.sleep(0.5)
+        _launch_installer(setup_path)
+    except requests.exceptions.ConnectionError:
+        _update_state['status'] = 'error'
+        _update_state['message'] = '网络连接失败'
+    except requests.exceptions.Timeout:
+        _update_state['status'] = 'error'
+        _update_state['message'] = '下载超时'
+    except Exception as e:
+        _update_state['status'] = 'error'
+        _update_state['message'] = f'更新失败: {str(e)}'
+
+def _launch_installer(setup_path):
+    import subprocess
+    try:
+        subprocess.Popen(
+            [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS'],
+            cwd=os.path.dirname(setup_path)
+        )
+    except Exception:
+        pass
+    os._exit(0)
+
 @app.route('/api/update', methods=['POST'])
 def api_update():
-    import io, zipfile
+    if _update_state['status'] == 'downloading':
+        return jsonify({'updated': False, 'downloading': True, 'message': '正在下载中...'})
+
     try:
         remote_ver = _get_remote_version()
     except Exception:
@@ -521,39 +602,25 @@ def api_update():
 
     if not remote_ver:
         return jsonify({'updated': False, 'message': '无法获取远程版本信息，请检查网络'})
-    if remote_ver == CURRENT_VERSION:
+    if remote_ver <= CURRENT_VERSION:
         return jsonify({'updated': False, 'message': f'已是最新版本 v{CURRENT_VERSION}'})
 
-    url = f'https://github.com/{GITHUB_REPO}/archive/refs/heads/{GITHUB_BRANCH}.zip'
-    try:
-        resp = requests.get(url, timeout=30)
-        if resp.status_code != 200:
-            return jsonify({'updated': False, 'message': f'下载失败 (HTTP {resp.status_code})'})
-        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-            prefix = zf.namelist()[0]
-            files_to_update = []
-            for name in zf.namelist():
-                if name.endswith('/'):
-                    continue
-                rel = name[len(prefix):]
-                if rel.startswith(('app.py', 'database.py', 'ai_service.py', 'prompts.py',
-                                   'templates/', 'static/', 'requirements.txt')):
-                    files_to_update.append((name, rel))
-            if not files_to_update:
-                return jsonify({'updated': False, 'message': '未找到可更新的文件'})
-            for arc_name, rel_path in files_to_update:
-                dest = os.path.join(_user_dir, rel_path)
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                with zf.open(arc_name) as src, open(dest, 'wb') as dst:
-                    dst.write(src.read())
+    if not getattr(sys, 'frozen', False):
+        return jsonify({'updated': False, 'message': f'发现新版本 v{remote_ver}，开发模式下请手动更新'})
 
-        return jsonify({'updated': True, 'message': f'已更新到 v{remote_ver}，请重启应用生效'})
-    except requests.exceptions.ConnectionError:
-        return jsonify({'updated': False, 'message': '网络连接失败，请检查网络'})
-    except requests.exceptions.Timeout:
-        return jsonify({'updated': False, 'message': '下载超时，请稍后重试'})
-    except Exception as e:
-        return jsonify({'updated': False, 'message': f'更新失败: {str(e)}'})
+    _update_state['status'] = 'downloading'
+    _update_state['percent'] = 0
+    _update_state['message'] = f'准备下载 v{remote_ver}...'
+    threading.Thread(target=_download_and_install, daemon=True).start()
+    return jsonify({'updated': False, 'downloading': True, 'message': f'发现新版本 v{remote_ver}，开始下载...'})
+
+@app.route('/api/update/status', methods=['GET'])
+def api_update_status():
+    return jsonify({
+        'status': _update_state['status'],
+        'percent': _update_state['percent'],
+        'message': _update_state['message'],
+    })
 
 
 if __name__ == '__main__':

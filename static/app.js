@@ -851,28 +851,71 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.6';
+        document.getElementById('appVersion').textContent = d.version || '1.3.7';
     } catch (e) {}
 }
+
+function window_updateDownloadProgress(pct) {
+    const wrap = document.getElementById('updateProgress');
+    const bar = document.getElementById('updateProgressBar');
+    const pLabel = document.getElementById('updateProgressLabel');
+    const pPct = document.getElementById('updateProgressPct');
+    if (!wrap) return;
+    if (pct < 0) {
+        pLabel.textContent = pct === -1 ? '安装包准备中，请稍候...' : '下载失败';
+        pPct.textContent = '';
+        bar.style.width = '0%';
+        return;
+    }
+    wrap.style.display = 'block';
+    bar.style.width = pct + '%';
+    pPct.textContent = pct + '%';
+    if (pct >= 100) {
+        pLabel.textContent = '下载完成，即将安装并重启...';
+        pPct.textContent = '100%';
+    }
+}
+window.updateDownloadProgress = window_updateDownloadProgress;
 
 async function checkUpdate() {
     const el = document.getElementById('updateResult');
     const btn = document.getElementById('updateBtn');
+    const prog = document.getElementById('updateProgress');
     el.className = 'test-result'; el.style.display = 'none';
+    if (prog) prog.style.display = 'none';
     btn.disabled = true; btn.textContent = '检查中...';
     try {
         const d = await api('/api/update', { method: 'POST' });
-        if (d.updated) {
+        if (d.downloading) {
             el.textContent = d.message;
             el.className = 'test-result success'; el.style.display = 'block';
-        } else {
-            el.textContent = d.message || '已是最新版本';
-            el.className = 'test-result success'; el.style.display = 'block';
+            pollUpdateStatus();
+            return;
         }
+        el.textContent = d.message || '已是最新版本';
+        el.className = 'test-result success'; el.style.display = 'block';
     } catch (e) {
         el.textContent = '检查失败: ' + e.message;
         el.className = 'test-result error'; el.style.display = 'block';
     } finally { btn.disabled = false; btn.textContent = '检查更新'; }
+}
+
+async function pollUpdateStatus() {
+    const el = document.getElementById('updateResult');
+    const btn = document.getElementById('updateBtn');
+    const poll = setInterval(async () => {
+        try {
+            const d = await api('/api/update/status');
+            if (d.status === 'idle') { clearInterval(poll); btn.disabled = false; btn.textContent = '检查更新'; return; }
+            if (d.status === 'error') {
+                clearInterval(poll);
+                el.textContent = d.message || '更新失败';
+                el.className = 'test-result error'; el.style.display = 'block';
+                btn.disabled = false; btn.textContent = '检查更新';
+                document.getElementById('updateProgress').style.display = 'none';
+            }
+        } catch { clearInterval(poll); btn.disabled = false; btn.textContent = '检查更新'; }
+    }, 2000);
 }
 
 async function saveValueRanges() {
