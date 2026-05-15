@@ -1,4 +1,4 @@
-# Todo v1.3.3 - 计划管理与心愿兑换系统
+# Todo v1.3.4 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -457,7 +457,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.3.3.dmg`。
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.3.4.dmg`。
 
 ## 应用内更新
 
@@ -480,6 +480,7 @@ showNextSignature() → 轮换显示下一条签名
 **远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
 
 **版本历史**:
+- v1.3.4: 修复检查更新白屏 (去掉os.execv重启，提示用户手动重启)、统计数据页面显示实际任务名称而非计划类型
 - v1.3.3: 新增专注模式页面 (输入任务名称+圆形计时器+不限时/倒计时模式)、计时器跨页面持久化、专注完成自动记录到统计数据
 - v1.3.2: 新增统计数据页面 (累计统计、每日专注、专注时长分布饼图、月度柱状图)、专注会话记录 (手动开始/结束)、任务标题前缀自动分类
 - v1.2.2: 新增打卡功能 (独立价值体系: sqrt(连续天数)×增量)、修复计划子页面AI评估后数值不显示 (轮询替代固定延迟)、打卡设置 (每日增量/最大价值)
@@ -500,7 +501,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-打包产物为 `PlanMaster-1.3.3.dmg`，使用 `--onedir` 模式 (秒启动)。
+打包产物为 `PlanMaster-1.3.4.dmg`，使用 `--onedir` 模式 (秒启动)。
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
 - **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口

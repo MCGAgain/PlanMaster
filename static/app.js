@@ -152,7 +152,7 @@ async function startFocusTimer() {
     try {
         const session = await api('/api/sessions', {
             method: 'POST',
-            body: JSON.stringify({ plan_id: null, start_time: new Date().toISOString() })
+            body: JSON.stringify({ plan_id: null, start_time: new Date().toISOString(), category: task })
         });
         focusCurrentSessionId = session.id;
         focusCurrentTask = task;
@@ -841,7 +841,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.3';
+        document.getElementById('appVersion').textContent = d.version || '1.3.4';
     } catch (e) {}
 }
 
@@ -855,16 +855,6 @@ async function checkUpdate() {
         if (d.updated) {
             el.textContent = d.message;
             el.className = 'test-result success'; el.style.display = 'block';
-            btn.textContent = '重启中...';
-            setTimeout(() => {
-                let retries = 0;
-                const tryReload = () => {
-                    fetch('/api/version').then(() => location.reload()).catch(() => {
-                        if (++retries < 10) setTimeout(tryReload, 1000);
-                    });
-                };
-                tryReload();
-            }, 3000);
         } else {
             el.textContent = d.message || '已是最新版本';
             el.className = 'test-result success'; el.style.display = 'block';
@@ -872,7 +862,7 @@ async function checkUpdate() {
     } catch (e) {
         el.textContent = '检查失败: ' + e.message;
         el.className = 'test-result error'; el.style.display = 'block';
-    } finally { if (!el.textContent.includes('重启')) { btn.disabled = false; btn.textContent = '检查更新'; } }
+    } finally { btn.disabled = false; btn.textContent = '检查更新'; }
 }
 
 async function saveValueRanges() {

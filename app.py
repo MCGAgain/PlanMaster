@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.3'
+CURRENT_VERSION = '1.3.4'
 
 def _read_version_from_file(path):
     try:
@@ -374,8 +374,8 @@ def api_create_session():
     data = request.json
     plan_id = data.get('plan_id')
     start_time = data.get('start_time', datetime.now().isoformat())
-    category = '未分类'
-    if plan_id:
+    category = data.get('category') or '未分类'
+    if plan_id and not data.get('category'):
         plan = db.get_plan(plan_id)
         if plan:
             category = db.extract_category(plan['title'], plan.get('plan_type', ''))
@@ -522,15 +522,7 @@ def api_update():
                 with zf.open(arc_name) as src, open(dest, 'wb') as dst:
                     dst.write(src.read())
 
-        def _restart():
-            time.sleep(1)
-            if getattr(sys, 'frozen', False):
-                os.execv(sys.executable, [sys.executable])
-            else:
-                os.execv(sys.executable, [sys.executable] + sys.argv)
-
-        threading.Thread(target=_restart, daemon=True).start()
-        return jsonify({'updated': True, 'message': f'已更新到 v{remote_ver}，应用即将重启'})
+        return jsonify({'updated': True, 'message': f'已更新到 v{remote_ver}，请重启应用生效'})
     except requests.exceptions.ConnectionError:
         return jsonify({'updated': False, 'message': '网络连接失败，请检查网络'})
     except requests.exceptions.Timeout:

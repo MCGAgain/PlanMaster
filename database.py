@@ -601,8 +601,8 @@ def extract_category(title, plan_type=''):
     if m and len(m.group(1).strip()) <= 10:
         return m.group(1).strip()
 
-    # Fallback: use plan type label
-    return _plan_type_label(plan_type)
+    # Fallback: use title itself (truncated)
+    return title[:20] + '...' if len(title) > 20 else title
 
 
 # ---- Focus Sessions ----
