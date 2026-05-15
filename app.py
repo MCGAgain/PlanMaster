@@ -13,7 +13,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.8'
+CURRENT_VERSION = '1.3.9'
 
 def _read_version_from_file(path):
     try:

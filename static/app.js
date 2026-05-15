@@ -309,12 +309,7 @@ function fmtCountdown(s) {
 
 function startTimer(id, totalSec) {
     if (timers[id] && timers[id].interval) return;
-    if (timers[id]) {
-        // Resume from paused state: adjust startAt so elapsed = total - remaining
-        timers[id].startAt = Date.now() - (timers[id].total - timers[id].remaining) * 1000;
-    } else {
-        timers[id] = { remaining: totalSec, total: totalSec, startAt: Date.now() };
-    }
+    timers[id] = { remaining: totalSec, total: totalSec, startAt: Date.now() };
     const t = timers[id];
     t.interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - t.startAt) / 1000);
@@ -342,17 +337,15 @@ function startTimer(id, totalSec) {
     }, 1000);
 }
 
-function stopTimer(id, preserve) {
+function stopTimer(id) {
     if (!timers[id]) return;
     clearInterval(timers[id].interval);
-    timers[id].interval = null;
-    if (!preserve) delete timers[id];
+    delete timers[id];
 }
 
 function toggleTimer(id, timeStr) {
     id = parseInt(id);
-    if (timers[id] && timers[id].interval) { stopTimer(id, true); return; }
-    if (timers[id]) { startTimer(id); return; }
+    if (timers[id]) { stopTimer(id); return; }
     const sec = parseSuggestedTime(timeStr);
     if (sec > 0) startTimer(id, sec);
 }
@@ -851,7 +844,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.8';
+        document.getElementById('appVersion').textContent = d.version || '1.3.9';
     } catch (e) {}
 }
 
