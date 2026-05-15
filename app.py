@@ -13,7 +13,7 @@ from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
 
-CURRENT_VERSION = '1.3.11'
+CURRENT_VERSION = '1.4.0'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -469,6 +469,27 @@ def api_save_signatures():
     data = request.json
     db.save_signatures(data.get('contents', []))
     return jsonify({'ok': True})
+
+
+# ---- Background ----
+
+@app.route('/api/background/upload', methods=['POST'])
+def api_upload_background():
+    if 'file' not in request.files:
+        return jsonify({'error': '未选择文件'}), 400
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': '未选择文件'}), 400
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
+        return jsonify({'error': '不支持的格式，请上传 JPG/PNG/GIF/WebP'}), 400
+
+    bg_dir = os.path.join(base_dir, 'static', 'bg_custom')
+    os.makedirs(bg_dir, exist_ok=True)
+    filename = f'custom_bg.{ext}'
+    filepath = os.path.join(bg_dir, filename)
+    file.save(filepath)
+    return jsonify({'path': f'/static/bg_custom/{filename}'})
 
 
 def start_flask(port):

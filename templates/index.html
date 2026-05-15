@@ -275,9 +275,48 @@
                     </div>
 
                     <div class="glass-card">
+                        <h3>背景设置</h3>
+                        <p class="form-hint" style="margin-top:0;margin-bottom:16px;">选择应用背景样式，支持纯色和自定义图片。</p>
+                        <div class="bg-mode-btns">
+                            <button class="btn btn-glass bg-mode-btn active" data-mode="orb" onclick="switchBgMode('orb')">动态渐变</button>
+                            <button class="btn btn-glass bg-mode-btn" data-mode="solid" onclick="switchBgMode('solid')">纯色</button>
+                            <button class="btn btn-glass bg-mode-btn" data-mode="image" onclick="switchBgMode('image')">自定义图片</button>
+                        </div>
+                        <div id="bgSolidPanel" style="display:none;margin-top:16px;">
+                            <div class="bg-color-grid">
+                                <div class="bg-color-swatch" data-color="#f0eef8" style="background:#f0eef8" onclick="pickBgColor('#f0eef8')"></div>
+                                <div class="bg-color-swatch" data-color="#e8e8e8" style="background:#e8e8e8" onclick="pickBgColor('#e8e8e8')"></div>
+                                <div class="bg-color-swatch" data-color="#1a1a2e" style="background:#1a1a2e" onclick="pickBgColor('#1a1a2e')"></div>
+                                <div class="bg-color-swatch" data-color="#16213e" style="background:#16213e" onclick="pickBgColor('#16213e')"></div>
+                                <div class="bg-color-swatch" data-color="#0f3460" style="background:#0f3460" onclick="pickBgColor('#0f3460')"></div>
+                                <div class="bg-color-swatch" data-color="#2d2d2d" style="background:#2d2d2d" onclick="pickBgColor('#2d2d2d')"></div>
+                                <div class="bg-color-swatch" data-color="#1b4332" style="background:#1b4332" onclick="pickBgColor('#1b4332')"></div>
+                                <div class="bg-color-swatch" data-color="#3c1642" style="background:#3c1642" onclick="pickBgColor('#3c1642')"></div>
+                            </div>
+                            <div class="form-actions" style="margin-top:12px;">
+                                <button class="btn btn-gradient" onclick="saveBgSettings()">保存</button>
+                            </div>
+                        </div>
+                        <div id="bgImagePanel" style="display:none;margin-top:16px;">
+                            <div class="form-group">
+                                <input type="file" id="bgFileInput" accept="image/*" onchange="previewBgImage(this)" style="display:none;">
+                                <button class="btn btn-glass" onclick="document.getElementById('bgFileInput').click()">选择图片</button>
+                                <span id="bgFileName" style="margin-left:12px;font-size:13px;color:var(--text-soft);"></span>
+                            </div>
+                            <div id="bgImagePreview" style="display:none;margin-top:12px;border-radius:12px;overflow:hidden;max-height:200px;">
+                                <img id="bgPreviewImg" src="" style="width:100%;height:200px;object-fit:cover;">
+                            </div>
+                            <div class="form-actions" style="margin-top:12px;">
+                                <button class="btn btn-glass" onclick="resetBgImage()">重置为默认</button>
+                                <button class="btn btn-gradient" onclick="saveBgSettings()">保存</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card">
                         <h3>应用信息</h3>
                         <div class="app-info">
-                            <span class="app-version">Todo v<span id="appVersion">1.3.11</span></span>
+                            <span class="app-version">Todo v<span id="appVersion">1.4.0</span></span>
                         </div>
                         <div class="form-actions" style="margin-top:12px;">
                             <button class="btn btn-glass" onclick="checkUpdate()" id="updateBtn">检查更新</button>

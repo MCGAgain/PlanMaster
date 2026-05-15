@@ -799,6 +799,19 @@ async function loadSettings() {
         document.getElementById('setWeeklyMax').value = s.weekly_max || 10;
         document.getElementById('setMonthlyMin').value = s.monthly_min || 10;
         document.getElementById('setMonthlyMax').value = s.monthly_max || 20;
+
+        // Background settings
+        const bgMode = s.bg_mode || 'orb';
+        const bgColor = s.bg_solid_color || '#f0eef8';
+        const bgImage = s.bg_image || '';
+        document.querySelectorAll('.bg-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === bgMode));
+        document.getElementById('bgSolidPanel').style.display = bgMode === 'solid' ? 'block' : 'none';
+        document.getElementById('bgImagePanel').style.display = bgMode === 'image' ? 'block' : 'none';
+        document.querySelectorAll('.bg-color-swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color === bgColor));
+        if (bgImage) {
+            document.getElementById('bgPreviewImg').src = bgImage;
+            document.getElementById('bgImagePreview').style.display = 'block';
+        }
         document.getElementById('setYearlyMin').value = s.yearly_min || 20;
         document.getElementById('setYearlyMax').value = s.yearly_max || 100;
         document.getElementById('setCheckinDailyInc').value = s.checkin_daily_increment || 1;
@@ -844,8 +857,98 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.11';
+        document.getElementById('appVersion').textContent = d.version || '1.4.0';
     } catch (e) {}
+}
+
+// ---- Background ----
+
+async function loadBackground() {
+    try {
+        const s = await api('/api/settings');
+        const mode = s.bg_mode || 'orb';
+        applyBgMode(mode, s.bg_solid_color || '#f0eef8', s.bg_image || '');
+    } catch (e) {}
+}
+
+function applyBgMode(mode, color, image) {
+    document.body.classList.remove('bg-solid', 'bg-image');
+    const orbs = document.querySelector('.bg-orbs');
+    if (mode === 'solid') {
+        document.body.classList.add('bg-solid');
+        document.body.style.backgroundColor = color;
+        document.body.style.backgroundImage = '';
+    } else if (mode === 'image' && image) {
+        document.body.classList.add('bg-image');
+        document.body.style.backgroundColor = '';
+        document.body.style.backgroundImage = `url(${image})`;
+    } else {
+        document.body.style.backgroundColor = '';
+        document.body.style.backgroundImage = '';
+    }
+}
+
+function switchBgMode(mode) {
+    document.querySelectorAll('.bg-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('bgSolidPanel').style.display = mode === 'solid' ? 'block' : 'none';
+    document.getElementById('bgImagePanel').style.display = mode === 'image' ? 'block' : 'none';
+    const color = document.querySelector('.bg-color-swatch.active')?.dataset.color || '#f0eef8';
+    const image = document.getElementById('bgPreviewImg').src || '';
+    applyBgMode(mode, color, image);
+}
+
+function pickBgColor(color) {
+    document.querySelectorAll('.bg-color-swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color === color));
+    applyBgMode('solid', color, '');
+}
+
+function previewBgImage(input) {
+    if (!input.files || !input.files[0]) return;
+    document.getElementById('bgFileName').textContent = input.files[0].name;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('bgPreviewImg').src = e.target.result;
+        document.getElementById('bgImagePreview').style.display = 'block';
+        applyBgMode('image', '', e.target.result);
+    };
+    reader.readAsDataURL(input.files[0]);
+}
+
+function resetBgImage() {
+    document.getElementById('bgFileInput').value = '';
+    document.getElementById('bgFileName').textContent = '';
+    document.getElementById('bgPreviewImg').src = '';
+    document.getElementById('bgImagePreview').style.display = 'none';
+    applyBgMode('orb', '', '');
+}
+
+async function saveBgSettings() {
+    const mode = document.querySelector('.bg-mode-btn.active')?.dataset.mode || 'orb';
+    const color = document.querySelector('.bg-color-swatch.active')?.dataset.color || '#f0eef8';
+    let imagePath = '';
+
+    if (mode === 'image') {
+        const fileInput = document.getElementById('bgFileInput');
+        if (fileInput.files && fileInput.files[0]) {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            try {
+                const d = await fetch('/api/background/upload', { method: 'POST', body: formData }).then(r => r.json());
+                if (d.error) { toast('上传失败: ' + d.error, true); return; }
+                imagePath = d.path;
+            } catch (e) { toast('上传失败: ' + e.message, true); return; }
+        } else {
+            imagePath = document.getElementById('bgPreviewImg').src || '';
+            if (imagePath.startsWith('data:')) imagePath = '';
+        }
+    }
+
+    try {
+        await api('/api/settings', { method: 'PUT', body: JSON.stringify({
+            bg_mode: mode, bg_solid_color: color, bg_image: imagePath
+        })});
+        toast('背景设置已保存');
+    } catch (e) { toast('保存失败: ' + e.message, true); }
 }
 
 function window_updateDownloadProgress(pct) {
@@ -1268,4 +1371,4 @@ document.addEventListener('DOMContentLoaded', () => {
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''; }
 
-document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); loadSignatures(); });
+document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); loadSignatures(); loadBackground(); });

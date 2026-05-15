@@ -125,6 +125,9 @@ def init_db():
         'today_min': '1', 'today_max': '10',
         'checkin_daily_increment': '1',
         'checkin_max_value': '30',
+        'bg_mode': 'orb',
+        'bg_solid_color': '#f0eef8',
+        'bg_image': '',
     }
     for k, v in defaults.items():
         conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
