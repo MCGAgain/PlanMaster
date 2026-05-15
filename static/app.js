@@ -844,7 +844,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.10';
+        document.getElementById('appVersion').textContent = d.version || '1.3.11';
     } catch (e) {}
 }
 
