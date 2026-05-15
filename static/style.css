@@ -298,7 +298,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe 
 .stats-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .stats-section-header h3 { font-size: 18px; font-weight: 700; background: linear-gradient(135deg,var(--text),var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .stats-date-badge { font-size: 13px; color: var(--text-soft); background: rgba(124,110,240,.1); padding: 4px 12px; border-radius: 12px; }
-.stats-period-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: rgba(255,255,255,.2); border-radius: var(--radius-sm); padding: 4px; }
+.stats-period-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(255,255,255,.2); border-radius: var(--radius-sm); padding: 4px; }
 .period-tab { flex: 1; padding: 8px 12px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-soft); border-radius: 8px; transition: var(--transition); }
 .period-tab:hover { background: rgba(124,110,240,.1); color: var(--primary); }
 .period-tab.active { background: linear-gradient(135deg,var(--primary),#a78bfa); color: #fff; box-shadow: 0 2px 8px var(--primary-glow); }

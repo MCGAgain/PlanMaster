@@ -5,7 +5,6 @@ let signatures = [];
 let sigIndex = 0;
 
 function switchPage(page) {
-    Object.keys(timers).forEach(id => stopTimer(parseInt(id)));
     currentPage = page;
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const a = document.querySelector(`.nav-item[data-page="${page}"]`);
@@ -22,6 +21,7 @@ function switchPage(page) {
         document.getElementById('page-focus').classList.add('active');
         renderFocusPage();
         if (focusState === 'running') {
+            focusElapsed = Math.floor((Date.now() - focusStartTime.getTime()) / 1000);
             const display = document.getElementById('focusTimerDisplay');
             if (display) {
                 if (focusMode === 'countdown') {
@@ -179,6 +179,8 @@ async function startFocusTimer() {
     } catch (e) { toast('启动失败: ' + e.message, true); }
 }
 
+function finishFocusTimer() { stopFocusTimer(); }
+
 async function stopFocusTimer() {
     if (!focusCurrentSessionId) return;
     if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null; }
@@ -306,12 +308,17 @@ function fmtCountdown(s) {
 }
 
 function startTimer(id, totalSec) {
-    if (timers[id]) return;
-    timers[id] = { remaining: totalSec, total: totalSec };
-    const interval = setInterval(() => {
-        const t = timers[id];
-        if (!t) { clearInterval(interval); return; }
-        t.remaining--;
+    if (timers[id] && timers[id].interval) return;
+    if (timers[id]) {
+        // Resume from paused state: adjust startAt so elapsed = total - remaining
+        timers[id].startAt = Date.now() - (timers[id].total - timers[id].remaining) * 1000;
+    } else {
+        timers[id] = { remaining: totalSec, total: totalSec, startAt: Date.now() };
+    }
+    const t = timers[id];
+    t.interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - t.startAt) / 1000);
+        t.remaining = Math.max(0, t.total - elapsed);
         const prog = Math.min(99, Math.round((1 - t.remaining / t.total) * 100));
         const card = document.querySelector(`.plan-card[data-id="${id}"]`);
         if (card) {
@@ -325,7 +332,7 @@ function startTimer(id, totalSec) {
             if (btn) btn.textContent = fmtCountdown(t.remaining);
         }
         if (t.remaining <= 0) {
-            clearInterval(interval);
+            clearInterval(t.interval);
             delete timers[id];
             if (card) {
                 const btn = card.querySelector('.timer-btn');
@@ -333,18 +340,19 @@ function startTimer(id, totalSec) {
             }
         }
     }, 1000);
-    timers[id].interval = interval;
 }
 
-function stopTimer(id) {
+function stopTimer(id, preserve) {
     if (!timers[id]) return;
     clearInterval(timers[id].interval);
-    delete timers[id];
+    timers[id].interval = null;
+    if (!preserve) delete timers[id];
 }
 
 function toggleTimer(id, timeStr) {
     id = parseInt(id);
-    if (timers[id]) { stopTimer(id); return; }
+    if (timers[id] && timers[id].interval) { stopTimer(id, true); return; }
+    if (timers[id]) { startTimer(id); return; }
     const sec = parseSuggestedTime(timeStr);
     if (sec > 0) startTimer(id, sec);
 }
@@ -605,11 +613,13 @@ async function savePlan() {
 
 async function deletePlan(id) {
     if (!confirm('确定删除此计划？')) return;
+    stopTimer(id);
     try { await api('/api/plans/' + id, { method: 'DELETE' }); toast('计划已删除'); loadPlans(); }
     catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
 async function completePlan(id) {
+    stopTimer(id);
     try {
         await api('/api/plans/' + id + '/complete', { method: 'POST' });
         toast('计划已完成，虚拟价值已入账！'); loadPlans(); loadBalance();
@@ -841,7 +851,7 @@ async function testAiConnection() {
 async function loadVersion() {
     try {
         const d = await api('/api/version');
-        document.getElementById('appVersion').textContent = d.version || '1.3.4';
+        document.getElementById('appVersion').textContent = d.version || '1.3.5';
     } catch (e) {}
 }
 
