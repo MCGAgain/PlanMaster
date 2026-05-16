@@ -570,6 +570,12 @@ def checkin_missed_penalty():
                 "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'checkin_penalty', ?, ?)",
                 (-old_val, item['id'], f"断签扣除: {item['name']} (连续{last['streak']}天中断)")
             )
+        # Insert marker record to prevent re-penalizing on next startup
+        marker_date = (last_date + timedelta(days=1)).isoformat()
+        conn.execute(
+            "INSERT OR IGNORE INTO checkin_records (item_id, check_date, streak, value) VALUES (?, ?, 0, 0)",
+            (item['id'], marker_date)
+        )
     conn.commit()
     conn.close()
 

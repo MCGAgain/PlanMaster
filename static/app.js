@@ -873,15 +873,16 @@ async function loadBackground() {
 
 function applyBgMode(mode, color, image) {
     document.body.classList.remove('bg-solid', 'bg-image');
-    const orbs = document.querySelector('.bg-orbs');
     if (mode === 'solid') {
         document.body.classList.add('bg-solid');
         document.body.style.backgroundColor = color;
         document.body.style.backgroundImage = '';
-    } else if (mode === 'image' && image) {
+    } else if (mode === 'image') {
         document.body.classList.add('bg-image');
         document.body.style.backgroundColor = '';
-        document.body.style.backgroundImage = `url(${image})`;
+        if (image) {
+            document.body.style.backgroundImage = `url(${image})`;
+        }
     } else {
         document.body.style.backgroundColor = '';
         document.body.style.backgroundImage = '';

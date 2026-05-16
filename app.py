@@ -14,7 +14,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.6'
+CURRENT_VERSION = '1.4.7'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -485,7 +485,7 @@ def api_upload_background():
     if ext not in ('jpg', 'jpeg', 'png', 'gif', 'webp'):
         return jsonify({'error': '不支持的格式，请上传 JPG/PNG/GIF/WebP'}), 400
 
-    bg_dir = os.path.join(base_dir, 'static', 'bg_custom')
+    bg_dir = os.path.join(_user_dir, 'static', 'bg_custom')
     os.makedirs(bg_dir, exist_ok=True)
     filename = f'custom_bg.{ext}'
     filepath = os.path.join(bg_dir, filename)
