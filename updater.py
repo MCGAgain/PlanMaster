@@ -217,7 +217,7 @@ def _generate_install_script(app_path, archive_path, archive_format):
     if archive_format == 'dmg':
         install_body = (
             '# 清理旧的挂载点\n'
-            'OLD_MOUNT=$(hdiutil info | grep -A1 "PlanMaster" | grep "/Volumes/" | awk \'{print $NF}\' | head -1)\n'
+            'OLD_MOUNT=$(hdiutil info | grep -A1 "PlanMaster" | grep "/Volumes/" | awk \'{{print $NF}}\' | head -1)\n'
             'if [ -n "$OLD_MOUNT" ]; then\n'
             '  hdiutil detach "$OLD_MOUNT" -quiet 2>/dev/null || true\n'
             'fi\n'
