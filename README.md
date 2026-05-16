@@ -1,4 +1,4 @@
-# Todo v1.3.10 - 计划管理与心愿兑换系统
+# PlanMaster v1.4.3 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -457,29 +457,37 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.3.10.dmg`。
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.4.3.dmg`。
 
 ## 应用内更新
 
-设置页面底部显示当前版本号和"检查更新"按钮。
+设置页面底部显示当前版本号和"检查更新"按钮。版本号通过 `/api/version` 接口动态获取，前端不硬编码。
 
 **更新流程**:
 1. 开发者修改代码后推送到 GitHub: `git add -A && git commit -m "..." && git push`
 2. 用户在应用设置页点击"检查更新"
 3. 前端调用 `POST /api/update`
-4. **版本校验**: 后端先从 GitHub raw 获取远程 `app.py`，提取 `CURRENT_VERSION` 与本地对比
+4. **版本校验**: 后端从 GitHub Releases API 获取最新版本号，与本地 `CURRENT_VERSION` 对比
 5. 如果版本相同 → 返回"已是最新版本 vX.X.X"，不下载
-6. 如果版本不同 → 下载 master 分支 zip 包，提取 `app.py`, `database.py`, `ai_service.py`, `prompts.py`, `templates/`, `static/` 到用户目录 (`~/Library/Application Support/PlanMaster/`)
-7. Flask 优先加载用户目录中的模板和静态文件，无更新文件则回退到打包版
-8. 更新成功后前端 2 秒后自动 `location.reload()` 刷新页面
+6. 如果版本不同 → 下载对应平台的安装包 (macOS: `.dmg`, Windows: `.exe`)
+7. **macOS 自动更新**: 下载 DMG 后启动独立 Shell 脚本执行自杀式热替换:
+   - 主进程退出释放文件锁
+   - Shell 脚本挂载 DMG，复制新版本覆盖旧应用
+   - 执行 `xattr -r -d com.apple.quarantine` 移除 Gatekeeper 隔离属性
+   - 重新启动应用
+8. **Windows 自动更新**: 下载 Inno Setup 安装包，静默安装并自动重启
+
+**代理加速**: 设置环境变量 `GHPROXY=https://ghproxy.com/` 可加速国内 GitHub 下载。
 
 **版本号机制**: `CURRENT_VERSION` 变量定义在 `app.py` 顶部，`GET /api/version` 返回当前版本号，前端设置页动态显示。
 
-**数据安全**: 数据库和更新文件均存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装 DMG 不会丢失数据。
+**数据安全**: 数据库存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装不会丢失数据。
 
 **远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
 
 **版本历史**:
+- v1.4.3: 独立 macOS 在线更新模块 (updater.py)、DMG 格式更新包、ghproxy 代理加速、Gatekeeper 隔离属性自动清理、自杀式热替换 (无 osascript 依赖)
+- v1.4.2: 更新机制测试版本
 - v1.3.10: 修复更新功能 (ditto解压替代unzip、kill -0等待进程退出、重定向fd防SIGHUP、restarting状态、完整路径open)
 - v1.3.9: 重构计时器交互 (点开始→再点清零→第三下重新开始，去掉暂停/恢复)
 - v1.3.8: 修复统计数据页面各板块间距缺失 (glass-card 粘连)
@@ -507,7 +515,7 @@ showNextSignature() → 轮换显示下一条签名
 ./build.sh
 ```
 
-打包产物为 `PlanMaster-1.3.10.dmg`，使用 `--onedir` 模式 (秒启动)。
+打包产物为 `PlanMaster-1.4.3.dmg`，使用 `--onedir` 模式 (秒启动)。
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
 - **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口
