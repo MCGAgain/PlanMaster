@@ -107,7 +107,7 @@ def _resolve_asset_url(ghproxy=None):
         tar_url = None
         for asset in data.get('assets', []):
             name = asset.get('name', '').lower()
-            if 'macos' not in name:
+            if not (name.endswith('.dmg') or name.endswith('.tar.gz')):
                 continue
             if name.endswith('.dmg'):
                 dmg_url = asset['browser_download_url']
