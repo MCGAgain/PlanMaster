@@ -123,6 +123,7 @@ def init_db():
             name TEXT NOT NULL,
             real_price REAL DEFAULT 0,
             virtual_cost REAL NOT NULL,
+            quantity INTEGER DEFAULT NULL,
             redeemed INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             redeemed_at TIMESTAMP
@@ -190,6 +191,12 @@ def init_db():
         conn.execute("SELECT suggested_time FROM plans LIMIT 1")
     except sqlite3.OperationalError:
         conn.execute("ALTER TABLE plans ADD COLUMN suggested_time TEXT DEFAULT ''")
+
+    # Migration: add quantity column to wishes if missing
+    try:
+        conn.execute("SELECT quantity FROM wishes LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.execute("ALTER TABLE wishes ADD COLUMN quantity INTEGER DEFAULT NULL")
 
     defaults = {
         'weekly_min': '1', 'weekly_max': '10',
@@ -369,14 +376,40 @@ def get_wishes(include_redeemed=False):
     return [dict(r) for r in rows]
 
 
-def create_wish(name, real_price, virtual_cost):
+_SENTINEL = object()
+
+
+def create_wish(name, real_price, virtual_cost, quantity=None):
     conn = get_db()
     cur = conn.execute(
-        "INSERT INTO wishes (name, real_price, virtual_cost) VALUES (?, ?, ?)",
-        (name, real_price, round(float(virtual_cost), 1))
+        "INSERT INTO wishes (name, real_price, virtual_cost, quantity) VALUES (?, ?, ?, ?)",
+        (name, real_price, round(float(virtual_cost), 1), quantity)
     )
     wish_id = cur.lastrowid
     conn.commit()
+    conn.close()
+    return _get_wish(wish_id)
+
+
+def update_wish(wish_id, name=None, real_price=None, virtual_cost=None, quantity=_SENTINEL):
+    conn = get_db()
+    wish = conn.execute("SELECT * FROM wishes WHERE id=?", (wish_id,)).fetchone()
+    if not wish:
+        conn.close()
+        return None
+    fields, params = [], []
+    if name is not None:
+        fields.append("name=?"); params.append(name)
+    if real_price is not None:
+        fields.append("real_price=?"); params.append(real_price)
+    if virtual_cost is not None:
+        fields.append("virtual_cost=?"); params.append(round(float(virtual_cost), 1))
+    if quantity is not _SENTINEL:
+        fields.append("quantity=?"); params.append(quantity)
+    if fields:
+        params.append(wish_id)
+        conn.execute(f"UPDATE wishes SET {','.join(fields)} WHERE id=?", params)
+        conn.commit()
     conn.close()
     return _get_wish(wish_id)
 
@@ -408,14 +441,25 @@ def redeem_wish(wish_id):
         return None, f"虚拟价值不足，当前余额: {balance:.1f}，需要: {wish['virtual_cost']}"
 
     now = datetime.now().isoformat()
-    conn.execute("UPDATE wishes SET redeemed=1, redeemed_at=? WHERE id=?", (now, wish_id))
     conn.execute(
         "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'wish_redeem', ?, ?)",
         (-wish['virtual_cost'], wish_id, f"兑换心愿: {wish['name']}")
     )
+
+    qty = wish['quantity']
+    if qty is None:
+        # Infinite wish: just record transaction, keep the wish
+        conn.execute("UPDATE wishes SET redeemed=0 WHERE id=?", (wish_id,))
+    elif qty <= 1:
+        # Last one or already 0: delete the wish
+        conn.execute("DELETE FROM wishes WHERE id=?", (wish_id,))
+    else:
+        # Decrement quantity
+        conn.execute("UPDATE wishes SET quantity=? WHERE id=?", (qty - 1, wish_id))
+
     conn.commit()
     conn.close()
-    return _get_wish(wish_id), None
+    return {'id': wish_id, 'name': wish['name'], 'quantity': qty}, None
 
 
 # ---- Balance & Transactions ----

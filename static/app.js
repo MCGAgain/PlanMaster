@@ -761,24 +761,64 @@ async function loadWishes() {
 function renderWishes(wishes, bal) {
     const c = document.getElementById('wishList');
     if (!wishes.length) { c.innerHTML = '<div class="empty-state">暂无心愿</div>'; return; }
-    c.innerHTML = wishes.map(w => `
+    c.innerHTML = wishes.map(w => {
+        const qtyText = w.quantity === null ? '无限' : `剩余 ${w.quantity}`;
+        const canRedeem = w.quantity === null || w.quantity > 0;
+        return `
         <div class="wish-card ${w.redeemed ? 'redeemed' : ''}">
             <div class="wish-info"><h4>${esc(w.name)}</h4>
-                <div class="wish-meta">${w.real_price > 0 ? '¥' + w.real_price : ''}${w.redeemed ? ' · 已兑换' : ''}</div></div>
+                <div class="wish-meta">${w.real_price > 0 ? '¥' + w.real_price : ''}${w.redeemed ? ' · 已兑换' : ''} · ${qtyText}</div></div>
             <div class="wish-actions"><span class="wish-cost">${w.virtual_cost}</span>
-                ${!w.redeemed ? `<button class="btn btn-success btn-sm" onclick="redeemWish(${w.id})" ${bal < w.virtual_cost ? 'disabled' : ''}>兑换</button>
+                ${!w.redeemed ? `<button class="btn btn-success btn-sm" onclick="redeemWish(${w.id})" ${!canRedeem || bal < w.virtual_cost ? 'disabled' : ''}>兑换</button>
+                <button class="btn btn-glass btn-sm" data-wish='${encodeURIComponent(JSON.stringify(w))}' onclick="editWishFromBtn(this)">编辑</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteWish(${w.id})">删除</button>` : ''}</div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
+}
+
+function editWishFromBtn(btn) {
+    const w = JSON.parse(decodeURIComponent(btn.dataset.wish));
+    showEditWishModal(w.id, w.name, w.real_price, w.virtual_cost, w.quantity);
 }
 
 let wishSaving = false;
+let editingWishId = null;
 
 function showAddWishModal() {
+    editingWishId = null;
+    document.getElementById('wishModalTitle').textContent = '新增心愿';
     document.getElementById('wishNameInput').value = '';
     document.getElementById('wishPriceInput').value = '';
     document.getElementById('wishCostInput').value = '';
+    document.getElementById('wishQtyInput').value = '';
+    document.getElementById('wishInfiniteCheck').checked = true;
+    toggleQtyInput();
     document.getElementById('wishModal').classList.add('show');
     setTimeout(() => document.getElementById('wishNameInput').focus(), 100);
+}
+
+function showEditWishModal(id, name, price, cost, qty) {
+    editingWishId = id;
+    document.getElementById('wishModalTitle').textContent = '编辑心愿';
+    document.getElementById('wishNameInput').value = name;
+    document.getElementById('wishPriceInput').value = price || '';
+    document.getElementById('wishCostInput').value = cost || '';
+    if (qty === null) {
+        document.getElementById('wishInfiniteCheck').checked = true;
+        document.getElementById('wishQtyInput').value = '';
+    } else {
+        document.getElementById('wishInfiniteCheck').checked = false;
+        document.getElementById('wishQtyInput').value = qty;
+    }
+    toggleQtyInput();
+    document.getElementById('wishModal').classList.add('show');
+    setTimeout(() => document.getElementById('wishNameInput').focus(), 100);
+}
+
+function toggleQtyInput() {
+    const infinite = document.getElementById('wishInfiniteCheck').checked;
+    document.getElementById('wishQtyInput').disabled = infinite;
+    if (infinite) document.getElementById('wishQtyInput').value = '';
 }
 
 async function saveWish() {
@@ -786,19 +826,32 @@ async function saveWish() {
     const n = document.getElementById('wishNameInput').value.trim();
     const p = parseFloat(document.getElementById('wishPriceInput').value) || 0;
     const c = parseFloat(document.getElementById('wishCostInput').value) || null;
+    const infinite = document.getElementById('wishInfiniteCheck').checked;
+    const qty = infinite ? null : (parseInt(document.getElementById('wishQtyInput').value) || null);
     if (!n) { toast('请输入心愿名称', true); return; }
+    if (!infinite && (!qty || qty <= 0)) { toast('请输入有效数量或勾选无限', true); return; }
     wishSaving = true;
     try {
-        await api('/api/wishes', { method: 'POST', body: JSON.stringify({ name: n, real_price: p, virtual_cost: c }) });
-        toast('心愿已添加'); closeModal('wishModal'); loadWishes();
-    } catch (e) { toast('添加失败: ' + e.message, true); }
-    finally { wishSaving = false; }
+        if (editingWishId) {
+            await api('/api/wishes/' + editingWishId, { method: 'PUT', body: JSON.stringify({ name: n, real_price: p, virtual_cost: c, quantity: qty }) });
+            toast('心愿已更新');
+        } else {
+            await api('/api/wishes', { method: 'POST', body: JSON.stringify({ name: n, real_price: p, virtual_cost: c, quantity: qty }) });
+            toast('心愿已添加');
+        }
+        closeModal('wishModal'); loadWishes();
+    } catch (e) { toast('保存失败: ' + e.message, true); }
+    finally { wishSaving = false; editingWishId = null; }
 }
 
 async function redeemWish(id) {
     if (!confirm('确定兑换？')) return;
-    try { await api('/api/wishes/' + id + '/redeem', { method: 'POST' }); toast('兑换成功！'); loadWishes(); loadBalance(); }
-    catch (e) { toast('兑换失败: ' + e.message, true); }
+    try {
+        const r = await api('/api/wishes/' + id + '/redeem', { method: 'POST' });
+        const qtyInfo = r.quantity === null ? '（无限）' : (r.quantity <= 1 ? '（已用完，自动删除）' : `（剩余 ${r.quantity - 1}）`);
+        toast('兑换成功！' + qtyInfo);
+        loadWishes(); loadBalance();
+    } catch (e) { toast('兑换失败: ' + e.message, true); }
 }
 
 async function deleteWish(id) {

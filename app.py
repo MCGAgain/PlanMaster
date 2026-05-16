@@ -15,7 +15,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.5.4'
+CURRENT_VERSION = '1.6.0'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -301,8 +301,37 @@ def api_create_wish():
         else:
             virtual_cost = data.get('real_price', 10)
 
-    wish = db.create_wish(data['name'], data.get('real_price', 0), virtual_cost)
+    quantity = data.get('quantity')
+    if quantity is not None:
+        quantity = int(quantity) if quantity > 0 else None
+
+    wish = db.create_wish(data['name'], data.get('real_price', 0), virtual_cost, quantity)
     return jsonify(wish), 201
+
+
+@app.route('/api/wishes/<int:wish_id>', methods=['PUT'])
+def api_update_wish(wish_id):
+    data = request.json
+
+    if 'quantity' in data:
+        q = data['quantity']
+        if q is None or q == '' or q == 'infinite':
+            quantity = None
+        else:
+            quantity = int(q) if int(q) > 0 else None
+    else:
+        quantity = db._SENTINEL
+
+    wish = db.update_wish(
+        wish_id,
+        name=data.get('name'),
+        real_price=data.get('real_price'),
+        virtual_cost=data.get('virtual_cost'),
+        quantity=quantity
+    )
+    if not wish:
+        return jsonify({'error': '心愿不存在'}), 404
+    return jsonify(wish)
 
 
 @app.route('/api/wishes/<int:wish_id>/redeem', methods=['POST'])

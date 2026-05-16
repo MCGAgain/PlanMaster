@@ -375,6 +375,10 @@ body.bg-image { background-size: cover; background-position: center; background-
 .form-group small { display: block; margin-top: 4px; font-size: 12px; color: var(--text-muted); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-hint { display: block; font-size: 12px; color: var(--text-muted); margin-top: -10px; margin-bottom: 16px; }
+.qty-row { display: flex; gap: 12px; align-items: center; }
+.qty-row input[type="number"] { flex: 1; }
+.qty-infinite-label { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--text-soft); white-space: nowrap; cursor: pointer; }
+.qty-infinite-label input[type="checkbox"] { width: auto; accent-color: var(--primary); }
 .model-select-row { display: flex; gap: 8px; align-items: center; }
 .model-select-row select,.model-select-row input { flex: 1; min-width: 0; }
 .form-actions { display: flex; gap: 10px; margin-top: 20px; }
