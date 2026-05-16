@@ -35,6 +35,33 @@ def flush_and_close():
         pass
 
 
+def close_stale_focus_sessions(stale_seconds=14400):
+    """Auto-close focus sessions that have been open longer than stale_seconds (default 4h).
+
+    This prevents inflated duration after app restart/update by closing sessions
+    that were left open when the app exited unexpectedly.
+    """
+    try:
+        conn = get_db()
+        now = datetime.now()
+        rows = conn.execute(
+            "SELECT id, start_time FROM focus_sessions WHERE end_time IS NULL"
+        ).fetchall()
+        for row in rows:
+            start = datetime.fromisoformat(row['start_time'])
+            if (now - start).total_seconds() > stale_seconds:
+                end_time = now.isoformat()
+                duration = (now - start).total_seconds()
+                conn.execute(
+                    "UPDATE focus_sessions SET end_time=?, duration=? WHERE id=?",
+                    (end_time, int(duration), row['id'])
+                )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
 def init_db():
     conn = get_db()
     conn.executescript("""
@@ -653,6 +680,16 @@ def end_focus_session(session_id, end_time, duration):
     row = conn.execute("SELECT * FROM focus_sessions WHERE id=?", (session_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def update_session_start_time(session_id, start_time):
+    conn = get_db()
+    conn.execute(
+        "UPDATE focus_sessions SET start_time=? WHERE id=?",
+        (start_time, session_id)
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_focus_sessions(plan_id=None, date_str=None, category=None):

@@ -14,7 +14,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.14'
+CURRENT_VERSION = '1.4.15'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -416,6 +416,15 @@ def api_end_session(session_id):
     return jsonify(result)
 
 
+@app.route('/api/sessions/<int:session_id>', methods=['PATCH'])
+def api_update_session(session_id):
+    data = request.json
+    start_time = data.get('start_time')
+    if start_time:
+        db.update_session_start_time(session_id, start_time)
+    return jsonify({'ok': True})
+
+
 @app.route('/api/sessions', methods=['GET'])
 def api_get_sessions():
     plan_id = request.args.get('plan_id', type=int)
@@ -504,6 +513,7 @@ def api_get_custom_bg(filename):
 
 def start_flask(port):
     db.init_db()
+    db.close_stale_focus_sessions()
     db.checkin_missed_penalty()
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
@@ -670,6 +680,7 @@ def _install_and_restart():
             [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
             cwd=tmpdir, close_fds=True
         )
+        db.close_stale_focus_sessions()
         db.flush_and_close()
         time.sleep(0.5)
         os._exit(0)
@@ -806,6 +817,7 @@ if __name__ == '__main__':
         webview.start(_on_loaded)
     else:
         db.init_db()
+        db.close_stale_focus_sessions()
         db.checkin_missed_penalty()
         threading.Timer(1.0, lambda: webbrowser.open(f'http://localhost:{port}')).start()
         print(f"Todo 启动中... 浏览器将自动打开 http://localhost:{port}")

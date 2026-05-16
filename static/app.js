@@ -230,9 +230,36 @@ async function restoreFocusSession() {
     try {
         const sessions = await api('/api/sessions');
         const unfinished = sessions.find(s => !s.end_time);
-        if (unfinished) {
-            activeFocusSession = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date(unfinished.start_time), interval: null };
+        if (!unfinished) return;
+
+        const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000;
+        if (elapsed > 14400) {
+            await api('/api/sessions/' + unfinished.id, {
+                method: 'PUT',
+                body: JSON.stringify({ end_time: new Date().toISOString() })
+            });
+            return;
+        }
+
+        const now = new Date();
+        await api('/api/sessions/' + unfinished.id, {
+            method: 'PATCH',
+            body: JSON.stringify({ start_time: now.toISOString() })
+        });
+
+        if (unfinished.plan_id) {
+            activeFocusSession = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: now, interval: null };
             activeFocusSession.interval = setInterval(() => updateFocusCardDisplay(), 1000);
+        } else {
+            focusCurrentSessionId = unfinished.id;
+            focusCurrentTask = unfinished.category || '';
+            focusStartTime = now;
+            focusElapsed = 0;
+            focusState = 'running';
+            document.getElementById('focusTaskLabel').textContent = focusCurrentTask;
+            document.getElementById('focusModeLabel').textContent = '不限时专注中';
+            renderFocusPage();
+            startFocusTimerTick();
         }
     } catch (e) {}
 }
