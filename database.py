@@ -25,6 +25,16 @@ def get_db():
     return conn
 
 
+def flush_and_close():
+    """Checkpoint WAL and close the database cleanly before process exit."""
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=5)
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.close()
+    except Exception:
+        pass
+
+
 def init_db():
     conn = get_db()
     conn.executescript("""

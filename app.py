@@ -14,7 +14,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.12'
+CURRENT_VERSION = '1.4.13'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -670,6 +670,8 @@ def _install_and_restart():
             [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
             cwd=tmpdir, close_fds=True
         )
+        db.flush_and_close()
+        time.sleep(0.5)
         os._exit(0)
     else:
         if not getattr(sys, 'frozen', False):
