@@ -21,7 +21,7 @@ jobs:
 
       - name: Build EXE
         run: |
-          pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --noconfirm --clean app.py
+          pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --exclude-module simplejson --noconfirm --clean app.py
         shell: bash
 
       - name: Build Setup
@@ -50,7 +50,7 @@ jobs:
 
       - name: Build app
         run: |
-          pyinstaller --name PlanMaster --onedir --windowed --icon icon.icns --add-data "templates:templates" --add-data "static:static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.cocoa --noconfirm --clean app.py
+          pyinstaller --name PlanMaster --onedir --windowed --icon icon.icns --add-data "templates:templates" --add-data "static:static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.cocoa --exclude-module simplejson --noconfirm --clean app.py
 
       - name: Create DMG
         run: |
