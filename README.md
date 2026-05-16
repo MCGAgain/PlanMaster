@@ -1,8 +1,8 @@
-# PlanMaster v1.4.3 - 计划管理与心愿兑换系统
+# PlanMaster v1.4.13 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
-Todo 是一个基于 Flask + SQLite 的本地 macOS 应用，用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生 macOS 窗口，支持应用内一键检查更新。
+PlanMaster 是一个基于 Flask + SQLite 的本地桌面应用（支持 macOS 和 Windows），用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生窗口，支持应用内一键检查更新、专注模式、打卡、统计数据等功能。
 
 ## 技术栈
 
@@ -10,8 +10,9 @@ Todo 是一个基于 Flask + SQLite 的本地 macOS 应用，用于管理日/周
 - **数据库**: SQLite3 (WAL 模式)
 - **前端**: 原生 HTML + CSS + JavaScript (单页应用，无框架依赖)
 - **AI**: 通过 OpenAI 兼容 `/v1/chat/completions` 和 `/v1/models` 接口调用任意 LLM
-- **打包**: PyInstaller + hdiutil (macOS DMG)
-- **设计风格**: Glassmorphism (毛玻璃)，紫蓝色调渐变背景浮动光球
+- **打包**: PyInstaller + hdiutil (macOS DMG) / Inno Setup (Windows EXE)
+- **CI/CD**: GitHub Actions 自动构建双平台安装包并发布 Release
+- **设计风格**: Glassmorphism (毛玻璃)，紫蓝色调渐变背景浮动光球，支持深色主题自适应
 
 ## 项目结构
 
@@ -21,18 +22,25 @@ PlanMaster/
 ├── database.py         # SQLite 数据库操作层 (CRUD + 迁移)
 ├── ai_service.py       # LLM API 调用封装 (排序/评估/模型列表/测试)
 ├── prompts.py          # Prompt 模板 (计划排序/单条评估/心愿评估)
-├── requirements.txt    # Python 依赖: flask, requests
+├── updater.py          # macOS 在线更新模块 (DMG 热替换)
+├── requirements.txt    # Python 依赖: flask, requests, pywebview
 ├── start.sh            # 启动脚本 (激活 venv + 运行 app.py)
 ├── build.sh            # DMG 打包脚本 (PyInstaller + hdiutil)
-├── icon.jpg            # 应用图标 (1685x1685 JPEG)
+├── build_setup.iss     # Windows Inno Setup 安装包配置
+├── PlanMaster.spec     # PyInstaller 打包配置
+├── icon.icns           # macOS 应用图标
+├── icon.ico            # Windows 应用图标
+├── icon.jpg            # 应用图标 (JPEG)
 ├── todo.db             # SQLite 数据库文件 (运行时自动创建)
 ├── venv/               # Python 虚拟环境
+├── .github/workflows/
+│   └── build.yml       # CI 自动构建 (Windows + macOS + Release)
 ├── templates/
 │   └── index.html      # 单页应用 HTML (所有页面/弹窗/结构)
 └── static/
-    ├── style.css       # 全部 CSS 样式 (毛玻璃/动画/响应式)
+    ├── style.css       # 全部 CSS 样式 (毛玻璃/动画/明暗主题)
     ├── app.js          # 前端 JavaScript 逻辑 (导航/API调用/渲染)
-    └── icon.jpg        # 浏览器 favicon (复制自项目根目录)
+    └── icon.jpg        # 浏览器 favicon
 ```
 
 ## 启动方式
@@ -330,6 +338,8 @@ python app.py
 - `--radius`, `--radius-sm`, `--radius-lg`: 圆角半径
 - `--transition`: 统一过渡动画
 
+**深色主题**: `body.theme-dark` 覆盖上述变量为暗色值，JS 通过 `isColorDark(hex)` 计算背景亮度自动切换。自定义图片背景默认使用深色主题 + 文字阴影。
+
 **动画**:
 - `float`: 背景光球浮动 (20s 循环)
 - `slideInLeft`: 侧边栏入场
@@ -451,77 +461,78 @@ showNextSignature() → 轮换显示下一条签名
 8. **进度条拖动手柄**: 毛玻璃效果 (`rgba(255,255,255,.6)` + `backdrop-filter: blur(12px)`)，半透明紫色边框，内阴影增强玻璃质感，hover 时放大
 9. **加载遮罩**: 可点击空白处关闭，遮罩使用毛玻璃背景 (`backdrop-filter: blur(8px)`)
 
-## 打包 DMG
+## 构建打包
 
+**macOS DMG**:
 ```bash
 ./build.sh
 ```
+需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。
 
-需要 `brew install create-dmg` (可选，否则使用 `hdiutil`)。构建产物为 `PlanMaster-1.4.3.dmg`。
+**Windows EXE + 安装包**:
+GitHub Actions 自动构建。本地构建:
+```bash
+pip install pyinstaller flask requests pywebview
+pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --exclude-module simplejson --noconfirm --clean app.py
+# 然后用 Inno Setup 编译 build_setup.iss
+```
+
+运行模式区别:
+- **开发模式** (`python app.py`): 自动打开浏览器
+- **打包版**: pywebview 原生窗口 (macOS: `.app`, Windows: `.exe`)
 
 ## 应用内更新
 
 设置页面底部显示当前版本号和"检查更新"按钮。版本号通过 `/api/version` 接口动态获取，前端不硬编码。
 
 **更新流程**:
-1. 开发者修改代码后推送到 GitHub: `git add -A && git commit -m "..." && git push`
+1. 开发者修改代码后推送到 GitHub，CI 自动构建并发布 Release
 2. 用户在应用设置页点击"检查更新"
-3. 前端调用 `POST /api/update`
-4. **版本校验**: 后端从 GitHub Releases API 获取最新版本号，与本地 `CURRENT_VERSION` 对比
-5. 如果版本相同 → 返回"已是最新版本 vX.X.X"，不下载
-6. 如果版本不同 → 下载对应平台的安装包 (macOS: `.dmg`, Windows: `.exe`)
-7. **macOS 自动更新**: 下载 DMG 后启动独立 Shell 脚本执行自杀式热替换:
-   - 主进程退出释放文件锁
-   - Shell 脚本挂载 DMG，复制新版本覆盖旧应用
-   - 执行 `xattr -r -d com.apple.quarantine` 移除 Gatekeeper 隔离属性
-   - 重新启动应用
-8. **Windows 自动更新**: 下载 Inno Setup 安装包，静默安装并自动重启
+3. 前端调用 `POST /api/update`，后端从 GitHub Releases 获取最新版本号对比
+4. 版本不同 → 下载对应平台安装包 (macOS: `.dmg`, Windows: `.exe`)
+5. **macOS**: 下载 DMG 后启动 Shell 脚本执行热替换 (挂载 DMG → 复制 app → 移除隔离属性 → 重启)
+6. **Windows**: 下载 Inno Setup 安装包 → checkpoint WAL 保护数据库 → 静默安装 → 自动重启
 
-**代理加速**: 设置环境变量 `GHPROXY=https://ghproxy.com/` 可加速国内 GitHub 下载。
-
-**版本号机制**: `CURRENT_VERSION` 变量定义在 `app.py` 顶部，`GET /api/version` 返回当前版本号，前端设置页动态显示。
-
-**数据安全**: 数据库存储在 `~/Library/Application Support/PlanMaster/`，与应用 bundle 完全分离，覆盖安装不会丢失数据。
+**数据安全**:
+- **macOS**: 数据库位于 `~/Library/Application Support/PlanMaster/`，与应用 bundle 分离
+- **Windows**: 数据库位于 `%APPDATA%\PlanMaster\`，与 Program Files 安装目录分离
+- 更新前自动执行 SQLite WAL checkpoint，防止数据损坏
 
 **远程仓库**: https://github.com/MCGAgain/PlanMaster (分支: main)
 
-**版本历史**:
-- v1.4.3: 独立 macOS 在线更新模块 (updater.py)、DMG 格式更新包、ghproxy 代理加速、Gatekeeper 隔离属性自动清理、自杀式热替换 (无 osascript 依赖)
-- v1.4.2: 更新机制测试版本
-- v1.3.10: 修复更新功能 (ditto解压替代unzip、kill -0等待进程退出、重定向fd防SIGHUP、restarting状态、完整路径open)
-- v1.3.9: 重构计时器交互 (点开始→再点清零→第三下重新开始，去掉暂停/恢复)
-- v1.3.8: 修复统计数据页面各板块间距缺失 (glass-card 粘连)
-- v1.3.7: 重构自动更新 (流式下载+进度条+Inno Setup静默安装+自动重启)、CI自动发布GitHub Release
-- v1.3.6: 重构应用启动逻辑 (轮询握手机制: 先显示加载页再探测端口跳转)、Windows CI 引入 Inno Setup 生成安装包
-- v1.3.5: 修复预估时间倒计时切换页面停止的bug (计时器跨页面持久化+暂停恢复)、修复专注倒计时到期崩溃 (finishFocusTimer未定义)、统计数据标签间距增大、专注计时器切换页面即时更新显示
-- v1.3.4: 修复检查更新白屏 (去掉os.execv重启，提示用户手动重启)、统计数据页面显示实际任务名称而非计划类型
-- v1.3.3: 新增专注模式页面 (输入任务名称+圆形计时器+不限时/倒计时模式)、计时器跨页面持久化、专注完成自动记录到统计数据
-- v1.3.2: 新增统计数据页面 (累计统计、每日专注、专注时长分布饼图、月度柱状图)、专注会话记录 (手动开始/结束)、任务标题前缀自动分类
-- v1.2.2: 新增打卡功能 (独立价值体系: sqrt(连续天数)×增量)、修复计划子页面AI评估后数值不显示 (轮询替代固定延迟)、打卡设置 (每日增量/最大价值)
-- v1.2.1: 新增任务倒计时功能 (开始按钮 + 自动进度条 + 停在99%)、修复进度条交互 bug (refreshCategoryProgress 使用 /api/plans/all)、统一所有版本号
-- v1.2.0: 修复日期标签使用当前时间 (非创建时间)、更新后自动重启应用 (os.execv)、修复拖动进度条影响总进度条、统一所有版本号引用、DMG 打包使用 venv 和 icon.icns
-- v1.1.5: 更新 README 文档，完善版本历史记录
-- v1.1.4: 修复分类进度条不更新 (新增 /api/plans/all 端点)、计划卡片显示日期标签 (今日:月日, 周:星期X, 月:X月, 年:XXXX年)、更新逻辑改用 main 分支、容错处理
-- v1.1.3: AI 优先级与虚拟价值解耦 (独立评估)、新增预估完成时长、个性签名轮换显示
-- v1.1.2: 更新前校验远程版本，相同版本跳过下载
-- v1.1.1: DMG 版支持应用内更新 (从 GitHub 下载 zip)，版本号从 API 动态获取
-- v1.1.0: 应用内更新按钮、心愿防重复提交、原生 macOS 窗口 (pywebview)、onedir 秒启动
-- v1.0.1: 回收站批量操作、计划类型标签、静默 AI 评估、进度条毛玻璃效果
-- v1.0.0: 初始版本 — 计划管理、AI 排序、心愿兑换、虚拟价值系统
+## 版本历史
 
-## 打包 DMG
-
-```bash
-./build.sh
-```
-
-打包产物为 `PlanMaster-1.4.3.dmg`，使用 `--onedir` 模式 (秒启动)。
-运行模式区别:
-- **开发模式** (`python app.py`): 自动打开浏览器
-- **打包版** (`PlanMaster.app`): pywebview 原生 macOS 窗口
+- v1.4.13: 修复 Windows 更新前数据库 WAL 未 checkpoint 导致数据丢失风险
+- v1.4.12: 计划卡片标签独立成行，避免竖屏下标题被挤压
+- v1.4.11: 专注按钮改为 toggle 逻辑 (点击开始/再点停止并记录)
+- v1.4.10: 排除 simplejson 解决 Windows 打包 ImportError；深色背景自适应文字颜色 (theme-dark)
+- v1.4.9: Windows 平台路径兼容 (%APPDATA%)；修复专注按钮重启后恢复状态
+- v1.4.8: 修复背景设置重启后丢失
+- v1.4.7: 修复断签重复扣除和背景设置丢失
+- v1.4.6: macOS 热替换脚本 awk 转义修复
+- v1.4.5: asset 匹配去掉 'macos' 文件名要求
+- v1.4.4: 更新测试版本
+- v1.4.3: 独立 macOS 在线更新模块 (updater.py)、DMG 格式更新包、ghproxy 代理加速
+- v1.4.0: 新增背景切换功能 (动态渐变/纯色/自定义图片)
+- v1.3.10: 修复更新功能 (ditto解压、kill -0等待、重定向fd)
+- v1.3.9: 重构计时器交互 (开始→清零→重新开始)
+- v1.3.8: 修复统计数据页面间距
+- v1.3.7: 重构自动更新 (流式下载+进度条+静默安装)、CI 自动发布 Release
+- v1.3.6: 重构启动逻辑 (轮询握手)、Windows Inno Setup 安装包
+- v1.3.5: 修复计时器跨页面、专注倒计时崩溃
+- v1.3.4: 修复检查更新白屏、统计数据任务名称
+- v1.3.3: 新增专注模式页面 (圆形计时器+不限时/倒计时)
+- v1.3.2: 新增统计数据页面 (饼图/柱状图)、专注会话记录
+- v1.2.2: 新增打卡功能 (独立价值体系)
+- v1.2.1: 新增任务倒计时功能
+- v1.2.0: 修复进度条交互、日期标签、更新重启
+- v1.1.3: AI 优先级与虚拟价值解耦、个性签名
+- v1.1.0: 应用内更新、原生窗口、秒启动
+- v1.0.1: 回收站批量操作、计划类型标签
+- v1.0.0: 初始版本 — 计划管理、AI 排序、心愿兑换
 
 ## 环境要求
 
 - Python 3.10+
-- macOS / Linux / Windows (macOS 为主要目标平台)
+- macOS / Windows
 - 网络连接 (AI 功能需要)
