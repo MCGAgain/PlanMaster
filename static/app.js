@@ -843,9 +843,7 @@ async function loadApiBalance() {
         if (data.error) {
             container.innerHTML = `
                 <div class="glass-card">
-                    <div class="apibalance-header">
-                        <span class="apibalance-title">DeepSeek API 余量</span>
-                    </div>
+                    <div class="apibalance-section-title">DeepSeek 账户</div>
                     <div class="apibalance-status apibalance-status-error">
                         <span class="apibalance-status-icon">&#10060;</span>
                         <span>获取失败：${esc(data.error)}</span>
@@ -853,21 +851,43 @@ async function loadApiBalance() {
                 </div>`;
             return;
         }
-        const balanceClass = data.is_available ? 'balance-available' : 'balance-unavailable';
-        const statusText = data.is_available ? '可用' : '已用尽';
-        const balanceVal = parseFloat(data.balance).toFixed(4);
+        const bv = parseFloat(data.balance);
+        const isAvail = data.is_available && bv > 0;
+        const statusText = !data.is_available ? '已用尽' : bv <= 0 ? '余额为零' : '正常';
+        const statusType = isAvail ? 'ok' : 'warn';
+        const pct = Math.min(100, Math.round(bv));
+        const barColor = bv > 10 ? 'var(--success)' : bv > 1 ? 'var(--warning)' : 'var(--danger)';
         container.innerHTML = `
-            <div class="glass-card">
-                <div class="apibalance-header">
-                    <span class="apibalance-title">DeepSeek API 余量</span>
-                    <span class="apibalance-currency">${esc(data.currency)}</span>
+            <div class="glass-card apibalance-hero" onclick="loadApiBalance()">
+                <div class="apibalance-section-title">DeepSeek 账户</div>
+                <div class="apibalance-hero-amount">
+                    <span class="apibalance-hero-sign">&#165;</span>
+                    <span class="apibalance-hero-val ${isAvail ? '' : 'apibalance-zero'}">${bv.toFixed(4)}</span>
+                    <span class="apibalance-hero-unit">${esc(data.currency)}</span>
                 </div>
-                <div class="apibalance-main">
-                    <div class="apibalance-amount-wrap">
-                        <span class="apibalance-currency-sign">&#165;</span>
-                        <span class="apibalance-amount ${balanceClass}">${balanceVal}</span>
-                    </div>
-                    <span class="apibalance-status apibalance-status-${data.is_available ? 'ok' : 'warn'}">${statusText}</span>
+                <div class="apibalance-bar-track">
+                    <div class="apibalance-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+                </div>
+                <div class="apibalance-hero-footer">
+                    <span class="apibalance-status apibalance-status-${statusType}">${statusText}</span>
+                    <span class="apibalance-refresh-hint">&#128260; 点击刷新</span>
+                </div>
+            </div>
+            <div class="apibalance-info-grid">
+                <div class="glass-card apibalance-info-card">
+                    <div class="apibalance-info-icon">&#128176;</div>
+                    <div class="apibalance-info-label">充值余额</div>
+                    <div class="apibalance-info-val">${bv.toFixed(2)}</div>
+                </div>
+                <div class="glass-card apibalance-info-card">
+                    <div class="apibalance-info-icon">&#128200;</div>
+                    <div class="apibalance-info-label">账户状态</div>
+                    <div class="apibalance-info-val apibalance-info-status-${statusType}">${statusText}</div>
+                </div>
+                <div class="glass-card apibalance-info-card">
+                    <div class="apibalance-info-icon">&#127760;</div>
+                    <div class="apibalance-info-label">币种</div>
+                    <div class="apibalance-info-val">${esc(data.currency)}</div>
                 </div>
             </div>`;
     } catch (e) {
