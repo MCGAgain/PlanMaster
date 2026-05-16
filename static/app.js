@@ -226,7 +226,21 @@ function resetFocusPage() {
     renderFocusPage();
 }
 
+async function restoreFocusSession() {
+    try {
+        const sessions = await api('/api/sessions');
+        const unfinished = sessions.find(s => !s.end_time);
+        if (unfinished) {
+            activeFocusSession = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date(unfinished.start_time), interval: null };
+            activeFocusSession.interval = setInterval(() => updateFocusCardDisplay(), 1000);
+        }
+    } catch (e) {}
+}
+
 async function startFocus(planId) {
+    if (activeFocusSession) {
+        await stopFocus();
+    }
     try {
         const session = await api('/api/sessions', {
             method: 'POST',
@@ -1389,4 +1403,4 @@ document.addEventListener('DOMContentLoaded', () => {
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''; }
 
-document.addEventListener('DOMContentLoaded', () => { loadBalance(); loadPlans(); loadSignatures(); loadBackground(); });
+document.addEventListener('DOMContentLoaded', async () => { await restoreFocusSession(); loadBalance(); loadPlans(); loadSignatures(); loadBackground(); });
