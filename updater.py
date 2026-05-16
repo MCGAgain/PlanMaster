@@ -14,6 +14,7 @@ from datetime import datetime
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 APP_NAME = 'PlanMaster'
+_last_resolve_error = None
 UPDATE_DIR = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster', 'update')
 PROGRESS_FILE = os.path.join(UPDATE_DIR, 'planmaster_update_progress.txt')
 ERR_LOG = os.path.join(UPDATE_DIR, 'planmaster_update.log')
@@ -134,11 +135,16 @@ def _resolve_asset_url(ghproxy=None):
 
     Prefers .dmg, falls back to .tar.gz.
     Returns (download_url, remote_version) or (None, None).
+    On error, sets _last_resolve_error with details.
     """
+    global _last_resolve_error
+    _last_resolve_error = None
     try:
         api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
         resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
         if resp.status_code != 200:
+            _last_resolve_error = f'GitHub API 返回 HTTP {resp.status_code}'
+            print(f'[updater] GitHub API 返回 {resp.status_code}: {resp.text[:200]}')
             return None, None
         data = resp.json()
         remote_ver = data.get('tag_name', '').lstrip('v')
@@ -156,13 +162,24 @@ def _resolve_asset_url(ghproxy=None):
 
         url = dmg_url or tar_url
         if not url:
+            _last_resolve_error = f'Release v{remote_ver} 中未找到 .dmg 或 .tar.gz 安装包'
             return None, remote_ver
 
         if ghproxy:
             url = ghproxy.rstrip('/') + '/' + url
 
         return url, remote_ver
-    except Exception:
+    except requests.exceptions.ConnectionError as e:
+        _last_resolve_error = f'网络连接失败: {e}'
+        print(f'[updater] 网络连接失败: {e}')
+        return None, None
+    except requests.exceptions.Timeout:
+        _last_resolve_error = 'GitHub API 请求超时'
+        print('[updater] GitHub API 请求超时')
+        return None, None
+    except Exception as e:
+        _last_resolve_error = f'获取更新信息失败: {e}'
+        print(f'[updater] _resolve_asset_url 异常: {e}')
         return None, None
 
 

@@ -744,7 +744,8 @@ def _download_and_install():
             ghproxy = os.environ.get('GHPROXY')
             url, remote_ver = updater._resolve_asset_url(ghproxy)
             if not url:
-                _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
+                err_detail = updater._last_resolve_error or '未知原因'
+                _push_progress(0, f'未找到安装包: {err_detail}')
                 _update_state['status'] = 'error'
                 return
             ext = '.dmg' if url.endswith('.dmg') else '.tar.gz'
