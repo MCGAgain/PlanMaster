@@ -596,22 +596,35 @@ def _push_progress(pct, msg=None):
 
 def _get_asset_download_url():
     api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
-    resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
+    try:
+        resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
+    except Exception as e:
+        print(f'[updater] GitHub API 请求失败: {e}')
+        return None, None
     if resp.status_code != 200:
+        print(f'[updater] GitHub API 返回 {resp.status_code}')
         return None, None
     data = resp.json()
     remote_ver = data.get('tag_name', '').lstrip('v')
     is_windows = platform.system() == 'Windows'
-    for asset in data.get('assets', []):
+    assets = data.get('assets', [])
+    print(f'[updater] release {remote_ver} 共 {len(assets)} 个 asset')
+    for asset in assets:
         name = asset.get('name', '')
+        print(f'[updater]   asset: {name}')
         if is_windows and name.endswith('.exe'):
             return asset['browser_download_url'], remote_ver
         if not is_windows and (name.endswith('.dmg') or name.endswith('.tar.gz')) and 'macOS' in name:
             return asset['browser_download_url'], remote_ver
+    print(f'[updater] 未找到匹配的 asset (is_windows={is_windows})')
     return None, remote_ver
 
 def _stream_download(url, dest_path):
-    resp = requests.get(url, stream=True, timeout=30, allow_redirects=True)
+    try:
+        resp = requests.get(url, stream=True, timeout=60, allow_redirects=True)
+    except Exception as e:
+        _push_progress(0, f'下载连接失败: {e}')
+        return False
     if resp.status_code != 200:
         _push_progress(0, f'下载失败 (HTTP {resp.status_code})')
         return False
@@ -628,6 +641,10 @@ def _stream_download(url, dest_path):
                 mb_done = downloaded / 1048576
                 mb_total = total / 1048576
                 _push_progress(pct, f'下载中 {mb_done:.1f}/{mb_total:.1f} MB ({pct}%)')
+        f.flush()
+        os.fsync(f.fileno())
+    actual_size = os.path.getsize(dest_path)
+    print(f'[updater] 下载完成: {dest_path} ({actual_size} bytes)')
     _push_progress(100, '下载完成')
     return True
 
@@ -639,8 +656,13 @@ def _install_and_restart():
 
     if is_windows:
         setup_path = os.path.join(tmpdir, 'PlanMaster-Setup.exe')
-        if not os.path.isfile(setup_path):
-            _push_progress(0, '安装包不存在')
+        # 等待文件落盘（最多 5 秒）
+        for _ in range(10):
+            if os.path.isfile(setup_path) and os.path.getsize(setup_path) > 1024:
+                break
+            time.sleep(0.5)
+        if not os.path.isfile(setup_path) or os.path.getsize(setup_path) <= 1024:
+            _push_progress(0, f'安装包不存在或不完整，请前往 GitHub 手动下载')
             _update_state['status'] = 'error'
             return
         _write_progress('正在启动安装程序...')

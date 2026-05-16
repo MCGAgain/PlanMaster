@@ -22,6 +22,173 @@
     --radius-lg: 24px;
     --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Dark theme overrides for dark backgrounds */
+body.theme-dark {
+    --glass-bg: rgba(0, 0, 0, 0.35);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --sidebar-glass: rgba(0, 0, 0, 0.3);
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --text: #e8e4f0;
+    --text-soft: #b8b0cc;
+    --text-muted: #8a82a0;
+}
+
+body.theme-dark .balance-card {
+    background: linear-gradient(135deg, rgba(124,110,240,.25), rgba(167,139,250,.2));
+    border-color: rgba(124,110,240,.3);
+}
+
+body.theme-dark .sidebar-header {
+    border-bottom-color: rgba(255,255,255,.1);
+}
+
+body.theme-dark .plan-card-actions {
+    border-top-color: rgba(255,255,255,.12);
+}
+
+body.theme-dark .modal-footer {
+    border-top-color: rgba(255,255,255,.12);
+}
+
+body.theme-dark .glass-card h3 {
+    background: linear-gradient(135deg, var(--text), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.theme-dark .page-header h2 {
+    background: linear-gradient(135deg, var(--text), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.theme-dark .sidebar-header h1 {
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.theme-dark .balance-value {
+    background: linear-gradient(135deg, #a78bfa, #c4b5fd);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.theme-dark .form-group input,
+body.theme-dark .form-group textarea,
+body.theme-dark .form-group select {
+    background: rgba(0,0,0,.3);
+    border-color: rgba(255,255,255,.15);
+    color: var(--text);
+}
+
+body.theme-dark .form-group input:focus,
+body.theme-dark .form-group textarea:focus,
+body.theme-dark .form-group select:focus {
+    background: rgba(0,0,0,.4);
+}
+
+body.theme-dark .range-item {
+    background: rgba(0,0,0,.25);
+    border-color: rgba(255,255,255,.12);
+}
+
+body.theme-dark .range-inputs input {
+    background: rgba(0,0,0,.3);
+    border-color: rgba(255,255,255,.15);
+    color: var(--text);
+}
+
+body.theme-dark .duration-row input {
+    background: rgba(0,0,0,.3);
+    border-color: rgba(255,255,255,.15);
+    color: var(--text);
+}
+
+body.theme-dark .test-result.success {
+    background: rgba(52,211,153,.15);
+    color: #6ee7b7;
+    border-color: rgba(52,211,153,.3);
+}
+
+body.theme-dark .test-result.error {
+    background: rgba(248,113,113,.12);
+    color: #fca5a5;
+    border-color: rgba(248,113,113,.3);
+}
+
+body.theme-dark .toast.error {
+    background: rgba(248,113,113,.2);
+    border-color: rgba(248,113,113,.4);
+    color: #fca5a5;
+}
+
+body.theme-dark .stat-item {
+    background: rgba(0,0,0,.25);
+    border-color: rgba(255,255,255,.1);
+}
+
+body.theme-dark .empty-state {
+    background: rgba(0,0,0,.2);
+    border-color: rgba(124,110,240,.15);
+}
+
+body.theme-dark .period-tab {
+    color: var(--text-soft);
+}
+
+body.theme-dark .stats-period-tabs {
+    background: rgba(0,0,0,.25);
+}
+
+body.theme-dark .legend-item {
+    background: rgba(0,0,0,.2);
+}
+
+body.theme-dark .focus-mode-btn {
+    background: rgba(0,0,0,.25);
+    border-color: rgba(255,255,255,.15);
+    color: var(--text-soft);
+}
+
+body.theme-dark .plan-progress-track {
+    background: rgba(124,110,240,.15);
+}
+
+body.theme-dark .category-progress-track {
+    background: rgba(124,110,240,.15);
+}
+
+body.theme-dark .modal-overlay {
+    background: rgba(0,0,0,.4);
+}
+
+body.theme-dark .bg-color-swatch {
+    border-color: rgba(255,255,255,.15);
+}
+
+/* Image background: add text shadows for readability */
+body.bg-image .plan-card-title,
+body.bg-image .plan-card-desc,
+body.bg-image .plan-card-reason,
+body.bg-image h2,
+body.bg-image h3,
+body.bg-image h4,
+body.bg-image .wish-info h4,
+body.bg-image .tx-note,
+body.bg-image .stat-label,
+body.bg-image .legend-name,
+body.bg-image label,
+body.bg-image .form-hint,
+body.bg-image small {
+    text-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow: hidden; height: 100vh; }
 

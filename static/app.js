@@ -890,14 +890,28 @@ async function loadBackground() {
     } catch (e) {}
 }
 
+function isColorDark(hex) {
+    if (!hex || !hex.startsWith('#')) return false;
+    const c = hex.replace('#', '');
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    // relative luminance
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum < 0.5;
+}
+
 function applyBgMode(mode, color, image) {
-    document.body.classList.remove('bg-solid', 'bg-image');
+    document.body.classList.remove('bg-solid', 'bg-image', 'theme-dark');
     if (mode === 'solid') {
         document.body.classList.add('bg-solid');
         document.body.style.backgroundColor = color;
         document.body.style.backgroundImage = '';
+        if (isColorDark(color)) {
+            document.body.classList.add('theme-dark');
+        }
     } else if (mode === 'image') {
-        document.body.classList.add('bg-image');
+        document.body.classList.add('bg-image', 'theme-dark');
         document.body.style.backgroundColor = '';
         if (image) {
             document.body.style.backgroundImage = `url(${image})`;
