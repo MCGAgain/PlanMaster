@@ -14,7 +14,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.15'
+CURRENT_VERSION = '1.4.16'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -409,8 +409,10 @@ def api_end_session(session_id):
             break
     if not session:
         return jsonify({'error': '会话不存在'}), 404
-    start = datetime.fromisoformat(session['start_time'])
-    end = datetime.fromisoformat(end_time)
+    def _parse_ts(ts):
+        return datetime.fromisoformat(ts.replace('Z', ''))
+    start = _parse_ts(session['start_time'])
+    end = _parse_ts(end_time)
     duration = (end - start).total_seconds()
     result = db.end_focus_session(session_id, end_time, duration)
     return jsonify(result)
@@ -680,7 +682,7 @@ def _install_and_restart():
             [setup_path, '/VERYSILENT', '/SUPPRESSMSGBOXES', '/FORCECLOSEAPPLICATIONS', '/RESTARTAPPLICATIONS'],
             cwd=tmpdir, close_fds=True
         )
-        db.close_stale_focus_sessions()
+        db.close_all_open_sessions()
         db.flush_and_close()
         time.sleep(0.5)
         os._exit(0)

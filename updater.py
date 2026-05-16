@@ -6,8 +6,11 @@ and suicide-hot-replacement via a detached shell script.
 
 import os
 import sys
+import sqlite3
 import subprocess
+import platform
 import requests
+from datetime import datetime
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 APP_NAME = 'PlanMaster'
@@ -16,6 +19,43 @@ PROGRESS_FILE = os.path.join(UPDATE_DIR, 'planmaster_update_progress.txt')
 ERR_LOG = os.path.join(UPDATE_DIR, 'planmaster_update.log')
 
 os.makedirs(UPDATE_DIR, exist_ok=True)
+
+
+def _close_open_sessions():
+    """Close all unfinished focus sessions before process exit.
+
+    Uses raw sqlite3 to avoid importing database.py (which may have
+    different import requirements). Closes every session with end_time IS NULL,
+    calculating duration from start_time to now.
+    """
+    try:
+        if getattr(sys, 'frozen', False):
+            if platform.system() == 'Windows':
+                data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'PlanMaster')
+            else:
+                data_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
+        else:
+            data_dir = os.path.dirname(os.path.abspath(__file__))
+        db_path = os.path.join(data_dir, 'todo.db')
+        if not os.path.isfile(db_path):
+            return
+        conn = sqlite3.connect(db_path, timeout=5)
+        now = datetime.now()
+        rows = conn.execute(
+            "SELECT id, start_time FROM focus_sessions WHERE end_time IS NULL"
+        ).fetchall()
+        for row in rows:
+            start = datetime.fromisoformat(row[1].replace('Z', ''))
+            end_time = now.isoformat()
+            duration = int((now - start).total_seconds())
+            conn.execute(
+                "UPDATE focus_sessions SET end_time=?, duration=? WHERE id=?",
+                (end_time, duration, row[0])
+            )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -320,4 +360,5 @@ def _spawn_and_exit(script_content):
         start_new_session=True,
         stdin=subprocess.DEVNULL,
     )
+    _close_open_sessions()
     os._exit(0)

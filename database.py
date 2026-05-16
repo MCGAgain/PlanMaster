@@ -35,6 +35,13 @@ def flush_and_close():
         pass
 
 
+def _parse_iso(ts):
+    """Parse ISO timestamp string, handling 'Z' suffix for Python 3.10 compat."""
+    if ts and ts.endswith('Z'):
+        ts = ts[:-1]
+    return datetime.fromisoformat(ts)
+
+
 def close_stale_focus_sessions(stale_seconds=14400):
     """Auto-close focus sessions that have been open longer than stale_seconds (default 4h).
 
@@ -48,7 +55,7 @@ def close_stale_focus_sessions(stale_seconds=14400):
             "SELECT id, start_time FROM focus_sessions WHERE end_time IS NULL"
         ).fetchall()
         for row in rows:
-            start = datetime.fromisoformat(row['start_time'])
+            start = _parse_iso(row['start_time'])
             if (now - start).total_seconds() > stale_seconds:
                 end_time = now.isoformat()
                 duration = (now - start).total_seconds()
@@ -56,6 +63,31 @@ def close_stale_focus_sessions(stale_seconds=14400):
                     "UPDATE focus_sessions SET end_time=?, duration=? WHERE id=?",
                     (end_time, int(duration), row['id'])
                 )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def close_all_open_sessions():
+    """Close ALL unfinished focus sessions immediately.
+
+    Used before app exit during updates to ensure no sessions are left open.
+    """
+    try:
+        conn = get_db()
+        now = datetime.now()
+        rows = conn.execute(
+            "SELECT id, start_time FROM focus_sessions WHERE end_time IS NULL"
+        ).fetchall()
+        for row in rows:
+            start = _parse_iso(row['start_time'])
+            end_time = now.isoformat()
+            duration = int((now - start).total_seconds())
+            conn.execute(
+                "UPDATE focus_sessions SET end_time=?, duration=? WHERE id=?",
+                (end_time, duration, row['id'])
+            )
         conn.commit()
         conn.close()
     except Exception:
