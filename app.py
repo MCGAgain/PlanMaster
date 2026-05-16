@@ -15,7 +15,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.5.2'
+CURRENT_VERSION = '1.5.3'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -831,9 +831,17 @@ def api_deepseek_balance():
         if resp.status_code != 200:
             return jsonify({'error': f'HTTP {resp.status_code}: {resp.text[:200]}'})
         data = resp.json()
+        balance_infos = data.get('balance_infos', [])
+        if balance_infos:
+            info = balance_infos[0]
+            balance_val = info.get('total_balance', '0')
+            currency_val = info.get('currency', 'CNY')
+        else:
+            balance_val = '0'
+            currency_val = 'CNY'
         return jsonify({
-            'balance': data.get('balance', '0'),
-            'currency': data.get('currency', 'CNY'),
+            'balance': balance_val,
+            'currency': currency_val,
             'is_available': data.get('is_available', True),
         })
     except requests.exceptions.ConnectionError:
