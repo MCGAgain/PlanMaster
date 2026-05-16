@@ -12,8 +12,9 @@ import requests
 from flask import Flask, render_template, request, jsonify
 import database as db
 import ai_service
+import updater
 
-CURRENT_VERSION = '1.4.2'
+CURRENT_VERSION = '1.4.3'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -528,7 +529,9 @@ p{font-size:13px;opacity:.5}
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
 _update_state = {'status': 'idle', 'percent': 0, 'message': ''}
-PROGRESS_FILE = os.path.join(tempfile.gettempdir(), 'planmaster_update_progress.txt')
+_update_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster', 'update')
+os.makedirs(_update_dir, exist_ok=True)
+PROGRESS_FILE = os.path.join(_update_dir, 'planmaster_update_progress.txt')
 
 @app.route('/api/version', methods=['GET'])
 def api_version():
@@ -591,7 +594,7 @@ def _get_asset_download_url():
         name = asset.get('name', '')
         if is_windows and name.endswith('.exe'):
             return asset['browser_download_url'], remote_ver
-        if not is_windows and name.endswith('.zip') and 'macOS' in name:
+        if not is_windows and (name.endswith('.dmg') or name.endswith('.tar.gz')) and 'macOS' in name:
             return asset['browser_download_url'], remote_ver
     return None, remote_ver
 
@@ -639,104 +642,61 @@ def _install_and_restart():
             _push_progress(0, 'macOS 更新仅支持打包版本')
             _update_state['status'] = 'error'
             return
-        zip_path = os.path.join(tmpdir, 'PlanMaster-macOS.zip')
-        if not os.path.isfile(zip_path):
+
+        # 查找已下载的更新包 (.dmg 或 .tar.gz)
+        archive_path = None
+        archive_format = None
+        for fmt, ext in [('dmg', '.dmg'), ('tar.gz', '.tar.gz')]:
+            candidate = os.path.join(tmpdir, f'PlanMaster-macOS{ext}')
+            if os.path.isfile(candidate):
+                archive_path = candidate
+                archive_format = fmt
+                break
+        if not archive_path:
             _push_progress(0, '安装包不存在')
             _update_state['status'] = 'error'
             return
-        app_path = os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
-        parent_pid = os.getpid()
-        script_path = os.path.join(tmpdir, 'update_planmaster.sh')
-        err_log = os.path.join(tmpdir, 'planmaster_update.log')
-        script_content = (
-            '#!/bin/bash\n'
-            'PROGRESS="{progress}"\n'
-            'ERR_LOG="{err_log}"\n'
-            'ZIP="{zip}"\n'
-            'APP="{app}"\n'
-            'PARENT_PID={parent_pid}\n'
-            'EXTRACT_DIR="{tmpdir}/pm_update_extract"\n'
-            'log() {{ echo "$(date "+%H:%M:%S") $1" > "$PROGRESS"; echo "$1" >> "$ERR_LOG"; }}\n'
-            'log "等待主程序退出..."\n'
-            'WAIT=0\n'
-            'while kill -0 "$PARENT_PID" 2>/dev/null && [ "$WAIT" -lt 15 ]; do\n'
-            '  sleep 0.5\n'
-            '  WAIT=$((WAIT + 1))\n'
-            'done\n'
-            'sleep 1\n'
-            'log "正在解压缩..."\n'
-            'rm -rf "$EXTRACT_DIR"\n'
-            'mkdir -p "$EXTRACT_DIR"\n'
-            'ditto -x -k "$ZIP" "$EXTRACT_DIR" 2>>"$ERR_LOG"\n'
-            'NEW_APP="$EXTRACT_DIR/PlanMaster.app"\n'
-            'if [ ! -d "$NEW_APP" ]; then\n'
-            '  FOUND=$(find "$EXTRACT_DIR" -maxdepth 2 -name "PlanMaster.app" -type d | head -1)\n'
-            '  if [ -n "$FOUND" ]; then\n'
-            '    NEW_APP="$FOUND"\n'
-            '  else\n'
-            '    log "错误: 解压后未找到 PlanMaster.app"\n'
-            '    exit 1\n'
-            '  fi\n'
-            'fi\n'
-            'log "正在替换应用（需要管理员权限）..."\n'
-            'cat > /tmp/pm_replace.scpt << ESCOPT\n'
-            'do shell script "rm -rf \'"$APP"\' && ditto \'"$NEW_APP"\' \'"$APP"\'" with administrator privileges\n'
-            'ESCOPT\n'
-            'osascript /tmp/pm_replace.scpt 2>>"$ERR_LOG"\n'
-            'RC=$?\n'
-            'rm -f /tmp/pm_replace.scpt\n'
-            'if [ $RC -ne 0 ]; then\n'
-            '  log "错误: 替换应用失败（权限不足或被拒绝）"\n'
-            '  exit 1\n'
-            'fi\n'
-            'if [ ! -d "$APP/Contents/MacOS" ]; then\n'
-            '  log "错误: 替换后应用结构异常"\n'
-            '  exit 1\n'
-            'fi\n'
-            'log "清理临时文件..."\n'
-            'rm -rf "$EXTRACT_DIR"\n'
-            'rm -f "$ZIP"\n'
-            'log "正在启动新版本..."\n'
-            'open "$APP"\n'
-            'sleep 2\n'
-            'rm -f "$PROGRESS"\n'
-        ).format(
-            progress=PROGRESS_FILE, err_log=err_log, zip=zip_path,
-            app=app_path, parent_pid=parent_pid, tmpdir=tmpdir
-        )
-        with open(script_path, 'w') as f:
-            f.write(script_content)
-        os.chmod(script_path, 0o755)
+
+        app_path = updater._detect_app_path()
+        if not app_path:
+            _push_progress(0, '无法定位应用路径')
+            _update_state['status'] = 'error'
+            return
+
         _write_progress('正在启动安装程序...')
-        log_path = os.path.join(tmpdir, 'planmaster_update_launcher.log')
-        with open(log_path, 'w') as log_f:
-            subprocess.Popen(
-                ['/bin/bash', script_path],
-                start_new_session=True,
-                stdin=subprocess.DEVNULL,
-                stdout=log_f,
-                stderr=log_f,
-                close_fds=True,
-            )
-        os._exit(0)
+        updater._spawn_and_exit(
+            updater._generate_install_script(app_path, archive_path, archive_format)
+        )
 
 def _download_and_install():
     try:
         _push_progress(-1, '正在获取更新信息...')
-        url, remote_ver = _get_asset_download_url()
-        if not url:
-            _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
-            _update_state['status'] = 'error'
-            return
-
-        tmpdir = tempfile.gettempdir()
         is_windows = platform.system() == 'Windows'
-        dest = os.path.join(tmpdir, 'PlanMaster-Setup.exe' if is_windows else 'PlanMaster-macOS.zip')
 
-        _push_progress(0, f'准备下载 v{remote_ver}...')
-        if not _stream_download(url, dest):
-            _update_state['status'] = 'error'
-            return
+        if is_windows:
+            url, remote_ver = _get_asset_download_url()
+            if not url:
+                _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
+                _update_state['status'] = 'error'
+                return
+            dest = os.path.join(tempfile.gettempdir(), 'PlanMaster-Setup.exe')
+            _push_progress(0, f'准备下载 v{remote_ver}...')
+            if not _stream_download(url, dest):
+                _update_state['status'] = 'error'
+                return
+        else:
+            ghproxy = os.environ.get('GHPROXY')
+            url, remote_ver = updater._resolve_asset_url(ghproxy)
+            if not url:
+                _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
+                _update_state['status'] = 'error'
+                return
+            ext = '.dmg' if url.endswith('.dmg') else '.tar.gz'
+            dest = os.path.join(tempfile.gettempdir(), f'PlanMaster-macOS{ext}')
+            _push_progress(0, f'准备下载 v{remote_ver}...')
+            if not updater._download_file(url, dest, on_progress=lambda pct, msg: _push_progress(pct, msg)):
+                _update_state['status'] = 'error'
+                return
 
         time.sleep(0.5)
         _install_and_restart()
