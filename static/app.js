@@ -44,6 +44,7 @@ function switchPage(page) {
         else if (page === 'transactions') { document.getElementById('page-transactions').classList.add('active'); loadTransactions(); }
         else if (page === 'recycle') { document.getElementById('page-recycle').classList.add('active'); loadRecycleBin(); }
         else if (page === 'settings') { document.getElementById('page-settings').classList.add('active'); loadSettings(); }
+        else if (page === 'apibalance') { document.getElementById('page-apibalance').classList.add('active'); loadApiBalance(); }
     }
 }
 
@@ -819,6 +820,65 @@ function renderTransactions(txs) {
     c.innerHTML = txs.map(tx => `
         <div class="tx-card"><div class="tx-info"><span class="tx-note">${esc(tx.note || tx.source)}</span><span class="tx-time">${fmtTime(tx.created_at)}</span></div>
         <span class="tx-amount ${tx.amount >= 0 ? 'positive' : 'negative'}">${tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(1)}</span></div>`).join('');
+}
+
+// ---- API Balance ----
+
+async function loadApiBalance() {
+    const container = document.getElementById('apibalanceContent');
+    container.innerHTML = '<div class="empty-state">加载中...</div>';
+    try {
+        const data = await api('/api/deepseek/balance');
+        if (data.supported === false) {
+            container.innerHTML = `
+                <div class="glass-card apibalance-unsupported">
+                    <div class="apibalance-unsupported-icon">&#9888;</div>
+                    <div class="apibalance-unsupported-title">功能不支持</div>
+                    <div class="apibalance-unsupported-desc">${esc(data.message)}</div>
+                    <div class="apibalance-unsupported-hint">请在 <strong>AI设置</strong> 中将 Base URL 切换为 DeepSeek 的 API 地址，例如：</div>
+                    <div class="apibalance-url-example">https://api.deepseek.com/v1</div>
+                </div>`;
+            return;
+        }
+        if (data.error) {
+            container.innerHTML = `
+                <div class="glass-card">
+                    <div class="apibalance-header">
+                        <span class="apibalance-title">DeepSeek API 余量</span>
+                    </div>
+                    <div class="apibalance-status apibalance-status-error">
+                        <span class="apibalance-status-icon">&#10060;</span>
+                        <span>获取失败：${esc(data.error)}</span>
+                    </div>
+                </div>`;
+            return;
+        }
+        const balanceClass = data.is_available ? 'balance-available' : 'balance-unavailable';
+        const statusText = data.is_available ? '可用' : '已用尽';
+        const balanceVal = parseFloat(data.balance).toFixed(4);
+        container.innerHTML = `
+            <div class="glass-card">
+                <div class="apibalance-header">
+                    <span class="apibalance-title">DeepSeek API 余量</span>
+                    <span class="apibalance-currency">${esc(data.currency)}</span>
+                </div>
+                <div class="apibalance-main">
+                    <div class="apibalance-amount-wrap">
+                        <span class="apibalance-currency-sign">&#165;</span>
+                        <span class="apibalance-amount ${balanceClass}">${balanceVal}</span>
+                    </div>
+                    <span class="apibalance-status apibalance-status-${data.is_available ? 'ok' : 'warn'}">${statusText}</span>
+                </div>
+            </div>`;
+    } catch (e) {
+        container.innerHTML = `
+            <div class="glass-card">
+                <div class="apibalance-status apibalance-status-error">
+                    <span class="apibalance-status-icon">&#10060;</span>
+                    <span>请求失败：${esc(e.message)}</span>
+                </div>
+            </div>`;
+    }
 }
 
 // ---- Settings ----

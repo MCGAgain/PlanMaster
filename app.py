@@ -10,11 +10,12 @@ import threading
 from datetime import datetime, date
 import requests
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from urllib.parse import urlparse
 import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.17'
+CURRENT_VERSION = '1.5.0'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -793,6 +794,48 @@ def api_update_status():
         'message': file_msg or _update_state['message'],
     })
 
+
+# ---- DeepSeek API Balance ----
+@app.route('/api/deepseek/balance', methods=['GET'])
+def api_deepseek_balance():
+    settings = db.get_ai_settings()
+    base_url = (settings.get('base_url') or '').strip()
+    api_key = (settings.get('api_key') or '').strip()
+    if not base_url or not api_key:
+        return jsonify({'supported': False, 'message': '请先在 AI设置 中配置 Base URL 和 API Key。'})
+    try:
+        parsed = urlparse(base_url)
+        host = parsed.hostname or ''
+    except Exception:
+        host = base_url
+    if 'deepseek' not in host.lower():
+        return jsonify({'supported': False, 'message': 'API余量功能仅支持 DeepSeek API。当前配置的 Base URL 不是 DeepSeek 地址。'})
+    url_path = parsed.path.rstrip('/')
+    if url_path.endswith('/v1'):
+        url_path = url_path[:-3]
+    balance_url = f'{parsed.scheme}://{parsed.netloc}{url_path}/user/balance'
+    headers = {'Authorization': f'Bearer {api_key}', 'Accept': 'application/json'}
+    try:
+        extra = json.loads(settings.get('extra_headers', '{}') or '{}')
+        headers.update(extra)
+    except (json.JSONDecodeError, TypeError):
+        pass
+    try:
+        resp = requests.get(balance_url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return jsonify({'error': f'HTTP {resp.status_code}: {resp.text[:200]}'})
+        data = resp.json()
+        return jsonify({
+            'balance': data.get('balance', '0'),
+            'currency': data.get('currency', 'CNY'),
+            'is_available': data.get('is_available', True),
+        })
+    except requests.exceptions.ConnectionError:
+        return jsonify({'error': '无法连接到 DeepSeek API'})
+    except requests.exceptions.Timeout:
+        return jsonify({'error': '请求超时'})
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
     port = 8080
