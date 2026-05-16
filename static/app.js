@@ -132,7 +132,7 @@ function updatePlanCardFocusBtn() {
     if (card) {
         const btn = card.querySelector('.focus-btn');
         if (btn) {
-            btn.textContent = fmtHMS(focusElapsed).substring(3);
+            btn.textContent = focusElapsed >= 3600 ? fmtHMS(focusElapsed) : fmtHMS(focusElapsed).substring(3);
             btn.classList.add('focusing');
         }
     }

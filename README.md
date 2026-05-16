@@ -1,4 +1,4 @@
-# PlanMaster v1.4.13 - 计划管理与心愿兑换系统
+# PlanMaster v1.4.14 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -502,6 +502,7 @@ pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "te
 
 ## 版本历史
 
+- v1.4.14: 修复专注按钮计时超过1小时后显示重置的bug
 - v1.4.13: 修复 Windows 更新前数据库 WAL 未 checkpoint 导致数据丢失风险
 - v1.4.12: 计划卡片标签独立成行，避免竖屏下标题被挤压
 - v1.4.11: 专注按钮改为 toggle 逻辑 (点击开始/再点停止并记录)
