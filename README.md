@@ -1,4 +1,4 @@
-# PlanMaster v1.5.4 - 计划管理与心愿兑换系统
+# PlanMaster v1.6.1 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -91,9 +91,10 @@ python app.py
 | name | TEXT | 心愿名称 |
 | real_price | REAL | 真实价格 (元) |
 | virtual_cost | REAL | 兑换所需虚拟价值 (小数点后1位) |
-| redeemed | INTEGER | 是否已兑换 0/1 |
+| quantity | INTEGER | 兑换数量 (NULL=无限，正整数=有限次数) |
+| redeemed | INTEGER | 是否已兑换 0/1 (旧数据兼容，新版不再使用) |
 | created_at | TIMESTAMP | 创建时间 |
-| redeemed_at | TIMESTAMP | 兑换时间 |
+| redeemed_at | TIMESTAMP | 兑换时间 (旧数据兼容，新版不再使用) |
 
 ### transactions 表 - 虚拟价值流水
 
@@ -181,12 +182,16 @@ python app.py
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/wishes` | 获取心愿列表 (含已兑换) |
-| POST | `/api/wishes` | 创建心愿 (自动 AI 评估价值) |
-| POST | `/api/wishes/{id}/redeem` | 兑换心愿 (校验余额) |
+| GET | `/api/wishes` | 获取心愿列表 |
+| POST | `/api/wishes` | 创建心愿 (支持 quantity 参数，null=无限，正整数=有限次数) |
+| PUT | `/api/wishes/{id}` | 编辑心愿 (名称/价格/虚拟价值/数量) |
+| POST | `/api/wishes/{id}/redeem` | 兑换心愿 (校验余额，有限数量自动递减/删除) |
 | DELETE | `/api/wishes/{id}` | 删除心愿 |
 
-**兑换逻辑**: 余额 ≥ 虚拟价值时允许兑换，生成负数流水。
+**兑换逻辑**:
+- 无限心愿 (`quantity=null`): 可反复兑换，不删除
+- 有限心愿 (`quantity=N`): 每次兑换后数量减 1，减到 0 自动删除
+- 余额 ≥ 虚拟价值时允许兑换，生成负数流水
 
 ### 余额与流水 API
 
@@ -296,9 +301,10 @@ python app.py
 | `update_plan_ai(plan_id, priority, virtual_value)` | AI 排序后批量更新 |
 | `get_ai_settings()` / `update_ai_settings()` | AI 配置读写 |
 | `get_wishes(include_redeemed)` | 获取心愿列表 |
-| `create_wish(name, real_price, virtual_cost)` | 创建心愿 |
+| `create_wish(name, real_price, virtual_cost, quantity)` | 创建心愿 (quantity: None=无限, 正整数=有限) |
+| `update_wish(wish_id, name, real_price, virtual_cost, quantity)` | 编辑心愿 (仅更新非 None 字段) |
 | `delete_wish(wish_id)` | 删除心愿 |
-| `redeem_wish(wish_id)` | 兑换心愿 (事务: 校验余额 + 更新状态 + 生成流水) |
+| `redeem_wish(wish_id)` | 兑换心愿 (事务: 校验余额 + 生成流水 + 递减数量/自动删除) |
 | `get_balance_val(conn)` | 计算余额 (SUM transactions) |
 | `get_balance()` | 获取余额 |
 | `reset_balance()` | 清零余额 (生成负数流水) |
@@ -444,7 +450,8 @@ aiSortPlans() → api POST /api/plans/sort → loadPlans()
 
 updateProgress(id, val) → api PUT /api/plans/{id} (progress field)
 
-saveWish()      → api POST /api/wishes
+saveWish()      → api POST /api/wishes (新建) 或 PUT /api/wishes/{id} (编辑)
+editWishFromBtn(btn) → showEditWishModal()
 redeemWish(id)  → api POST /api/wishes/{id}/redeem → loadWishes() + loadBalance()
 resetBalance()  → api POST /api/balance/reset → loadBalance()
 
@@ -511,6 +518,8 @@ pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "te
 
 ## 版本历史
 
+- v1.6.1: 修复旧版已兑换心愿无法删除的问题，数据库迁移时自动清理旧 redeemed 心愿，已兑换心愿也显示删除按钮
+- v1.6.0: 心愿兑换支持数量管理 (有限/无限) 和编辑功能；有限数量心愿兑换后自动递减，用完自动删除；新增 PUT 编辑心愿 API
 - v1.5.4: 改善更新检查错误提示，区分网络超时/连接失败/API错误并显示具体原因
 - v1.5.3: 修复 API 余额显示为 0 的问题 (DeepSeek balance_infos 结构解析)
 - v1.5.2: 统计页面添加清除专注时长按钮；优化时长显示，超过24小时显示为"X天Y小时Z分钟"
