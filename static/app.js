@@ -488,15 +488,13 @@ function renderPlans(plans) {
                 </div>
             </div>
             <div class="plan-card-body">
-                <div class="plan-card-header">
-                    <div class="plan-card-title">${esc(p.title)}${planDateLabel(p.plan_type) ? `<span class="plan-date-label">${planDateLabel(p.plan_type)}</span>` : ''}</div>
-                    <div class="plan-card-meta">
-                        <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
-                        ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>
-                        <button class="btn timer-btn${timers[p.id] ? ' counting' : ''}" data-id="${p.id}" data-time="${esc(p.suggested_time)}" onclick="toggleTimer(this.dataset.id,this.dataset.time)">${timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始'}</button>` : ''}
-                        <button class="btn focus-btn btn-sm${activeFocusSession && activeFocusSession.plan_id === p.id ? ' focusing' : ''}" onclick="toggleFocus(${p.id})">${activeFocusSession && activeFocusSession.plan_id === p.id ? '&#9632; 停止' : '&#9654; 专注'}</button>
-                        ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
-                    </div>
+                <div class="plan-card-title">${esc(p.title)}${planDateLabel(p.plan_type) ? `<span class="plan-date-label">${planDateLabel(p.plan_type)}</span>` : ''}</div>
+                <div class="plan-card-meta">
+                    <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
+                    ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>
+                    <button class="btn timer-btn${timers[p.id] ? ' counting' : ''}" data-id="${p.id}" data-time="${esc(p.suggested_time)}" onclick="toggleTimer(this.dataset.id,this.dataset.time)">${timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始'}</button>` : ''}
+                    <button class="btn focus-btn btn-sm${activeFocusSession && activeFocusSession.plan_id === p.id ? ' focusing' : ''}" onclick="toggleFocus(${p.id})">${activeFocusSession && activeFocusSession.plan_id === p.id ? '&#9632; 停止' : '&#9654; 专注'}</button>
+                    ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
                 </div>
                 ${p.description ? `<div class="plan-card-desc">${esc(p.description)}</div>` : ''}
                 ${p.ai_reason ? `<div class="plan-card-reason">AI: ${esc(p.ai_reason)}</div>` : ''}
@@ -655,12 +653,10 @@ function renderRecycleBin(plans) {
                 <input type="checkbox" class="recycle-checkbox" value="${p.id}">
             </label>
             <div class="plan-card-body">
-                <div class="plan-card-header">
-                    <div class="plan-card-title">${esc(p.title)}</div>
-                    <div class="plan-card-meta">
-                        <span class="plan-type-tag" style="background:${color}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
-                        ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
-                    </div>
+                <div class="plan-card-title">${esc(p.title)}</div>
+                <div class="plan-card-meta">
+                    <span class="plan-type-tag" style="background:${color}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
+                    ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
                 </div>
                 ${p.description ? `<div class="plan-card-desc">${esc(p.description)}</div>` : ''}
                 <div class="recycle-info">完成于 ${fmtTime(p.completed_at)}</div>
@@ -1124,11 +1120,10 @@ function renderCheckins(items) {
         <div class="plan-card" data-id="${item.id}">
             <div class="checkin-icon">${item.checked_today ? '&#9989;' : '&#9744;'}</div>
             <div class="plan-card-body">
-                <div class="plan-card-header">
-                    <div class="plan-card-title">${esc(item.name)}
-                        <span class="plan-badge badge-checkin-streak">连续 ${item.streak} 天</span>
-                        ${item.current_value > 0 ? `<span class="plan-badge badge-checkin-value">${item.current_value} 价值</span>` : ''}
-                    </div>
+                <div class="plan-card-title">${esc(item.name)}</div>
+                <div class="plan-card-meta">
+                    <span class="plan-badge badge-checkin-streak">连续 ${item.streak} 天</span>
+                    ${item.current_value > 0 ? `<span class="plan-badge badge-checkin-value">${item.current_value} 价值</span>` : ''}
                 </div>
                 <div class="plan-progress">
                     <div class="plan-progress-track">
