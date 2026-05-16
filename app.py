@@ -14,7 +14,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.10'
+CURRENT_VERSION = '1.4.11'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""

@@ -237,20 +237,22 @@ async function restoreFocusSession() {
     } catch (e) {}
 }
 
-async function startFocus(planId) {
-    if (activeFocusSession) {
+async function toggleFocus(planId) {
+    if (activeFocusSession && activeFocusSession.plan_id === planId) {
         await stopFocus();
+    } else {
+        if (activeFocusSession) await stopFocus();
+        try {
+            const session = await api('/api/sessions', {
+                method: 'POST',
+                body: JSON.stringify({ plan_id: planId, start_time: new Date().toISOString() })
+            });
+            activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date(session.start_time), interval: null };
+            activeFocusSession.interval = setInterval(() => updateFocusCardDisplay(), 1000);
+            updateFocusCardDisplay();
+            toast('专注已开始');
+        } catch (e) { toast('启动失败: ' + e.message, true); }
     }
-    try {
-        const session = await api('/api/sessions', {
-            method: 'POST',
-            body: JSON.stringify({ plan_id: planId, start_time: new Date().toISOString() })
-        });
-        activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date(session.start_time), interval: null };
-        activeFocusSession.interval = setInterval(() => updateFocusCardDisplay(), 1000);
-        updateFocusCardDisplay();
-        toast('专注已开始');
-    } catch (e) { toast('启动失败: ' + e.message, true); }
 }
 
 async function stopFocus() {
@@ -274,7 +276,7 @@ function updateFocusCardDisplay() {
     if (card) {
         const btn = card.querySelector('.focus-btn');
         if (btn) {
-            btn.textContent = fmtHMS(elapsed).substring(3);
+            btn.innerHTML = '&#9632; ' + fmtHMS(elapsed).substring(3);
             btn.classList.add('focusing');
         }
     }
@@ -492,7 +494,7 @@ function renderPlans(plans) {
                         <span class="plan-type-tag" style="background:${PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0'}">${PLAN_TYPE_LABELS[p.plan_type] || p.plan_type}</span>
                         ${p.suggested_time ? `<span class="plan-badge badge-time">&#128336; ${esc(p.suggested_time)}</span>
                         <button class="btn timer-btn${timers[p.id] ? ' counting' : ''}" data-id="${p.id}" data-time="${esc(p.suggested_time)}" onclick="toggleTimer(this.dataset.id,this.dataset.time)">${timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始'}</button>` : ''}
-                        <button class="btn focus-btn btn-sm${activeFocusSession && activeFocusSession.plan_id === p.id ? ' focusing' : ''}" onclick="${activeFocusSession && activeFocusSession.plan_id === p.id ? 'stopFocus()' : 'startFocus(' + p.id + ')'}">${activeFocusSession && activeFocusSession.plan_id === p.id ? '...' : '&#9654; 专注'}</button>
+                        <button class="btn focus-btn btn-sm${activeFocusSession && activeFocusSession.plan_id === p.id ? ' focusing' : ''}" onclick="toggleFocus(${p.id})">${activeFocusSession && activeFocusSession.plan_id === p.id ? '&#9632; 停止' : '&#9654; 专注'}</button>
                         ${p.virtual_value > 0 ? `<span class="plan-badge badge-value">${p.virtual_value} 价值</span>` : ''}
                     </div>
                 </div>
