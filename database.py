@@ -750,6 +750,13 @@ def delete_focus_session(session_id):
     conn.close()
 
 
+def delete_all_focus_sessions():
+    conn = get_db()
+    conn.execute("DELETE FROM focus_sessions")
+    conn.commit()
+    conn.close()
+
+
 def get_cumulative_stats():
     conn = get_db()
     row = conn.execute(

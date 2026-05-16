@@ -15,7 +15,7 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.5.1'
+CURRENT_VERSION = '1.5.2'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -447,6 +447,12 @@ def api_delete_session(session_id):
 @app.route('/api/stats/cumulative', methods=['GET'])
 def api_stats_cumulative():
     return jsonify(db.get_cumulative_stats())
+
+
+@app.route('/api/stats/clear', methods=['DELETE'])
+def api_clear_focus_sessions():
+    db.delete_all_focus_sessions()
+    return jsonify({'ok': True})
 
 
 @app.route('/api/stats/daily', methods=['GET'])

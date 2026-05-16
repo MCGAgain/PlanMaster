@@ -1309,11 +1309,12 @@ const CHART_COLORS = [
 ];
 
 function fmtDuration(seconds) {
-    if (!seconds || seconds <= 0) return '0小时0分钟';
-    const h = Math.floor(seconds / 3600);
+    if (!seconds || seconds <= 0) return '0分钟';
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0 && m > 0) return h + '小时' + m + '分钟';
-    if (h > 0) return h + '小时';
+    if (d > 0) return d + '天' + h + '小时' + m + '分钟';
+    if (h > 0) return h + '小时' + m + '分钟';
     return m + '分钟';
 }
 
@@ -1353,6 +1354,15 @@ async function loadCumulativeStats() {
         if (d.first_date) sinceEl.textContent = '自 ' + d.first_date + ' 起';
         else sinceEl.textContent = '';
     } catch (e) {}
+}
+
+async function clearFocusSessions() {
+    if (!confirm('确定要清除所有专注记录吗？此操作不可撤销。')) return;
+    try {
+        await api('/api/stats/clear', {method: 'DELETE'});
+        toast('专注记录已清除');
+        loadStatsPage();
+    } catch (e) { toast('清除失败: ' + e.message, true); }
 }
 
 async function loadDailyStats() {
