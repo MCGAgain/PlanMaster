@@ -809,7 +809,7 @@ async function loadSettings() {
         document.getElementById('bgImagePanel').style.display = bgMode === 'image' ? 'block' : 'none';
         document.querySelectorAll('.bg-color-swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.color === bgColor));
         if (bgImage) {
-            document.getElementById('bgPreviewImg').src = bgImage;
+            document.getElementById('bgPreviewImg').src = bgImageUrl(bgImage);
             document.getElementById('bgImagePreview').style.display = 'block';
         }
         document.getElementById('setYearlyMin').value = s.yearly_min || 20;
@@ -863,11 +863,16 @@ async function loadVersion() {
 
 // ---- Background ----
 
+function bgImageUrl(path) {
+    if (!path) return '';
+    return path.replace('/static/bg_custom/', '/api/background/custom/');
+}
+
 async function loadBackground() {
     try {
         const s = await api('/api/settings');
         const mode = s.bg_mode || 'orb';
-        applyBgMode(mode, s.bg_solid_color || '#f0eef8', s.bg_image || '');
+        applyBgMode(mode, s.bg_solid_color || '#f0eef8', bgImageUrl(s.bg_image));
     } catch (e) {}
 }
 
@@ -925,10 +930,11 @@ function resetBgImage() {
 
 async function saveBgSettings() {
     const mode = document.querySelector('.bg-mode-btn.active')?.dataset.mode || 'orb';
-    const color = document.querySelector('.bg-color-swatch.active')?.dataset.color || '#f0eef8';
-    let imagePath = '';
+    const payload = { bg_mode: mode };
 
-    if (mode === 'image') {
+    if (mode === 'solid') {
+        payload.bg_solid_color = document.querySelector('.bg-color-swatch.active')?.dataset.color || '#f0eef8';
+    } else if (mode === 'image') {
         const fileInput = document.getElementById('bgFileInput');
         if (fileInput.files && fileInput.files[0]) {
             const formData = new FormData();
@@ -936,18 +942,21 @@ async function saveBgSettings() {
             try {
                 const d = await fetch('/api/background/upload', { method: 'POST', body: formData }).then(r => r.json());
                 if (d.error) { toast('上传失败: ' + d.error, true); return; }
-                imagePath = d.path;
+                payload.bg_image = d.path;
             } catch (e) { toast('上传失败: ' + e.message, true); return; }
         } else {
-            imagePath = document.getElementById('bgPreviewImg').src || '';
-            if (imagePath.startsWith('data:')) imagePath = '';
+            let existing = document.getElementById('bgPreviewImg').src || '';
+            if (existing.startsWith('data:')) existing = '';
+            if (existing) {
+                const idx = existing.indexOf('/api/background/custom/');
+                if (idx !== -1) payload.bg_image = '/static/bg_custom/' + existing.substring(idx + '/api/background/custom/'.length);
+                else payload.bg_image = existing;
+            }
         }
     }
 
     try {
-        await api('/api/settings', { method: 'PUT', body: JSON.stringify({
-            bg_mode: mode, bg_solid_color: color, bg_image: imagePath
-        })});
+        await api('/api/settings', { method: 'PUT', body: JSON.stringify(payload) });
         toast('背景设置已保存');
     } catch (e) { toast('保存失败: ' + e.message, true); }
 }

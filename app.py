@@ -9,12 +9,12 @@ import webbrowser
 import threading
 from datetime import datetime, date
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.4.7'
+CURRENT_VERSION = '1.4.8'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -491,6 +491,12 @@ def api_upload_background():
     filepath = os.path.join(bg_dir, filename)
     file.save(filepath)
     return jsonify({'path': f'/static/bg_custom/{filename}'})
+
+
+@app.route('/api/background/custom/<filename>')
+def api_get_custom_bg(filename):
+    bg_dir = os.path.join(_user_dir, 'static', 'bg_custom')
+    return send_from_directory(bg_dir, filename)
 
 
 def start_flask(port):
