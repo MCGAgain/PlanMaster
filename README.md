@@ -1,4 +1,4 @@
-# PlanMaster v1.4.14 - 计划管理与心愿兑换系统
+# PlanMaster v1.5.4 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -227,6 +227,13 @@ python app.py
 | GET | `/api/stats/daily?date=YYYY-MM-DD` | 获取某日统计 |
 | GET | `/api/stats/distribution?period=day\|week\|month&date=YYYY-MM-DD` | 获取分类时长分布 |
 | GET | `/api/stats/monthly?month=YYYY-MM` | 获取月度每日统计 |
+| DELETE | `/api/stats/clear` | 清除所有专注记录 |
+
+### API 余量 API
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/deepseek/balance` | 获取 DeepSeek 账户余额 (需配置 API Key) |
 
 ### 更新 API
 
@@ -299,6 +306,7 @@ python app.py
 | `get_settings()` / `update_settings()` | 系统设置读写 |
 | `get_signatures()` | 获取所有签名 |
 | `save_signatures(contents)` | 清空并重新保存签名列表 |
+| `delete_all_focus_sessions()` | 清除所有专注记录 |
 
 ## 前端设计
 
@@ -314,10 +322,11 @@ python app.py
 5. **年计划** (`yearly`) - 计划页面，plan_type=yearly
 6. **锁机模式** (`focus`) - 专注锁定 (占位)
 7. **统计数据** (`stats`) - 专注统计 (累计/每日/饼图/柱状图)
-8. **心愿兑换单** (`wishes`) - 心愿管理
-9. **价值流水** (`transactions`) - 流水记录
-10. **回收站** (`recycle`) - 已完成计划 (可恢复/永久删除)
-11. **AI设置** (`settings`) - AI 配置 + 价值范围 + 数据管理
+8. **API 余量** (`apibalance`) - DeepSeek 账户余额查看
+9. **心愿兑换单** (`wishes`) - 心愿管理
+10. **价值流水** (`transactions`) - 流水记录
+11. **回收站** (`recycle`) - 已完成计划 (可恢复/永久删除)
+12. **AI设置** (`settings`) - AI 配置 + 价值范围 + 数据管理
 
 **计划页面共享同一个 DOM 容器** (`#page-plans`)，通过 `currentPage` 状态变量区分。
 
@@ -502,6 +511,13 @@ pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "te
 
 ## 版本历史
 
+- v1.5.4: 改善更新检查错误提示，区分网络超时/连接失败/API错误并显示具体原因
+- v1.5.3: 修复 API 余额显示为 0 的问题 (DeepSeek balance_infos 结构解析)
+- v1.5.2: 统计页面添加清除专注时长按钮；优化时长显示，超过24小时显示为"X天Y小时Z分钟"
+- v1.5.1: 新增 API 余量页面，支持查看 DeepSeek 账户余额，含进度条和信息卡片
+- v1.4.17: 修复更新后专注时长异常增加（第二轮修复）
+- v1.4.16: 修复更新版本后专注时长异常增加的 bug
+- v1.4.15: 修复更新版本后专注时长异常增加的 bug
 - v1.4.14: 修复专注按钮计时超过1小时后显示重置的bug
 - v1.4.13: 修复 Windows 更新前数据库 WAL 未 checkpoint 导致数据丢失风险
 - v1.4.12: 计划卡片标签独立成行，避免竖屏下标题被挤压
