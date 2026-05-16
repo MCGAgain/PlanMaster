@@ -36,7 +36,10 @@ def _read_version_from_file(path):
 
 if getattr(sys, 'frozen', False):
     base_dir = sys._MEIPASS
-    _user_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
+    if platform.system() == 'Windows':
+        _user_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'PlanMaster')
+    else:
+        _user_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
     os.makedirs(_user_dir, exist_ok=True)
 else:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -535,7 +538,10 @@ p{font-size:13px;opacity:.5}
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 GITHUB_BRANCH = 'main'
 _update_state = {'status': 'idle', 'percent': 0, 'message': ''}
-_update_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster', 'update')
+if platform.system() == 'Windows':
+    _update_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'PlanMaster', 'update')
+else:
+    _update_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster', 'update')
 os.makedirs(_update_dir, exist_ok=True)
 PROGRESS_FILE = os.path.join(_update_dir, 'planmaster_update_progress.txt')
 

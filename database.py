@@ -3,10 +3,14 @@ import os
 import sys
 import math
 import re
+import platform
 from datetime import datetime, date, timedelta
 
 if getattr(sys, 'frozen', False):
-    _data_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
+    if platform.system() == 'Windows':
+        _data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'PlanMaster')
+    else:
+        _data_dir = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster')
     os.makedirs(_data_dir, exist_ok=True)
     DB_PATH = os.path.join(_data_dir, 'todo.db')
 else:
