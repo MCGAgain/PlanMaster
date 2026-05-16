@@ -770,8 +770,8 @@ function renderWishes(wishes, bal) {
                 <div class="wish-meta">${w.real_price > 0 ? '¥' + w.real_price : ''}${w.redeemed ? ' · 已兑换' : ''} · ${qtyText}</div></div>
             <div class="wish-actions"><span class="wish-cost">${w.virtual_cost}</span>
                 ${!w.redeemed ? `<button class="btn btn-success btn-sm" onclick="redeemWish(${w.id})" ${!canRedeem || bal < w.virtual_cost ? 'disabled' : ''}>兑换</button>
-                <button class="btn btn-glass btn-sm" data-wish='${encodeURIComponent(JSON.stringify(w))}' onclick="editWishFromBtn(this)">编辑</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteWish(${w.id})">删除</button>` : ''}</div>
+                <button class="btn btn-glass btn-sm" data-wish='${encodeURIComponent(JSON.stringify(w))}' onclick="editWishFromBtn(this)">编辑</button>` : ''}
+                <button class="btn btn-danger btn-sm" onclick="deleteWish(${w.id})">删除</button></div>
         </div>`;
     }).join('');
 }

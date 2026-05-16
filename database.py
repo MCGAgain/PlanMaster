@@ -198,6 +198,9 @@ def init_db():
     except sqlite3.OperationalError:
         conn.execute("ALTER TABLE wishes ADD COLUMN quantity INTEGER DEFAULT NULL")
 
+    # Migration: clean up old redeemed wishes (pre-1.6.0 leftovers)
+    conn.execute("DELETE FROM wishes WHERE redeemed=1")
+
     defaults = {
         'weekly_min': '1', 'weekly_max': '10',
         'monthly_min': '10', 'monthly_max': '20',
