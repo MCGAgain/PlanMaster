@@ -385,6 +385,11 @@ function stopTimer(id) {
     if (!timers[id]) return;
     clearInterval(timers[id].interval);
     delete timers[id];
+    const card = document.querySelector(`.plan-card[data-id="${id}"]`);
+    if (card) {
+        const btn = card.querySelector('.timer-btn');
+        if (btn) { btn.textContent = '开始'; btn.classList.remove('counting'); }
+    }
 }
 
 function toggleTimer(id, timeStr) {
@@ -649,12 +654,14 @@ async function savePlan() {
 async function deletePlan(id) {
     if (!confirm('确定删除此计划？')) return;
     stopTimer(id);
+    if (activeFocusSession && activeFocusSession.plan_id === id) await stopFocus();
     try { await api('/api/plans/' + id, { method: 'DELETE' }); toast('计划已删除'); loadPlans(); }
     catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
 async function completePlan(id) {
     stopTimer(id);
+    if (activeFocusSession && activeFocusSession.plan_id === id) await stopFocus();
     try {
         await api('/api/plans/' + id + '/complete', { method: 'POST' });
         toast('计划已完成，虚拟价值已入账！'); loadPlans(); loadBalance();
