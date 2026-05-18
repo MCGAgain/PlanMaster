@@ -310,22 +310,29 @@ function updateFocusCardDisplay() {
     }
 }
 
-function api(url, opts = {}) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open(opts.method || 'GET', url);
-        xhr.timeout = 30000;
-        if (opts.body) xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.onload = () => {
-            let d;
-            try { d = JSON.parse(xhr.responseText); } catch (_) { d = {}; }
-            if (xhr.status >= 200 && xhr.status < 300) resolve(d);
-            else reject(new Error(d.error || '请求失败'));
-        };
-        xhr.onerror = () => reject(new Error('网络错误'));
-        xhr.ontimeout = () => reject(new Error('请求超时'));
-        xhr.send(opts.body || null);
-    });
+async function api(url, opts = {}) {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 30000);
+    try {
+        const headers = {};
+        if (opts.body) headers['Content-Type'] = 'application/json';
+        const res = await fetch(url, {
+            method: opts.method || 'GET',
+            headers,
+            body: opts.body || undefined,
+            signal: controller.signal,
+        });
+        clearTimeout(tid);
+        let d;
+        try { d = await res.json(); } catch (_) { d = {}; }
+        if (res.ok) return d;
+        throw new Error(d.error || '请求失败');
+    } catch (e) {
+        clearTimeout(tid);
+        if (e.name === 'AbortError') throw new Error('请求超时');
+        if (e.message === '请求失败') throw e;
+        throw new Error('网络错误');
+    }
 }
 
 function toast(msg, err = false) {
@@ -624,22 +631,20 @@ async function loadPlans() {
         const active = await api('/api/plans?type=' + currentPage);
         renderPlans(active);
         try {
-            const all = await api('/api/plans/all?type=' + currentPage);
-            updateCategoryProgress(all);
+            const progress = await api('/api/plans/progress?type=' + currentPage);
+            updateCategoryProgress(progress);
         } catch (_) {
-            updateCategoryProgress(active);
+            updateCategoryProgress({ completed: 0, total: 0, percentage: 0 });
         }
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
 
-function updateCategoryProgress(plans) {
+function updateCategoryProgress(progress) {
     const bar = document.getElementById('categoryProgressBar');
     const txt = document.getElementById('categoryProgressText');
-    if (!plans.length) { bar.style.width = '0%'; txt.textContent = '0%'; return; }
-    const completed = plans.filter(p => p.completed).length;
-    const pct = Math.round((completed / plans.length) * 100);
-    bar.style.width = pct + '%';
-    txt.textContent = pct + '%';
+    const { completed, total, percentage } = progress;
+    bar.style.width = percentage + '%';
+    txt.textContent = percentage + '%';
 }
 
 function renderPlans(plans) {
@@ -732,8 +737,8 @@ async function updateProgress(id, val) {
 
 async function refreshCategoryProgress() {
     try {
-        const plans = await api('/api/plans/all?type=' + currentPage);
-        updateCategoryProgress(plans);
+        const progress = await api('/api/plans/progress?type=' + currentPage);
+        updateCategoryProgress(progress);
     } catch (e) {}
 }
 
