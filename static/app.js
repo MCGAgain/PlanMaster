@@ -310,14 +310,22 @@ function updateFocusCardDisplay() {
     }
 }
 
-async function api(url, opts = {}) {
-    const headers = {};
-    if (opts.body) headers['Content-Type'] = 'application/json';
-    const r = await fetch(url, { headers, ...opts });
-    let d;
-    try { d = await r.json(); } catch (_) { d = {}; }
-    if (!r.ok) throw new Error(d.error || '请求失败');
-    return d;
+function api(url, opts = {}) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(opts.method || 'GET', url);
+        xhr.timeout = 30000;
+        if (opts.body) xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onload = () => {
+            let d;
+            try { d = JSON.parse(xhr.responseText); } catch (_) { d = {}; }
+            if (xhr.status >= 200 && xhr.status < 300) resolve(d);
+            else reject(new Error(d.error || '请求失败'));
+        };
+        xhr.onerror = () => reject(new Error('网络错误'));
+        xhr.ontimeout = () => reject(new Error('请求超时'));
+        xhr.send(opts.body || null);
+    });
 }
 
 function toast(msg, err = false) {
