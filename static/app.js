@@ -720,7 +720,15 @@ function previewProgress(input) {
 
 async function updateProgress(id, val) {
     const v = parseInt(val);
-    if (v >= 100) stopTimer(id);
+    if (v >= 100) {
+        stopTimer(id);
+        if (activeFocusSession && activeFocusSession.plan_id === id) await stopFocus();
+        try {
+            await api('/api/plans/' + id + '/complete', { method: 'POST' });
+            toast('计划已完成，虚拟价值已入账！'); loadPlans(); loadBalance();
+        } catch (e) { toast('更新失败: ' + e.message, true); }
+        return;
+    }
     try {
         await api('/api/plans/' + id, { method: 'PUT', body: JSON.stringify({ progress: v }) });
         // Update SVG ring on this card only

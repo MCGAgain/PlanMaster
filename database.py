@@ -5,7 +5,7 @@ import math
 import re
 import platform
 from contextlib import contextmanager
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 if getattr(sys, 'frozen', False):
     if platform.system() == 'Windows':
@@ -327,6 +327,18 @@ def update_plan(plan_id, title=None, description=None, priority=None, virtual_va
         if suggested_time is not None:
             conn.execute("UPDATE plans SET suggested_time=? WHERE id=?", (suggested_time, plan_id))
         conn.commit()
+
+        # Auto-complete when progress reaches 100%
+        if progress is not None and int(progress) >= 100:
+            row = conn.execute("SELECT * FROM plans WHERE id=? AND completed=0", (plan_id,)).fetchone()
+            if row:
+                now = datetime.now().isoformat()
+                conn.execute("UPDATE plans SET completed=1, progress=100, completed_at=? WHERE id=?", (now, plan_id))
+                conn.execute(
+                    "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'plan_complete', ?, ?)",
+                    (row['virtual_value'], plan_id, f"完成计划: {row['title']}")
+                )
+                conn.commit()
     return get_plan(plan_id)
 
 
@@ -734,7 +746,7 @@ def extract_category(title, plan_type=''):
 
 def get_plan_progress(plan_type):
     """获取当前时间周期内的计划完成进度"""
-    now = datetime.now()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     if plan_type == 'today':
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif plan_type == 'weekly':
