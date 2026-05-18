@@ -229,7 +229,7 @@ def init_db():
         # Migration: recreate focus_sessions table with ON DELETE SET NULL
         cursor = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='focus_sessions'")
         row = cursor.fetchone()
-        if row and 'ON DELETE CASCADE' in (row['sql'] or ''):
+        if row and 'ON DELETE SET NULL' not in (row['sql'] or ''):
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS focus_sessions_new (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
