@@ -311,8 +311,11 @@ function updateFocusCardDisplay() {
 }
 
 async function api(url, opts = {}) {
-    const r = await fetch(url, { headers: {'Content-Type':'application/json'}, ...opts });
-    const d = await r.json();
+    const headers = {};
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    const r = await fetch(url, { headers, ...opts });
+    let d;
+    try { d = await r.json(); } catch (_) { d = {}; }
     if (!r.ok) throw new Error(d.error || '请求失败');
     return d;
 }
@@ -904,6 +907,7 @@ async function restorePlan(id) {
 }
 
 async function permanentDelete(id) {
+    if (!id && id !== 0) { toast('无效的计划ID', true); return; }
     if (!confirm('确定永久删除？此操作不可撤销。')) return;
     try { await api('/api/plans/' + id, { method: 'DELETE' }); toast('已永久删除'); loadRecycleBin(); }
     catch (e) { toast('删除失败: ' + e.message, true); }
