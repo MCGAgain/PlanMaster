@@ -133,7 +133,7 @@ def api_update_plan(plan_id):
     return jsonify(plan)
 
 
-@app.route('/api/plans/<int:plan_id>', methods=['DELETE'])
+@app.route('/api/plans/<int:plan_id>', methods=['DELETE', 'POST'])
 def api_delete_plan(plan_id):
     db.delete_plan(plan_id)
     return jsonify({'ok': True})
@@ -342,7 +342,7 @@ def api_redeem_wish(wish_id):
     return jsonify(wish)
 
 
-@app.route('/api/wishes/<int:wish_id>', methods=['DELETE'])
+@app.route('/api/wishes/<int:wish_id>', methods=['DELETE', 'POST'])
 def api_delete_wish(wish_id):
     db.delete_wish(wish_id)
     return jsonify({'ok': True})
@@ -397,7 +397,7 @@ def api_create_checkin_item():
     return jsonify(item), 201
 
 
-@app.route('/api/checkin-items/<int:item_id>', methods=['DELETE'])
+@app.route('/api/checkin-items/<int:item_id>', methods=['DELETE', 'POST'])
 def api_delete_checkin_item(item_id):
     db.delete_checkin_item(item_id)
     return jsonify({'ok': True})
@@ -465,7 +465,7 @@ def api_get_sessions():
     return jsonify(db.get_focus_sessions(plan_id, date_str, category))
 
 
-@app.route('/api/sessions/<int:session_id>', methods=['DELETE'])
+@app.route('/api/sessions/<int:session_id>', methods=['DELETE', 'POST'])
 def api_delete_session(session_id):
     db.delete_focus_session(session_id)
     return jsonify({'ok': True})
@@ -478,7 +478,7 @@ def api_stats_cumulative():
     return jsonify(db.get_cumulative_stats())
 
 
-@app.route('/api/stats/clear', methods=['DELETE'])
+@app.route('/api/stats/clear', methods=['DELETE', 'POST'])
 def api_clear_focus_sessions():
     db.delete_all_focus_sessions()
     return jsonify({'ok': True})

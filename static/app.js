@@ -209,7 +209,7 @@ async function stopFocusTimer() {
 function cancelFocusTimer() {
     if (focusCurrentSessionId) {
         if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null; }
-        api('/api/sessions/' + focusCurrentSessionId, { method: 'DELETE' }).catch(() => {});
+        api('/api/sessions/' + focusCurrentSessionId, { method: 'POST' }).catch(() => {});
         focusCurrentSessionId = null;
     }
     activeFocusSession = null;
@@ -811,7 +811,7 @@ async function deletePlan(id) {
     if (!confirm('确定删除此计划？')) return;
     stopTimer(id);
     if (activeFocusSession && activeFocusSession.plan_id === id) await stopFocus();
-    try { await api('/api/plans/' + id, { method: 'DELETE' }); toast('计划已删除'); loadPlans(); }
+    try { await api('/api/plans/' + id, { method: 'POST' }); toast('计划已删除'); loadPlans(); }
     catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
@@ -917,7 +917,7 @@ async function restorePlan(id) {
 async function permanentDelete(id) {
     if (!id && id !== 0) { toast('无效的计划ID', true); return; }
     if (!confirm('确定永久删除？此操作不可撤销。')) return;
-    try { await api('/api/plans/' + id, { method: 'DELETE' }); toast('已永久删除'); loadRecycleBin(); }
+    try { await api('/api/plans/' + id, { method: 'POST' }); toast('已永久删除'); loadRecycleBin(); }
     catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
@@ -1036,7 +1036,7 @@ async function redeemWish(id) {
 
 async function deleteWish(id) {
     if (!confirm('确定删除？')) return;
-    try { await api('/api/wishes/' + id, { method: 'DELETE' }); toast('已删除'); loadWishes(); }
+    try { await api('/api/wishes/' + id, { method: 'POST' }); toast('已删除'); loadWishes(); }
     catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
@@ -1512,7 +1512,7 @@ async function doCheckin(id) {
 async function deleteCheckinItem(id) {
     if (!confirm('确定删除此打卡项目？所有记录将被清除。')) return;
     try {
-        await api('/api/checkin-items/' + id, { method: 'DELETE' });
+        await api('/api/checkin-items/' + id, { method: 'POST' });
         toast('已删除');
         loadCheckins();
     } catch (e) { toast('删除失败: ' + e.message, true); }
@@ -1592,7 +1592,7 @@ async function loadCumulativeStats() {
 async function clearFocusSessions() {
     if (!confirm('确定要清除所有专注记录吗？此操作不可撤销。')) return;
     try {
-        await api('/api/stats/clear', {method: 'DELETE'});
+        await api('/api/stats/clear', {method: 'POST'});
         toast('专注记录已清除');
         loadStatsPage();
     } catch (e) { toast('清除失败: ' + e.message, true); }
