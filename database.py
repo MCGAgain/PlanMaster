@@ -751,7 +751,7 @@ def get_plan_progress(plan_type):
         row = conn.execute(
             "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
             "FROM plans WHERE plan_type = ? AND created_at >= ?",
-            (plan_type, start.isoformat())
+            (plan_type, start.strftime('%Y-%m-%d %H:%M:%S'))
         ).fetchone()
         total = row['total'] or 0
         completed = row['completed'] or 0
