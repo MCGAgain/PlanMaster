@@ -156,6 +156,19 @@
                         <button class="btn btn-glass btn-sm" onclick="batchRestoreRecycle()">批量恢复</button>
                     </div>
                 </div>
+                <div class="recycle-filter-bar">
+                    <div class="recycle-filter-btns">
+                        <button class="btn btn-sm recycle-filter-btn active" data-type="all" onclick="setRecycleFilter('all')">全部 <span class="filter-count">0</span></button>
+                        <button class="btn btn-sm recycle-filter-btn" data-type="today" onclick="setRecycleFilter('today')">今日待办 <span class="filter-count">0</span></button>
+                        <button class="btn btn-sm recycle-filter-btn" data-type="weekly" onclick="setRecycleFilter('weekly')">周计划 <span class="filter-count">0</span></button>
+                        <button class="btn btn-sm recycle-filter-btn" data-type="monthly" onclick="setRecycleFilter('monthly')">月计划 <span class="filter-count">0</span></button>
+                        <button class="btn btn-sm recycle-filter-btn" data-type="yearly" onclick="setRecycleFilter('yearly')">年计划 <span class="filter-count">0</span></button>
+                    </div>
+                    <div class="recycle-search-wrap">
+                        <input type="text" id="recycleSearchInput" class="recycle-search-input" placeholder="搜索计划标题... (支持拼音)" oninput="onRecycleSearch(event)">
+                        <span class="recycle-search-clear" id="recycleSearchClear" onclick="clearRecycleSearch()" style="display:none">&times;</span>
+                    </div>
+                </div>
                 <div class="plan-list" id="recycleList">
                     <div class="empty-state">回收站为空</div>
                 </div>

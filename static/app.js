@@ -335,6 +335,151 @@ function hideLoading() { const e = document.getElementById('loadingOverlay'); if
 const PLAN_TYPE_LABELS = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
 const PLAN_TYPE_COLORS = { today:'#7c6ef0', weekly:'#3b82f6', monthly:'#10b981', yearly:'#f59e0b' };
 
+// ---- Pinyin Mapping ----
+const PINYIN_MAP = {
+    '啊':'a','阿':'a','哎':'ai','哀':'ai','唉':'ai','爱':'ai','安':'an','按':'an','暗':'an','案':'an',
+    '昂':'ang','奥':'ao','八':'ba','把':'ba','爸':'ba','吧':'ba','白':'bai','百':'bai','摆':'bai','败':'bai',
+    '班':'ban','搬':'ban','半':'ban','办':'ban','伴':'ban','帮':'bang','棒':'bang','包':'bao','宝':'bao','报':'bao',
+    '抱':'bao','暴':'bao','爆':'bao','杯':'bei','北':'bei','被':'bei','背':'bei','备':'bei','奔':'ben','本':'ben',
+    '比':'bi','笔':'bi','必':'bi','币':'bi','避':'bi','边':'bian','变':'bian','便':'bian','遍':'bian','标':'biao',
+    '表':'biao','别':'bie','宾':'bin','冰':'bing','并':'bing','病':'bing','波':'bo','博':'bo','补':'bu','不':'bu',
+    '步':'bu','部':'bu','擦':'ca','猜':'cai','才':'cai','财':'cai','菜':'cai','参':'can','餐':'can','残':'can',
+    '草':'cao','策':'ce','层':'ceng','曾':'ceng','差':'cha','查':'cha','茶':'cha','拆':'chai','产':'chan','长':'chang',
+    '常':'chang','场':'chang','唱':'chang','超':'chao','朝':'chao','潮':'chao','车':'che','陈':'chen','称':'cheng','成':'cheng',
+    '城':'cheng','程':'cheng','吃':'chi','持':'chi','尺':'chi','冲':'chong','虫':'chong','抽':'chou','出':'chu','初':'chu',
+    '除':'chu','楚':'chu','处':'chu','穿':'chuan','传':'chuan','窗':'chuang','创':'chuang','吹':'chui','春':'chun','词':'ci',
+    '此':'ci','次':'ci','从':'cong','粗':'cu','催':'cui','存':'cun','错':'cuo','达':'da','打':'da','大':'da',
+    '呆':'dai','带':'dai','代':'dai','单':'dan','但':'dan','淡':'dan','蛋':'dan','当':'dang','刀':'dao','到':'dao',
+    '道':'dao','得':'de','的':'de','灯':'deng','等':'deng','低':'di','地':'di','弟':'di','第':'di','点':'dian',
+    '电':'dian','店':'dian','调':'diao','顶':'ding','定':'ding','东':'dong','冬':'dong','懂':'dong','动':'dong','都':'dou',
+    '读':'du','度':'du','短':'duan','段':'duan','对':'dui','多':'duo','朵':'duo','额':'e','恶':'e','儿':'er',
+    '耳':'er','二':'er','发':'fa','法':'fa','烦':'fan','反':'fan','饭':'fan','方':'fang','房':'fang','放':'fang',
+    '飞':'fei','非':'fei','费':'fei','分':'fen','风':'feng','封':'feng','夫':'fu','服':'fu','福':'fu','父':'fu',
+    '复':'fu','付':'fu','负':'fu','富':'fu','该':'gai','改':'gai','干':'gan','感':'gan','刚':'gang','高':'gao',
+    '搞':'gao','告':'gao','哥':'ge','歌':'ge','个':'ge','各':'ge','给':'gei','根':'gen','跟':'gen','更':'geng',
+    '工':'gong','公':'gong','功':'gong','共':'gong','够':'gou','购':'gou','古':'gu','股':'gu','故':'gu','顾':'gu',
+    '瓜':'gua','挂':'gua','关':'guan','观':'guan','管':'guan','光':'guang','广':'guang','贵':'gui','国':'guo','果':'guo',
+    '过':'guo','哈':'ha','还':'hai','孩':'hai','海':'hai','害':'hai','含':'han','喊':'han','汉':'han','好':'hao',
+    '号':'hao','喝':'he','和':'he','合':'he','何':'he','河':'he','很':'hen','红':'hong','后':'hou','候':'hou',
+    '厚':'hou','呼':'hu','湖':'hu','虎':'hu','互':'hu','花':'hua','华':'hua','化':'hua','话':'hua','画':'hua',
+    '怀':'huai','坏':'huai','欢':'huan','还':'huan','环':'huan','换':'huan','黄':'huang','回':'hui','会':'hui','婚':'hun',
+    '活':'huo','火':'huo','或':'huo','机':'ji','鸡':'ji','基':'ji','极':'ji','集':'ji','及':'ji','急':'ji',
+    '即':'ji','计':'ji','记':'ji','技':'ji','际':'ji','继':'ji','加':'jia','家':'jia','假':'jia','价':'jia',
+    '驾':'jia','架':'jia','间':'jian','件':'jian','见':'jian','建':'jian','健':'jian','将':'jiang','江':'jiang','讲':'jiang',
+    '奖':'jiang','交':'jiao','教':'jiao','叫':'jiao','接':'jie','街':'jie','节':'jie','结':'jie','姐':'jie','解':'jie',
+    '介':'jie','今':'jin','金':'jin','仅':'jin','进':'jin','近':'jin','京':'jing','经':'jing','精':'jing','景':'jing',
+    '静':'jing','境':'jing','究':'jiu','九':'jiu','久':'jiu','就':'jiu','举':'ju','句':'ju','具':'ju','据':'ju',
+    '决':'jue','觉':'jue','军':'jun','开':'kan','看':'kan','康':'kang','考':'kao','可':'ke','克':'ke','刻':'ke',
+    '客':'ke','课':'ke','空':'kong','孔':'kong','口':'kou','快':'kuai','况':'kuang','困':'kun','拉':'la','啦':'la',
+    '来':'lai','蓝':'lan','篮':'lan','老':'lao','了':'le','乐':'le','雷':'lei','累':'lei','冷':'leng','离':'li',
+    '李':'li','里':'li','理':'li','力':'li','历':'li','利':'li','立':'li','连':'lian','联':'lian','脸':'lian',
+    '练':'lian','亮':'liang','两':'liang','辆':'liang','量':'liang','了':'liao','林':'lin','灵':'ling','领':'ling','另':'ling',
+    '六':'liu','龙':'long','楼':'lou','路':'lu','录':'lu','旅':'lv','绿':'lv','乱':'luan','论':'lun','落':'luo',
+    '妈':'ma','马':'ma','吗':'ma','买':'mai','卖':'mai','满':'man','慢':'man','忙':'mang','毛':'mao','么':'me',
+    '没':'mei','每':'mei','美':'mei','门':'men','们':'men','米':'mi','面':'mian','民':'min','名':'ming','明':'ming',
+    '命':'ming','末':'mo','莫':'mo','母':'mu','木':'mu','目':'mu','拿':'na','那':'na','哪':'na','奶':'nai',
+    '南':'nan','难':'nan','脑':'nao','呢':'ne','内':'nei','能':'neng','你':'ni','年':'nian','念':'nian','娘':'niang',
+    '鸟':'niao','您':'nin','牛':'niu','农':'nong','女':'nv','暖':'nuan','哦':'o','欧':'ou','怕':'pa','排':'pai',
+    '派':'pai','盘':'pan','判':'pan','跑':'pao','配':'pei','朋':'peng','批':'pi','片':'pian','漂':'piao','票':'piao',
+    '品':'pin','平':'ping','评':'ping','瓶':'ping','破':'po','七':'qi','期':'qi','其':'qi','奇':'qi','起':'qi',
+    '企':'qi','气':'qi','汽':'qi','千':'qian','前':'qian','钱':'qian','强':'qiang','桥':'qiao','切':'qie','亲':'qin',
+    '青':'qing','清':'qing','情':'qing','请':'qing','秋':'qiu','球':'qiu','区':'qu','去':'qu','全':'quan','权':'quan',
+    '然':'ran','让':'rang','热':'re','人':'ren','认':'ren','任':'ren','日':'ri','容':'rong','肉':'rou','如':'ru',
+    '入':'ru','三':'san','色':'se','山':'shan','善':'shan','上':'shang','少':'shao','绍':'shao','社':'she','设':'she',
+    '身':'shen','深':'shen','什':'shen','生':'sheng','声':'sheng','省':'sheng','师':'shi','十':'shi','石':'shi','时':'shi',
+    '实':'shi','食':'shi','史':'shi','始':'shi','使':'shi','是':'shi','市':'shi','事':'shi','势':'shi','试':'shi',
+    '视':'shi','收':'shou','手':'shou','首':'shou','受':'shou','书':'shu','输':'shu','术':'shu','树':'shu','数':'shu',
+    '双':'shuang','谁':'shui','水':'shui','睡':'shui','顺':'shun','说':'shuo','思':'si','死':'si','四':'si','送':'song',
+    '速':'su','算':'suan','虽':'sui','随':'sui','岁':'sui','所':'suo','他':'ta','她':'ta','它':'ta','台':'tai',
+    '太':'tai','谈':'tan','汤':'tang','特':'te','疼':'teng','提':'ti','题':'ti','体':'ti','天':'tian','田':'tian',
+    '条':'tiao','铁':'tie','听':'ting','停':'ting','通':'tong','同':'tong','统':'tong','头':'tou','图':'tu','土':'tu',
+    '团':'tuan','推':'tui','退':'tui','外':'wai','完':'wan','玩':'wan','万':'wan','网':'wang','往':'wang','忘':'wang',
+    '望':'wang','为':'wei','位':'wei','味':'wei','文':'wen','问':'wen','我':'wo','无':'wu','五':'wu','武':'wu',
+    '午':'wu','物':'wu','务':'wu','西':'xi','希':'xi','息':'xi','习':'xi','系':'xi','细':'xi','下':'xia',
+    '夏':'xia','先':'xian','现':'xian','线':'xian','相':'xiang','想':'xiang','向':'xiang','象':'xiang','小':'xiao','校':'xiao',
+    '笑':'xiao','些':'xie','写':'xie','谢':'xie','心':'xin','新':'xin','信':'xin','星':'xing','行':'xing','醒':'xing',
+    '兴':'xing','幸':'xing','性':'xing','姓':'xing','修':'xiu','需':'xu','许':'xu','续':'xu','选':'xuan','学':'xue',
+    '雪':'xue','血':'xue','寻':'xun','呀':'ya','牙':'ya','亚':'ya','言':'yan','研':'yan','眼':'yan','演':'yan',
+    '验':'yan','阳':'yang','养':'yang','样':'yang','要':'yao','药':'yao','也':'ye','业':'ye','叶':'ye','一':'yi',
+    '衣':'yi','医':'yi','已':'yi','以':'yi','亿':'yi','意':'yi','义':'yi','艺':'yi','因':'yin','音':'yin',
+    '银':'yin','应':'ying','英':'ying','影':'ying','营':'ying','永':'yong','用':'yong','优':'you','由':'you','游':'you',
+    '有':'you','友':'you','又':'you','右':'you','鱼':'yu','雨':'yu','语':'yu','元':'yuan','原':'yuan','员':'yuan',
+    '园':'yuan','远':'yuan','院':'yuan','月':'yue','越':'yue','云':'yun','运':'yun','杂':'za','在':'zai','再':'zai',
+    '咱':'zan','早':'zao','造':'zao','则':'ze','怎':'zen','曾':'zeng','展':'zhan','占':'zhan','站':'zhan','长':'zhang',
+    '张':'zhang','章':'zhang','找':'zhao','照':'zhao','者':'zhe','这':'zhe','真':'zhen','正':'zheng','整':'zheng','之':'zhi',
+    '知':'zhi','直':'zhi','只':'zhi','指':'zhi','至':'zhi','制':'zhi','治':'zhi','中':'zhong','钟':'zhong','种':'zhong',
+    '重':'zhong','众':'zhong','周':'zhou','主':'zhu','住':'zhu','注':'zhu','助':'zhu','专':'zhuan','转':'zhuan','装':'zhuang',
+    '状':'zhuang','准':'zhun','桌':'zhuo','子':'zi','自':'zi','字':'zi','总':'zong','走':'zou','足':'zu','组':'zu',
+    '祖':'zu','最':'zui','昨':'zuo','左':'zuo','做':'zuo','作':'zuo','座':'zuo'
+};
+
+function toPinyin(str) {
+    let result = '';
+    for (const ch of str) {
+        result += PINYIN_MAP[ch] || ch.toLowerCase();
+    }
+    return result;
+}
+
+function toPinyinInitials(str) {
+    let result = '';
+    for (const ch of str) {
+        const py = PINYIN_MAP[ch];
+        if (py) result += py[0];
+        else if (/[a-z0-9]/i.test(ch)) result += ch.toLowerCase();
+    }
+    return result;
+}
+
+function matchPinyin(title, keyword) {
+    if (!keyword) return true;
+    const kw = keyword.toLowerCase();
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes(kw)) return true;
+    if (toPinyin(title).includes(kw)) return true;
+    if (toPinyinInitials(title).includes(kw)) return true;
+    return false;
+}
+
+// ---- Recycle Bin Filter ----
+let recycleFilterType = 'all';
+let recycleSearchKeyword = '';
+
+function setRecycleFilter(type) {
+    recycleFilterType = type;
+    document.querySelectorAll('.recycle-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+    filterAndRenderRecycle();
+}
+
+function onRecycleSearch(e) {
+    recycleSearchKeyword = e.target.value.trim();
+    const clearBtn = document.getElementById('recycleSearchClear');
+    if (clearBtn) clearBtn.style.display = recycleSearchKeyword ? 'flex' : 'none';
+    filterAndRenderRecycle();
+}
+
+function clearRecycleSearch() {
+    recycleSearchKeyword = '';
+    const input = document.getElementById('recycleSearchInput');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('recycleSearchClear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    filterAndRenderRecycle();
+}
+
+let allRecyclePlans = [];
+
+function filterAndRenderRecycle() {
+    let filtered = allRecyclePlans;
+    if (recycleFilterType !== 'all') {
+        filtered = filtered.filter(p => p.plan_type === recycleFilterType);
+    }
+    if (recycleSearchKeyword) {
+        filtered = filtered.filter(p => matchPinyin(p.title, recycleSearchKeyword));
+    }
+    renderRecycleBin(filtered, allRecyclePlans);
+}
+
 // ---- Countdown Timer ----
 const timers = {};
 
@@ -673,13 +818,29 @@ async function completePlan(id) {
 async function loadRecycleBin() {
     try {
         const plans = await api('/api/plans/completed');
-        renderRecycleBin(plans);
+        allRecyclePlans = plans;
+        updateRecycleFilterCounts(plans);
+        filterAndRenderRecycle();
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
 
-function renderRecycleBin(plans) {
+function updateRecycleFilterCounts(plans) {
+    const counts = { all: plans.length, today: 0, weekly: 0, monthly: 0, yearly: 0 };
+    plans.forEach(p => { if (counts[p.plan_type] !== undefined) counts[p.plan_type]++; });
+    document.querySelectorAll('.recycle-filter-btn').forEach(b => {
+        const type = b.dataset.type;
+        const countEl = b.querySelector('.filter-count');
+        if (countEl) countEl.textContent = counts[type] || 0;
+    });
+}
+
+function renderRecycleBin(plans, allPlans) {
     const c = document.getElementById('recycleList');
-    if (!plans.length) { c.innerHTML = '<div class="empty-state">回收站为空</div>'; return; }
+    if (!plans.length) {
+        const msg = allPlans && allPlans.length ? '没有匹配的计划' : '回收站为空';
+        c.innerHTML = `<div class="empty-state">${msg}</div>`;
+        return;
+    }
     c.innerHTML = plans.map(p => {
         const color = PLAN_TYPE_COLORS[p.plan_type] || '#7c6ef0';
         return `
