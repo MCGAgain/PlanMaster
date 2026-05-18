@@ -2,6 +2,7 @@ import json
 import sys
 import os
 import time
+import logging
 import platform
 import tempfile
 import subprocess
@@ -15,7 +16,10 @@ import database as db
 import ai_service
 import updater
 
-CURRENT_VERSION = '1.7.2'
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logger = logging.getLogger('planmaster')
+
+CURRENT_VERSION = '1.8.0'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -57,6 +61,27 @@ _sta_dir = os.path.join(_user_dir, 'static') if _use_user_dir else os.path.join(
 app = Flask(__name__, template_folder=_tpl_dir, static_folder=_sta_dir)
 
 
+@app.after_request
+def _add_cors(resp):
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    if request.path.startswith('/api/'):
+        resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
+@app.errorhandler(Exception)
+def _handle_unexpected(e):
+    logger.error('Unhandled exception on %s %s: %s', request.method, request.path, e, exc_info=True)
+    return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/health')
+def health():
+    return jsonify({'ok': True, 'version': CURRENT_VERSION})
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -74,6 +99,15 @@ def api_get_plans():
 def api_get_all_plans():
     plan_type = request.args.get('type')
     return jsonify(db.get_plans(plan_type, include_completed=True))
+
+
+@app.route('/api/plans/progress', methods=['GET'])
+def api_plan_progress():
+    plan_type = request.args.get('type', 'today')
+    if plan_type not in ('today', 'weekly', 'monthly', 'yearly'):
+        return jsonify({'error': '无效的计划类型'}), 400
+    progress = db.get_plan_progress(plan_type)
+    return jsonify(progress)
 
 
 @app.route('/api/plans/completed', methods=['GET'])
@@ -553,7 +587,7 @@ def start_flask(port):
     db.init_db()
     db.close_stale_focus_sessions()
     db.checkin_missed_penalty()
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
 
 
 def _wait_for_port(port, timeout=30):
