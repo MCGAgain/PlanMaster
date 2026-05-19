@@ -311,8 +311,13 @@ function updateFocusCardDisplay() {
 }
 
 async function api(url, opts = {}) {
+    const externalSignal = opts.signal || null;
     const controller = new AbortController();
     const tid = setTimeout(() => controller.abort(), 30000);
+    if (externalSignal) {
+        if (externalSignal.aborted) controller.abort();
+        else externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
     try {
         const headers = {};
         if (opts.body) headers['Content-Type'] = 'application/json';
@@ -329,7 +334,10 @@ async function api(url, opts = {}) {
         throw new Error(d.error || '请求失败');
     } catch (e) {
         clearTimeout(tid);
-        if (e.name === 'AbortError') throw new Error('请求超时');
+        if (e.name === 'AbortError') {
+            if (externalSignal && externalSignal.aborted) throw e;
+            throw new Error('请求超时');
+        }
         if (e.message === '请求失败') throw e;
         throw new Error('网络错误');
     }
@@ -626,17 +634,23 @@ async function loadBalance() {
 
 // ---- Plans ----
 
+let _loadPlansAbort = null;
+
 async function loadPlans() {
+    if (_loadPlansAbort) { _loadPlansAbort.abort(); _loadPlansAbort = null; }
+    const ac = new AbortController();
+    _loadPlansAbort = ac;
     try {
-        const active = await api('/api/plans?type=' + currentPage);
+        const [active, progress] = await Promise.all([
+            api('/api/plans?type=' + currentPage, { signal: ac.signal }),
+            api('/api/plans/progress?type=' + currentPage, { signal: ac.signal }).catch(() => ({ completed: 0, total: 0, percentage: 0 }))
+        ]);
         renderPlans(active);
-        try {
-            const progress = await api('/api/plans/progress?type=' + currentPage);
-            updateCategoryProgress(progress);
-        } catch (_) {
-            updateCategoryProgress({ completed: 0, total: 0, percentage: 0 });
-        }
-    } catch (e) { toast('加载失败: ' + e.message, true); }
+        updateCategoryProgress(progress);
+    } catch (e) {
+        if (e.name === 'AbortError') return;
+        toast('加载失败: ' + e.message, true);
+    }
 }
 
 function updateCategoryProgress(progress) {
