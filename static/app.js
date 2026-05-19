@@ -42,6 +42,7 @@ function switchPage(page) {
             document.getElementById('page-plans').classList.add('active');
             const t = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
             document.getElementById('planTitle').textContent = t[page];
+            clearPlanSearch();
             loadPlans();
             showNextSignature();
         } else if (page === 'wishes') { document.getElementById('page-wishes').classList.add('active'); loadWishes(); }
@@ -631,6 +632,34 @@ async function deleteImportant(id) {
     catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
+// ---- Plan Search ----
+let allPlans = [];
+let planSearchKeyword = '';
+
+function onPlanSearch(e) {
+    planSearchKeyword = e.target.value.trim();
+    const clearBtn = document.getElementById('planSearchClear');
+    if (clearBtn) clearBtn.style.display = planSearchKeyword ? 'flex' : 'none';
+    filterAndRenderPlans();
+}
+
+function clearPlanSearch() {
+    planSearchKeyword = '';
+    const input = document.getElementById('planSearchInput');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('planSearchClear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    filterAndRenderPlans();
+}
+
+function filterAndRenderPlans() {
+    let filtered = allPlans;
+    if (planSearchKeyword) {
+        filtered = filtered.filter(p => matchPinyin(p.title, planSearchKeyword) || matchPinyin(p.description || '', planSearchKeyword));
+    }
+    renderPlans(filtered);
+}
+
 // ---- Countdown Timer ----
 const timers = {};
 
@@ -770,7 +799,12 @@ async function loadPlans() {
             api('/api/plans?type=' + currentPage, { signal: ac.signal }),
             api('/api/plans/progress?type=' + currentPage, { signal: ac.signal }).catch(() => ({ completed: 0, total: 0, percentage: 0 }))
         ]);
-        renderPlans(active);
+        allPlans = active;
+        if (planSearchKeyword) {
+            filterAndRenderPlans();
+        } else {
+            renderPlans(active);
+        }
         updateCategoryProgress(progress);
     } catch (e) {
         if (e.name === 'AbortError') return;
