@@ -14,6 +14,10 @@ function switchPage(page) {
         document.getElementById('page-checkin').classList.add('active');
         loadCheckins();
         showNextSignature();
+    } else if (page === 'important') {
+        document.getElementById('page-important').classList.add('active');
+        loadImportantItems();
+        showNextSignature();
     } else if (page === 'stats') {
         document.getElementById('page-stats').classList.add('active');
         loadStatsPage();
@@ -358,8 +362,8 @@ function showLoading(t = '处理中...') {
 }
 function hideLoading() { const e = document.getElementById('loadingOverlay'); if (e) e.remove(); }
 
-const PLAN_TYPE_LABELS = { today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
-const PLAN_TYPE_COLORS = { today:'#7c6ef0', weekly:'#3b82f6', monthly:'#10b981', yearly:'#f59e0b' };
+const PLAN_TYPE_LABELS = { important:'重要事项', today:'今日待办', weekly:'周计划', monthly:'月计划', yearly:'年计划' };
+const PLAN_TYPE_COLORS = { important:'#ef4444', today:'#7c6ef0', weekly:'#3b82f6', monthly:'#10b981', yearly:'#f59e0b' };
 
 // ---- Pinyin Mapping ----
 const PINYIN_MAP = {
@@ -504,6 +508,127 @@ function filterAndRenderRecycle() {
         filtered = filtered.filter(p => matchPinyin(p.title, recycleSearchKeyword));
     }
     renderRecycleBin(filtered, allRecyclePlans);
+}
+
+// ---- Important Items ----
+let allImportantItems = [];
+let importantSearchKeyword = '';
+
+async function loadImportantItems() {
+    try {
+        const items = await api('/api/important');
+        allImportantItems = items;
+        filterAndRenderImportant();
+    } catch (e) { toast('加载失败: ' + e.message, true); }
+}
+
+function onImportantSearch(e) {
+    importantSearchKeyword = e.target.value.trim();
+    const clearBtn = document.getElementById('importantSearchClear');
+    if (clearBtn) clearBtn.style.display = importantSearchKeyword ? 'flex' : 'none';
+    filterAndRenderImportant();
+}
+
+function clearImportantSearch() {
+    importantSearchKeyword = '';
+    const input = document.getElementById('importantSearchInput');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('importantSearchClear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    filterAndRenderImportant();
+}
+
+function filterAndRenderImportant() {
+    let filtered = allImportantItems;
+    if (importantSearchKeyword) {
+        filtered = filtered.filter(p => matchPinyin(p.title, importantSearchKeyword) || matchPinyin(p.description || '', importantSearchKeyword));
+    }
+    renderImportantItems(filtered, allImportantItems);
+}
+
+function daysUntilDue(dueDate) {
+    if (!dueDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate + 'T00:00:00');
+    const diff = Math.ceil((due - today) / 86400000);
+    return diff;
+}
+
+function dueBadge(dueDate) {
+    const days = daysUntilDue(dueDate);
+    if (days === null) return '';
+    if (days < 0) return '<span class="plan-badge badge-due badge-due-today">已过期</span>';
+    if (days === 0) return '<span class="plan-badge badge-due badge-due-today">今日到期</span>';
+    if (days <= 3) return `<span class="plan-badge badge-due badge-due-soon">还有${days}天</span>`;
+    return `<span class="plan-badge badge-due badge-due-normal">还有${days}天</span>`;
+}
+
+function renderImportantItems(items, allItems) {
+    const c = document.getElementById('importantList');
+    if (!items.length) {
+        const msg = allItems && allItems.length ? '没有匹配的事项' : '暂无重要事项，点击右上角添加';
+        c.innerHTML = `<div class="empty-state">${msg}</div>`;
+        return;
+    }
+    c.innerHTML = items.map(p => {
+        return `
+        <div class="plan-card" data-id="${p.id}">
+            <div class="plan-card-body">
+                <div class="plan-card-title">${esc(p.title)}</div>
+                <div class="plan-card-meta">
+                    ${p.due_date ? `<span class="plan-badge badge-due badge-due-normal">${p.due_date}</span>` : ''}
+                    ${dueBadge(p.due_date)}
+                </div>
+                ${p.description ? `<div class="plan-card-desc">${esc(p.description)}</div>` : ''}
+                <div class="plan-card-actions">
+                    <button class="btn btn-glass btn-sm" onclick="editImportant(${p.id})">编辑</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteImportant(${p.id})">删除</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showAddImportantModal() {
+    editingPlanId = null;
+    document.getElementById('planModalTitle').textContent = '新增重要事项';
+    document.getElementById('planTitleInput').value = '';
+    document.getElementById('planDescInput').value = '';
+    document.getElementById('planPriorityInput').value = '';
+    document.getElementById('planValueInput').value = '';
+    document.getElementById('planProgressInput').value = 0;
+    document.getElementById('planProgressLabel').textContent = '0';
+    document.getElementById('dueDateGroup').style.display = '';
+    document.getElementById('planDueDateInput').value = '';
+    document.getElementById('planPriorityInput').closest('.form-row').style.display = 'none';
+    document.getElementById('planProgressInput').closest('.form-group').style.display = 'none';
+    document.getElementById('planModal').classList.add('show');
+    setTimeout(() => document.getElementById('planTitleInput').focus(), 100);
+}
+
+async function editImportant(id) {
+    const item = allImportantItems.find(x => x.id === id);
+    if (!item) { toast('事项不存在', true); return; }
+    editingPlanId = id;
+    document.getElementById('planModalTitle').textContent = '编辑重要事项';
+    document.getElementById('planTitleInput').value = item.title;
+    document.getElementById('planDescInput').value = item.description || '';
+    document.getElementById('planPriorityInput').value = '';
+    document.getElementById('planValueInput').value = '';
+    document.getElementById('planProgressInput').value = 0;
+    document.getElementById('planProgressLabel').textContent = '0';
+    document.getElementById('dueDateGroup').style.display = '';
+    document.getElementById('planDueDateInput').value = item.due_date || '';
+    document.getElementById('planPriorityInput').closest('.form-row').style.display = 'none';
+    document.getElementById('planProgressInput').closest('.form-group').style.display = 'none';
+    document.getElementById('planModal').classList.add('show');
+}
+
+async function deleteImportant(id) {
+    if (!confirm('确定删除此重要事项？')) return;
+    try { await api('/api/plans/' + id, { method: 'POST' }); toast('已删除'); loadImportantItems(); }
+    catch (e) { toast('删除失败: ' + e.message, true); }
 }
 
 // ---- Countdown Timer ----
@@ -773,6 +898,9 @@ function showAddPlanModal() {
     document.getElementById('planValueInput').value = '';
     document.getElementById('planProgressInput').value = 0;
     document.getElementById('planProgressLabel').textContent = '0';
+    document.getElementById('dueDateGroup').style.display = 'none';
+    document.getElementById('planPriorityInput').closest('.form-row').style.display = '';
+    document.getElementById('planProgressInput').closest('.form-group').style.display = '';
     document.getElementById('planModal').classList.add('show');
     setTimeout(() => document.getElementById('planTitleInput').focus(), 100);
 }
@@ -790,6 +918,9 @@ async function editPlan(id) {
         document.getElementById('planValueInput').value = p.virtual_value || '';
         document.getElementById('planProgressInput').value = p.progress || 0;
         document.getElementById('planProgressLabel').textContent = p.progress || 0;
+        document.getElementById('dueDateGroup').style.display = 'none';
+        document.getElementById('planPriorityInput').closest('.form-row').style.display = '';
+        document.getElementById('planProgressInput').closest('.form-group').style.display = '';
         document.getElementById('planModal').classList.add('show');
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
@@ -801,24 +932,38 @@ async function savePlan() {
     const pri = document.getElementById('planPriorityInput').value;
     const val = document.getElementById('planValueInput').value;
     const prog = document.getElementById('planProgressInput').value;
-    if (!title) { toast('请输入计划标题', true); return; }
+    const dueDateInput = document.getElementById('planDueDateInput');
+    const isImportant = document.getElementById('dueDateGroup').style.display !== 'none';
+    if (!title) { toast('请输入标题', true); return; }
+    if (isImportant && !dueDateInput.value) { toast('请选择截止日期', true); return; }
     planSaving = true;
     try {
         if (editingPlanId) {
-            const body = { title, description: desc, progress: parseInt(prog) };
-            if (pri !== '') body.priority = parseInt(pri);
-            if (val !== '') body.virtual_value = parseFloat(val);
+            const body = { title, description: desc };
+            if (!isImportant) {
+                body.progress = parseInt(prog);
+                if (pri !== '') body.priority = parseInt(pri);
+                if (val !== '') body.virtual_value = parseFloat(val);
+            }
+            if (isImportant) body.due_date = dueDateInput.value;
             await api('/api/plans/' + editingPlanId, { method: 'PUT', body: JSON.stringify(body) });
-            toast('计划已更新');
-            closeModal('planModal'); loadPlans();
+            toast('已更新');
+            closeModal('planModal');
+            if (isImportant) loadImportantItems(); else loadPlans();
         } else {
-            const body = { plan_type: currentPage, title, description: desc, progress: parseInt(prog) };
-            if (pri !== '') body.priority = parseInt(pri);
-            if (val !== '') body.virtual_value = parseFloat(val);
+            const planType = isImportant ? 'important' : currentPage;
+            const body = { plan_type: planType, title, description: desc };
+            if (!isImportant) {
+                body.progress = parseInt(prog);
+                if (pri !== '') body.priority = parseInt(pri);
+                if (val !== '') body.virtual_value = parseFloat(val);
+            }
+            if (isImportant) body.due_date = dueDateInput.value;
             const newPlan = await api('/api/plans', { method: 'POST', body: JSON.stringify(body) });
-            toast('计划已创建');
-            closeModal('planModal'); loadPlans();
-            if (pri === '' && val === '' && newPlan && newPlan.id) {
+            toast('已创建');
+            closeModal('planModal');
+            if (isImportant) loadImportantItems(); else loadPlans();
+            if (!isImportant && pri === '' && val === '' && newPlan && newPlan.id) {
                 let polls = 0;
                 const poll = setInterval(async () => {
                     try {
