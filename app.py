@@ -115,6 +115,12 @@ def api_get_completed_plans():
     return jsonify(db.get_completed_plans())
 
 
+@app.route('/api/important', methods=['GET'])
+def api_get_important():
+    db.cleanup_important()
+    return jsonify(db.get_important_items())
+
+
 @app.route('/api/plans', methods=['POST'])
 def api_create_plan():
     data = request.json
@@ -125,8 +131,9 @@ def api_create_plan():
     priority = data.get('priority', 0) or 0
     virtual_value = data.get('virtual_value', 0) or 0
     progress = data.get('progress', 0) or 0
+    due_date = data.get('due_date') or None
 
-    plan = db.create_plan(plan_type, title, description, priority, virtual_value, progress)
+    plan = db.create_plan(plan_type, title, description, priority, virtual_value, progress, due_date=due_date)
 
     # AI evaluation in background if no user-provided values
     if not priority and not virtual_value:
@@ -156,6 +163,7 @@ def api_create_plan():
 @app.route('/api/plans/<int:plan_id>', methods=['PUT'])
 def api_update_plan(plan_id):
     data = request.json
+    due_date = data.get('due_date', db._UNSET) if 'due_date' in data else db._UNSET
     plan = db.update_plan(
         plan_id,
         title=data.get('title'),
@@ -163,6 +171,7 @@ def api_update_plan(plan_id):
         priority=data.get('priority'),
         virtual_value=data.get('virtual_value'),
         progress=data.get('progress'),
+        due_date=due_date,
     )
     return jsonify(plan)
 

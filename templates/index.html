@@ -28,6 +28,10 @@
                     <span class="nav-icon">&#9745;</span>
                     <span>打卡</span>
                 </li>
+                <li class="nav-item" data-page="important" onclick="switchPage('important')">
+                    <span class="nav-icon">&#9888;</span>
+                    <span>重要事项</span>
+                </li>
                 <li class="nav-item active" data-page="today" onclick="switchPage('today')">
                     <span class="nav-icon">&#9728;</span>
                     <span>今日待办</span>
@@ -89,6 +93,23 @@
                 </div>
             </div>
 
+            <!-- Important Matters Page -->
+            <div class="page" id="page-important">
+                <div class="page-header">
+                    <h2>重要事项</h2>
+                    <div class="page-actions">
+                        <button class="btn btn-glass" onclick="showAddImportantModal()">+ 新增事项</button>
+                    </div>
+                </div>
+                <div class="search-wrap">
+                    <input type="text" id="importantSearchInput" class="search-input" placeholder="搜索重要事项... (支持拼音)" oninput="onImportantSearch(event)">
+                    <span class="search-clear" id="importantSearchClear" onclick="clearImportantSearch()" style="display:none">&times;</span>
+                </div>
+                <div class="plan-list" id="importantList">
+                    <div class="empty-state">暂无重要事项，点击右上角添加</div>
+                </div>
+            </div>
+
             <!-- Plan Pages -->
             <div class="page active" id="page-plans">
                 <div class="page-header">
@@ -97,6 +118,10 @@
                         <button class="btn btn-glass" onclick="showAddPlanModal()">+ 新增计划</button>
                         <button class="btn btn-gradient" onclick="aiSortPlans()">&#9889; AI智能排序</button>
                     </div>
+                </div>
+                <div class="search-wrap">
+                    <input type="text" id="planSearchInput" class="search-input" placeholder="搜索计划... (支持拼音)" oninput="onPlanSearch(event)">
+                    <span class="search-clear" id="planSearchClear" onclick="clearPlanSearch()" style="display:none">&times;</span>
                 </div>
                 <div class="category-progress" id="categoryProgress">
                     <div class="category-progress-info">
@@ -507,6 +532,10 @@
                 <div class="form-group">
                     <label>计划描述</label>
                     <textarea id="planDescInput" rows="3" placeholder="详细描述你的计划..."></textarea>
+                </div>
+                <div class="form-group" id="dueDateGroup" style="display:none">
+                    <label>截止日期</label>
+                    <input type="date" id="planDueDateInput">
                 </div>
                 <div class="form-row">
                     <div class="form-group">

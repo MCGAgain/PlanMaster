@@ -7,6 +7,8 @@ import platform
 from contextlib import contextmanager
 from datetime import datetime, date, timedelta
 
+_UNSET = object()
+
 if getattr(sys, 'frozen', False):
     if platform.system() == 'Windows':
         _data_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'PlanMaster')
@@ -201,6 +203,12 @@ def init_db():
         except sqlite3.OperationalError:
             conn.execute("ALTER TABLE plans ADD COLUMN suggested_time TEXT DEFAULT ''")
 
+        # Migration: add due_date column if missing
+        try:
+            conn.execute("SELECT due_date FROM plans LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE plans ADD COLUMN due_date TEXT")
+
         # Migration: add quantity column to wishes if missing
         try:
             conn.execute("SELECT quantity FROM wishes LIMIT 1")
@@ -280,6 +288,27 @@ def get_completed_plans():
         return [dict(r) for r in rows]
 
 
+def get_important_items():
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM plans WHERE plan_type='important' AND completed=0 ORDER BY due_date ASC, created_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def cleanup_important():
+    """Delete expired important items (due_date < today)."""
+    with _conn() as conn:
+        today = date.today().isoformat()
+        cur = conn.execute(
+            "DELETE FROM plans WHERE plan_type='important' AND due_date IS NOT NULL AND due_date < ?",
+            (today,)
+        )
+        deleted = cur.rowcount
+        conn.commit()
+        return deleted
+
+
 def restore_plan(plan_id):
     with _conn() as conn:
         row = conn.execute("SELECT * FROM plans WHERE id=? AND completed=1", (plan_id,)).fetchone()
@@ -300,18 +329,18 @@ def get_plan(plan_id):
         return dict(row) if row else None
 
 
-def create_plan(plan_type, title, description='', priority=0, virtual_value=0, progress=0, suggested_time=''):
+def create_plan(plan_type, title, description='', priority=0, virtual_value=0, progress=0, suggested_time='', due_date=None):
     with _conn() as conn:
         cur = conn.execute(
-            "INSERT INTO plans (plan_type, title, description, priority, virtual_value, progress, suggested_time) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (plan_type, title, description, priority, virtual_value, progress, suggested_time)
+            "INSERT INTO plans (plan_type, title, description, priority, virtual_value, progress, suggested_time, due_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (plan_type, title, description, priority, virtual_value, progress, suggested_time, due_date)
         )
         plan_id = cur.lastrowid
         conn.commit()
     return get_plan(plan_id)
 
 
-def update_plan(plan_id, title=None, description=None, priority=None, virtual_value=None, progress=None, suggested_time=None):
+def update_plan(plan_id, title=None, description=None, priority=None, virtual_value=None, progress=None, suggested_time=None, due_date=_UNSET):
     with _conn() as conn:
         if title is not None:
             conn.execute("UPDATE plans SET title=? WHERE id=?", (title, plan_id))
@@ -326,6 +355,8 @@ def update_plan(plan_id, title=None, description=None, priority=None, virtual_va
             conn.execute("UPDATE plans SET progress=? WHERE id=?", (p, plan_id))
         if suggested_time is not None:
             conn.execute("UPDATE plans SET suggested_time=? WHERE id=?", (suggested_time, plan_id))
+        if due_date is not _UNSET:
+            conn.execute("UPDATE plans SET due_date=? WHERE id=?", (due_date, plan_id))
         conn.commit()
 
         # Auto-complete when progress reaches 100%
