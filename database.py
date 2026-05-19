@@ -5,7 +5,7 @@ import math
 import re
 import platform
 from contextlib import contextmanager
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timedelta
 
 if getattr(sys, 'frozen', False):
     if platform.system() == 'Windows':
@@ -745,25 +745,12 @@ def extract_category(title, plan_type=''):
 
 
 def get_plan_progress(plan_type):
-    """获取当前时间周期内的计划完成进度"""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    if plan_type == 'today':
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    elif plan_type == 'weekly':
-        start = now - timedelta(days=now.weekday())
-        start = start.replace(hour=0, minute=0, second=0, microsecond=0)
-    elif plan_type == 'monthly':
-        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    elif plan_type == 'yearly':
-        start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-    else:
-        return {'completed': 0, 'total': 0, 'percentage': 0}
-
+    """获取计划完成进度（包含过期继承的任务）"""
     with _conn() as conn:
         row = conn.execute(
             "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
-            "FROM plans WHERE plan_type = ? AND created_at >= ?",
-            (plan_type, start.strftime('%Y-%m-%d %H:%M:%S'))
+            "FROM plans WHERE plan_type = ?",
+            (plan_type,)
         ).fetchone()
         total = row['total'] or 0
         completed = row['completed'] or 0
