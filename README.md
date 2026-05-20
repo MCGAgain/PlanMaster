@@ -1,4 +1,4 @@
-# PlanMaster v1.6.2 - 计划管理与心愿兑换系统
+# PlanMaster v2.0.0 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
@@ -8,7 +8,7 @@ PlanMaster 是一个基于 Flask + SQLite 的本地桌面应用（支持 macOS �
 
 - **后端**: Python 3.13 + Flask 3.x
 - **数据库**: SQLite3 (WAL 模式)
-- **前端**: 原生 HTML + CSS + JavaScript (单页应用，无框架依赖)
+- **前端**: Vue 3 + Vite + Pinia + Vue Router (组件化单页应用)
 - **AI**: 通过 OpenAI 兼容 `/v1/chat/completions` 和 `/v1/models` 接口调用任意 LLM
 - **打包**: PyInstaller + hdiutil (macOS DMG) / Inno Setup (Windows EXE)
 - **CI/CD**: GitHub Actions 自动构建双平台安装包并发布 Release
@@ -25,7 +25,7 @@ PlanMaster/
 ├── updater.py          # macOS 在线更新模块 (DMG 热替换)
 ├── requirements.txt    # Python 依赖: flask, requests, pywebview
 ├── start.sh            # 启动脚本 (激活 venv + 运行 app.py)
-├── build.sh            # DMG 打包脚本 (PyInstaller + hdiutil)
+├── build.sh            # 打包脚本 (前端构建 + PyInstaller + DMG)
 ├── build_setup.iss     # Windows Inno Setup 安装包配置
 ├── PlanMaster.spec     # PyInstaller 打包配置
 ├── icon.icns           # macOS 应用图标
@@ -35,11 +35,22 @@ PlanMaster/
 ├── venv/               # Python 虚拟环境
 ├── .github/workflows/
 │   └── build.yml       # CI 自动构建 (Windows + macOS + Release)
+├── frontend/           # Vue 3 前端项目
+│   ├── src/
+│   │   ├── components/ # Vue 组件 (layout/common/business)
+│   │   ├── views/      # 页面视图
+│   │   ├── stores/     # Pinia 状态管理
+│   │   ├── api/        # API 调用层
+│   │   ├── composables/# 组合式函数
+│   │   └── styles/     # CSS 样式
+│   ├── package.json
+│   └── vite.config.js
 ├── templates/
-│   └── index.html      # 单页应用 HTML (所有页面/弹窗/结构)
+│   └── index.html      # 旧版单页应用 (Vue 构建后的 fallback)
 └── static/
-    ├── style.css       # 全部 CSS 样式 (毛玻璃/动画/明暗主题)
-    ├── app.js          # 前端 JavaScript 逻辑 (导航/API调用/渲染)
+    ├── dist/           # Vue 构建输出 (自动忽略)
+    ├── style.css       # 旧版 CSS (保留作为 fallback)
+    ├── app.js          # 旧版 JS (保留作为 fallback)
     └── icon.jpg        # 浏览器 favicon
 ```
 
