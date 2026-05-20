@@ -11,8 +11,8 @@
       <span class="search-clear" v-show="searchKeyword" @click="searchKeyword = ''">&times;</span>
     </div>
     <div class="plan-list">
-      <template v-if="filteredItems.length">
-        <div v-for="p in filteredItems" :key="p.id" class="plan-card" :data-id="p.id">
+      <TransitionGroup name="list">
+        <div v-for="(p, idx) in filteredItems" :key="p.id" class="plan-card" :data-id="p.id" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="plan-card-body">
             <div class="plan-card-title">{{ p.title }}</div>
             <div class="plan-card-meta">
@@ -26,8 +26,8 @@
             </div>
           </div>
         </div>
-      </template>
-      <div v-else class="empty-state">{{ allItems.length ? '没有匹配的事项' : '暂无重要事项，点击右上角添加' }}</div>
+      </TransitionGroup>
+      <div v-if="!filteredItems.length" class="empty-state">{{ allItems.length ? '没有匹配的事项' : '暂无重要事项，点击右上角添加' }}</div>
     </div>
 
     <div class="modal" :class="{ show: showModal }">

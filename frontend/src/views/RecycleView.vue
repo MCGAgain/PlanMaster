@@ -22,8 +22,8 @@
       </div>
     </div>
     <div class="plan-list">
-      <template v-if="filteredPlans.length">
-        <div v-for="p in filteredPlans" :key="p.id" class="plan-card completed recycle-card" :data-id="p.id">
+      <TransitionGroup name="list">
+        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card completed recycle-card" :data-id="p.id" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <label class="recycle-check"><input type="checkbox" class="recycle-checkbox" :value="p.id" v-model="selectedIds"></label>
           <div class="plan-card-body">
             <div class="plan-card-title">{{ p.title }}</div>
@@ -39,8 +39,8 @@
             </div>
           </div>
         </div>
-      </template>
-      <div v-else class="empty-state">{{ allPlans.length ? '没有匹配的计划' : '回收站为空' }}</div>
+      </TransitionGroup>
+      <div v-if="!filteredPlans.length" class="empty-state">{{ allPlans.length ? '没有匹配的计划' : '回收站为空' }}</div>
     </div>
   </div>
 </template>

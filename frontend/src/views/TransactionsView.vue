@@ -9,16 +9,16 @@
       <span>虚拟价值</span>
     </div>
     <div class="tx-list">
-      <template v-if="transactions.length">
-        <div v-for="tx in transactions" :key="tx.id" class="tx-card">
+      <TransitionGroup name="list">
+        <div v-for="(tx, idx) in transactions" :key="tx.id" class="tx-card" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="tx-info">
             <span class="tx-note">{{ tx.note || tx.source }}</span>
             <span class="tx-time">{{ fmtTime(tx.created_at) }}</span>
           </div>
           <span class="tx-amount" :class="{ positive: tx.amount >= 0, negative: tx.amount < 0 }">{{ tx.amount >= 0 ? '+' : '' }}{{ tx.amount.toFixed(1) }}</span>
         </div>
-      </template>
-      <div v-else class="empty-state">暂无流水记录</div>
+      </TransitionGroup>
+      <div v-if="!transactions.length" class="empty-state">暂无流水记录</div>
     </div>
   </div>
 </template>

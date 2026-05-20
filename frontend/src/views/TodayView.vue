@@ -22,8 +22,8 @@
     </div>
     <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
     <div class="plan-list">
-      <template v-if="filteredPlans.length">
-        <div v-for="p in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :data-id="p.id">
+      <TransitionGroup name="list">
+        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :data-id="p.id" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="priority-ring">
             <svg width="54" height="54" viewBox="0 0 54 54">
               <circle class="ring-bg" cx="27" cy="27" r="24"/>
@@ -67,8 +67,8 @@
             </div>
           </div>
         </div>
-      </template>
-      <div v-else class="empty-state">暂无计划，点击右上角添加</div>
+      </TransitionGroup>
+      <div v-if="!filteredPlans.length" class="empty-state">暂无计划，点击右上角添加</div>
     </div>
 
     <!-- Add/Edit Plan Modal -->

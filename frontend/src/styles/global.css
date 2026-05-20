@@ -473,14 +473,14 @@ body.bg-image {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 11px 24px;
-  margin: 1px 8px;
+  padding: 12px 20px;
+  margin: 3px 10px;
   cursor: pointer;
   font-size: 14px;
   color: var(--text-soft);
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   border-left: 3px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   position: relative;
 }
 
@@ -2256,6 +2256,27 @@ body.theme-dark .apibalance-url-example {
   font-weight: 500;
 }
 
+.icon-check {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  position: relative;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+
+.icon-check::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 5px;
+  height: 8px;
+  border-right: 2.5px solid #fff;
+  border-bottom: 2.5px solid #fff;
+  transform: rotate(45deg);
+}
+
 /* ---- Qty Row ---- */
 .qty-row {
   display: flex;
@@ -2294,4 +2315,134 @@ body.theme-dark .apibalance-url-example {
 .stats-clear-btn:hover {
   background: rgba(248,113,113,.15);
   border-color: rgba(248,113,113,.5);
+}
+
+/* ============================================
+   Vue Transition Classes
+   ============================================ */
+
+/* Page fade transition */
+.page-fade-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.page-fade-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.page-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* List item transition */
+.list-enter-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.list-leave-active {
+  transition: all 0.25s ease;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+}
+
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-20px) scale(0.98);
+}
+
+.list-move {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Modal transition */
+.modal-enter-active .modal-overlay {
+  transition: opacity 0.25s ease;
+}
+
+.modal-enter-active .modal-content {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-leave-active .modal-overlay {
+  transition: opacity 0.2s ease;
+}
+
+.modal-leave-active .modal-content {
+  transition: all 0.2s ease;
+}
+
+.modal-enter-from .modal-overlay,
+.modal-leave-to .modal-overlay {
+  opacity: 0;
+}
+
+.modal-enter-from .modal-content {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+
+.modal-leave-to .modal-content {
+  opacity: 0;
+  transform: scale(0.97) translateY(5px);
+}
+
+/* Toast slide transition */
+.toast-slide-enter-active {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+
+.toast-slide-leave-active {
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.toast-slide-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px) scale(0.95);
+}
+
+.toast-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px) scale(0.95);
+}
+
+/* Stagger animation for list items */
+.stagger-enter-active {
+  animation: staggerIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes staggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Nav item active indicator animation */
+.nav-item.active {
+  border-left-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+  background: linear-gradient(90deg, rgba(124,110,240,.1), transparent);
+}
+
+.nav-item:hover {
+  background: rgba(124,110,240,.06);
+  transform: translateX(2px);
+}
+
+.nav-item.active:hover {
+  background: linear-gradient(90deg, rgba(124,110,240,.12), transparent);
 }

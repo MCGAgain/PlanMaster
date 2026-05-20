@@ -7,8 +7,8 @@
       </div>
     </div>
     <div class="checkin-list">
-      <template v-if="items.length">
-        <div v-for="item in items" :key="item.id" class="plan-card" :data-id="item.id">
+      <TransitionGroup name="list">
+        <div v-for="(item, idx) in items" :key="item.id" class="plan-card" :data-id="item.id" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="checkin-icon"><span class="checkin-check" :class="{ checked: item.checked_today }"></span></div>
           <div class="plan-card-body">
             <div class="plan-card-title">{{ item.name }}</div>
@@ -23,14 +23,14 @@
               <span class="plan-progress-text">{{ item.current_value }}</span>
             </div>
             <div class="plan-card-actions">
-              <button v-if="!item.checked_today" class="btn btn-success btn-sm" @click="doCheckin(item.id)">&#9989; 打卡</button>
+              <button v-if="!item.checked_today" class="btn btn-success btn-sm" @click="doCheckin(item.id)"><span class="icon-check"></span> 打卡</button>
               <span v-else class="checkin-done">今日已打卡</span>
               <button class="btn btn-danger btn-sm" @click="deleteCheckinItem(item.id)">删除</button>
             </div>
           </div>
         </div>
-      </template>
-      <div v-else class="empty-state">暂无打卡项目，点击右上角添加</div>
+      </TransitionGroup>
+      <div v-if="!items.length" class="empty-state">暂无打卡项目，点击右上角添加</div>
     </div>
 
     <div class="modal" :class="{ show: showModal }">

@@ -12,8 +12,8 @@
       <span>虚拟价值</span>
     </div>
     <div class="wish-list">
-      <template v-if="wishes.length">
-        <div v-for="w in wishes" :key="w.id" class="wish-card" :class="{ redeemed: w.redeemed }">
+      <TransitionGroup name="list">
+        <div v-for="(w, idx) in wishes" :key="w.id" class="wish-card" :class="{ redeemed: w.redeemed }" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="wish-info">
             <h4>{{ w.name }}</h4>
             <div class="wish-meta">{{ w.real_price > 0 ? '¥' + w.real_price : '' }}{{ w.redeemed ? ' · 已兑换' : '' }} · {{ w.quantity === null ? '无限' : '剩余 ' + w.quantity }}</div>
@@ -27,8 +27,8 @@
             <button class="btn btn-danger btn-sm" @click="deleteWish(w.id)">删除</button>
           </div>
         </div>
-      </template>
-      <div v-else class="empty-state">暂无心愿</div>
+      </TransitionGroup>
+      <div v-if="!wishes.length" class="empty-state">暂无心愿</div>
     </div>
 
     <div class="modal" :class="{ show: showModal }">

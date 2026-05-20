@@ -22,8 +22,8 @@
     </div>
     <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
     <div class="plan-list">
-      <template v-if="filteredPlans.length">
-        <div v-for="p in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }">
+      <TransitionGroup name="list">
+        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="priority-ring">
             <svg width="54" height="54" viewBox="0 0 54 54"><circle class="ring-bg" cx="27" cy="27" r="24"/><circle class="ring-fill" cx="27" cy="27" r="24" :stroke="priColor(p.priority) || 'rgba(168,163,191,0.4)'" :stroke-dasharray="2*Math.PI*24" :stroke-dashoffset="2*Math.PI*24*(1-getProgress(p)/100)"/></svg>
             <div class="priority-circle" :class="{ 'priority-none': !p.priority || p.priority <= 0 }" :style="p.priority > 0 ? `background: radial-gradient(circle, ${priColorLight(p.priority)} 0%, ${priColor(p.priority)} 100%)` : ''">{{ p.priority > 0 ? p.priority : '-' }}</div>
@@ -42,8 +42,8 @@
             <div class="plan-card-actions"><button v-if="!p.completed" class="btn btn-success btn-sm" @click="completePlan(p.id)">&#10003; 完成</button><button class="btn btn-glass btn-sm" @click="editPlan(p)">编辑</button><button class="btn btn-danger btn-sm" @click="deletePlan(p.id)">删除</button></div>
           </div>
         </div>
-      </template>
-      <div v-else class="empty-state">暂无计划，点击右上角添加</div>
+      </TransitionGroup>
+      <div v-if="!filteredPlans.length" class="empty-state">暂无计划，点击右上角添加</div>
     </div>
     <div class="modal" :class="{ show: showModal }"><div class="modal-overlay" @click="closeModal"></div><div class="modal-content glass-card"><div class="modal-header"><h3>{{ editingPlanId ? '编辑计划' : '新增计划' }}</h3><span class="modal-close" @click="closeModal">&times;</span></div><div class="modal-body"><div class="form-group"><label>计划标题</label><input type="text" v-model="form.title" placeholder="输入计划标题"></div><div class="form-group"><label>计划描述</label><textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea></div><div class="form-row"><div class="form-group"><label>优先级 (1-100)</label><input type="number" v-model="form.priority" min="1" max="100" step="1" placeholder="留空AI评估"></div><div class="form-group"><label>虚拟价值</label><input type="number" v-model="form.virtual_value" min="0" step="0.1" placeholder="留空AI评估"></div></div><div class="form-group"><label>完成进度: {{ form.progress }}%</label><input type="range" class="progress-range-input" v-model="form.progress" min="0" max="100" step="5"></div><small class="form-hint">优先级和价值留空时，配置AI后会自动评估；未配置AI则默认为0</small></div><div class="modal-footer"><button class="btn btn-glass" @click="closeModal">取消</button><button class="btn btn-gradient" @click="savePlan">保存</button></div></div></div>
   </div>
