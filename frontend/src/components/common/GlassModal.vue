@@ -5,12 +5,14 @@
       <div
         v-if="modelValue"
         class="glass-modal-overlay"
+        role="dialog"
+        aria-modal="true"
         @click.self="handleOverlayClick"
       >
         <div
           class="glass-modal"
           :class="[size]"
-          :style="{ width }"
+          :style="{ width, ...(width ? { minWidth: 'unset', maxWidth: 'unset' } : {}) }"
         >
           <div class="glass-modal-header">
             <slot name="header">
@@ -19,6 +21,7 @@
             <button
               v-if="closable"
               class="glass-modal-close"
+              aria-label="关闭"
               @click="close"
             >
               &times;
@@ -48,7 +51,7 @@ const props = defineProps({
   },
   width: {
     type: String,
-    default: '500px'
+    default: ''
   },
   size: {
     type: String,

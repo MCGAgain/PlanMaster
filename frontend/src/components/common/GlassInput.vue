@@ -1,18 +1,21 @@
 <!-- frontend/src/components/common/GlassInput.vue -->
 <template>
   <div class="glass-input-wrapper" :class="{ focused, error, disabled }">
-    <label v-if="label" class="glass-input-label">{{ label }}</label>
+    <label v-if="label" :for="inputId" class="glass-input-label">{{ label }}</label>
     <div class="glass-input-container">
       <span v-if="$slots.prefix" class="glass-input-prefix">
         <slot name="prefix" />
       </span>
       <input
         ref="inputRef"
+        :id="inputId"
         :type="type"
         :value="modelValue"
         :placeholder="placeholder"
         :disabled="disabled"
         :readonly="readonly"
+        :aria-describedby="error ? errorId : hint ? hintId : undefined"
+        :aria-invalid="error ? 'true' : undefined"
         class="glass-input"
         @input="$emit('update:modelValue', $event.target.value)"
         @focus="focused = true"
@@ -23,15 +26,21 @@
         <slot name="suffix" />
       </span>
     </div>
-    <span v-if="error" class="glass-input-error">{{ error }}</span>
-    <span v-else-if="hint" class="glass-input-hint">{{ hint }}</span>
+    <span v-if="error" :id="errorId" class="glass-input-error">{{ error }}</span>
+    <span v-else-if="hint" :id="hintId" class="glass-input-hint">{{ hint }}</span>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-defineProps({
+let uid = 0
+
+const props = defineProps({
+  id: {
+    type: String,
+    default: ''
+  },
   modelValue: {
     type: [String, Number],
     default: ''
@@ -70,6 +79,10 @@ defineEmits(['update:modelValue', 'enter'])
 
 const inputRef = ref(null)
 const focused = ref(false)
+const instanceId = `glass-input-${++uid}`
+const inputId = computed(() => props.id || instanceId)
+const errorId = `${instanceId}-error`
+const hintId = `${instanceId}-hint`
 
 const focus = () => inputRef.value?.focus()
 const blur = () => inputRef.value?.blur()

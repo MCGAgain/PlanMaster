@@ -1,7 +1,7 @@
 <!-- frontend/src/components/common/GlassToast.vue -->
 <template>
   <Teleport to="body">
-    <TransitionGroup name="toast" tag="div" class="toast-container">
+    <TransitionGroup name="toast" tag="div" class="toast-container" aria-live="polite">
       <div
         v-for="toast in toasts"
         :key="toast.id"
@@ -10,7 +10,7 @@
       >
         <span class="toast-icon">{{ icons[toast.type] }}</span>
         <span class="toast-message">{{ toast.message }}</span>
-        <button class="toast-close" @click="remove(toast.id)">&times;</button>
+        <button class="toast-close" aria-label="关闭" @click="remove(toast.id)">&times;</button>
       </div>
     </TransitionGroup>
   </Teleport>

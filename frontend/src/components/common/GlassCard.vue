@@ -6,7 +6,7 @@
       hoverable,
       [`variant-${variant}`]: variant
     }"
-    @click="$emit('click', $event)"
+    @click="hoverable && $emit('click', $event)"
   >
     <div v-if="$slots.header" class="glass-card-header">
       <slot name="header" />
