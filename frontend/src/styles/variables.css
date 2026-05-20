@@ -1,0 +1,64 @@
+:root {
+  /* Primary colors */
+  --primary: #7c6ef0;
+  --primary-light: rgba(124, 110, 240, 0.15);
+  --primary-glow: rgba(124, 110, 240, 0.3);
+
+  /* Accent colors */
+  --accent: #6ee7b7;
+  --accent-glow: rgba(110, 231, 183, 0.3);
+
+  /* Status colors */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  /* Glass effect */
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
+  --glass-blur: 20px;
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+  --sidebar-glass: rgba(255, 255, 255, 0.25);
+  --sidebar-border: rgba(255, 255, 255, 0.3);
+
+  /* Background */
+  --bg: #f0eef8;
+  --bg-gradient: linear-gradient(135deg, #f0eef8 0%, #e8e4f0 100%);
+
+  /* Text */
+  --text: #2d2655;
+  --text-soft: #7a7494;
+  --text-muted: #a8a3bf;
+
+  /* Border radius */
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 24px;
+
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+  --transition-slow: 500ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Dark theme */
+body.theme-dark {
+  --glass-bg: rgba(0, 0, 0, 0.35);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --sidebar-glass: rgba(0, 0, 0, 0.3);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --bg: #1a1625;
+  --bg-gradient: linear-gradient(135deg, #1a1625 0%, #2d2655 100%);
+  --text: #e8e4f0;
+  --text-soft: #b8b0cc;
+  --text-muted: #8a82a0;
+}
