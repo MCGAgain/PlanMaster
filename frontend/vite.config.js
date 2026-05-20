@@ -2,9 +2,10 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [vue()],
   root: '.',
+  base: command === 'build' ? '/static/dist/' : '/',
   build: {
     outDir: '../static/dist',
     emptyOutDir: true,
@@ -28,4 +29,4 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   }
-})
+}))

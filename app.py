@@ -94,6 +94,10 @@ def health():
 
 @app.route('/')
 def index():
+    # Serve Vue app if built, otherwise fall back to legacy template
+    vue_index = os.path.join(_sta_dir, 'dist', 'index.html')
+    if os.path.isfile(vue_index):
+        return send_from_directory(os.path.join(_sta_dir, 'dist'), 'index.html')
     return render_template('index.html')
 
 
@@ -990,6 +994,22 @@ def api_deepseek_balance():
         return jsonify({'error': '请求超时'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+# ---- SPA catch-all: serve Vue index.html for non-API routes ----
+
+@app.route('/plans')
+@app.route('/plans/<path:subpath>')
+@app.route('/wishes')
+@app.route('/stats')
+@app.route('/settings')
+@app.route('/focus')
+@app.route('/checkin')
+def spa_catchall(**kwargs):
+    vue_index = os.path.join(_sta_dir, 'dist', 'index.html')
+    if os.path.isfile(vue_index):
+        return send_from_directory(os.path.join(_sta_dir, 'dist'), 'index.html')
+    return render_template('index.html')
+
 
 if __name__ == '__main__':
     port = 8080

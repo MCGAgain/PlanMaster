@@ -27,6 +27,10 @@ fi
 echo "Installing dependencies..."
 pip install pyinstaller flask requests pywebview --quiet
 
+# Build Vue frontend
+echo "Building Vue frontend..."
+cd frontend && npm ci && npm run build && cd ..
+
 # Clean previous builds
 rm -rf "$DIST_DIR" "$BUILD_DIR" "*.spec"
 
