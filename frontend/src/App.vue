@@ -1,19 +1,37 @@
 <template>
   <div class="app">
-    <h1>PlanMaster Vue</h1>
-    <p>Frontend initialized successfully</p>
+    <Sidebar />
+    <Content>
+      <Header :title="currentTitle" />
+      <router-view />
+    </Content>
   </div>
 </template>
 
 <script setup>
-// Root component
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import Sidebar from './components/layout/Sidebar.vue'
+import Header from './components/layout/Header.vue'
+import Content from './components/layout/Content.vue'
+
+const route = useRoute()
+
+const currentTitle = computed(() => {
+  return route.meta?.title || 'Todo'
+})
 </script>
 
 <style>
-.app {
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+  background: var(--bg);
+  color: var(--text);
 }
 </style>

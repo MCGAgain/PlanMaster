@@ -10,3 +10,4 @@ build/
 icon.iconset/
 icon_*.png
 .DS_Store
+.superpowers
