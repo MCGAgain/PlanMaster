@@ -31,7 +31,7 @@
             <span>计划管理</span>
             <span class="arrow">&#9662;</span>
           </div>
-          <ul class="nav-group-items" :class="{ open: plansOpen }">
+          <ul class="nav-group-items" :class="{ open: plansOpen }" :style="{ maxHeight: plansOpen ? '200px' : '0' }">
             <li class="nav-item" :class="{ active: currentRoute === '/weekly' }" @click="navigate('/weekly')"><span>周计划</span></li>
             <li class="nav-item" :class="{ active: currentRoute === '/monthly' }" @click="navigate('/monthly')"><span>月计划</span></li>
             <li class="nav-item" :class="{ active: currentRoute === '/yearly' }" @click="navigate('/yearly')"><span>年计划</span></li>

@@ -9,7 +9,7 @@
     <div class="checkin-list">
       <template v-if="items.length">
         <div v-for="item in items" :key="item.id" class="plan-card" :data-id="item.id">
-          <div class="checkin-icon">{{ item.checked_today ? '&#9989;' : '&#9744;' }}</div>
+          <div class="checkin-icon"><span class="checkin-check" :class="{ checked: item.checked_today }"></span></div>
           <div class="plan-card-body">
             <div class="plan-card-title">{{ item.name }}</div>
             <div class="plan-card-meta">
