@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 const props = defineProps({
   title: {
@@ -44,6 +44,10 @@ const handleSearch = () => {
     emit('search', searchQuery.value)
   }, 300)
 }
+
+onUnmounted(() => {
+  clearTimeout(searchTimeout)
+})
 </script>
 
 <style scoped>

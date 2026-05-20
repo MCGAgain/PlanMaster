@@ -78,6 +78,11 @@ const routes = [
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),
     meta: { title: 'AI设置', icon: '&#9881;' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    redirect: '/'
   }
 ]
 

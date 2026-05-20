@@ -17,10 +17,11 @@
         :key="item.path"
         class="nav-item"
         :class="{ active: currentRoute === item.path }"
-        @click="navigate(item.path)"
       >
-        <span class="nav-icon" v-html="item.icon" />
-        <span>{{ item.label }}</span>
+        <router-link :to="item.path" class="nav-link">
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </router-link>
       </li>
 
       <li class="nav-group">
@@ -29,7 +30,7 @@
           :class="{ collapsed: !plansOpen }"
           @click="plansOpen = !plansOpen"
         >
-          <span class="nav-icon">&#128197;</span>
+          <span class="nav-icon">📅</span>
           <span>计划管理</span>
           <span class="arrow" :class="{ open: plansOpen }">&#9662;</span>
         </div>
@@ -39,9 +40,10 @@
             :key="plan.path"
             class="nav-item"
             :class="{ active: currentRoute === plan.path }"
-            @click="navigate(plan.path)"
           >
-            <span>{{ plan.label }}</span>
+            <router-link :to="plan.path" class="nav-link">
+              <span>{{ plan.label }}</span>
+            </router-link>
           </li>
         </ul>
       </li>
@@ -51,10 +53,11 @@
         :key="item.path"
         class="nav-item"
         :class="{ active: currentRoute === item.path }"
-        @click="navigate(item.path)"
       >
-        <span class="nav-icon" v-html="item.icon" />
-        <span>{{ item.label }}</span>
+        <router-link :to="item.path" class="nav-link">
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </router-link>
       </li>
     </ul>
   </nav>
@@ -62,9 +65,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 
-const router = useRouter()
 const route = useRoute()
 
 const balance = ref(0)
@@ -73,9 +75,9 @@ const plansOpen = ref(true)
 const currentRoute = computed(() => route.path)
 
 const menuItems = [
-  { path: '/checkin', label: '打卡', icon: '&#9745;' },
-  { path: '/important', label: '重要事项', icon: '&#9888;' },
-  { path: '/', label: '今日待办', icon: '&#9728;' }
+  { path: '/checkin', label: '打卡', icon: '☑' },
+  { path: '/important', label: '重要事项', icon: '⚠' },
+  { path: '/', label: '今日待办', icon: '☀' }
 ]
 
 const planTypes = [
@@ -85,18 +87,14 @@ const planTypes = [
 ]
 
 const bottomItems = [
-  { path: '/stats', label: '统计数据', icon: '&#128202;' },
-  { path: '/focus', label: '专注模式', icon: '&#9201;' },
-  { path: '/wishes', label: '心愿兑换单', icon: '&#9734;' },
-  { path: '/transactions', label: '价值流水', icon: '&#128200;' },
-  { path: '/recycle', label: '回收站', icon: '&#128465;' },
-  { path: '/apibalance', label: 'API余量', icon: '&#128176;' },
-  { path: '/settings', label: 'AI设置', icon: '&#9881;' }
+  { path: '/stats', label: '统计数据', icon: '📊' },
+  { path: '/focus', label: '专注模式', icon: '⏱' },
+  { path: '/wishes', label: '心愿兑换单', icon: '☆' },
+  { path: '/transactions', label: '价值流水', icon: '📈' },
+  { path: '/recycle', label: '回收站', icon: '🗑' },
+  { path: '/apibalance', label: 'API余量', icon: '💰' },
+  { path: '/settings', label: 'AI设置', icon: '⚙' }
 ]
-
-const navigate = (path) => {
-  router.push(path)
-}
 
 const updateBalance = (newBalance) => {
   balance.value = newBalance
@@ -176,23 +174,28 @@ defineExpose({ updateBalance })
 }
 
 .nav-item {
+  margin: 0.25rem 0;
+  border-radius: var(--radius-sm);
+}
+
+.nav-link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  margin: 0.25rem 0;
-  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
   cursor: pointer;
   transition: all var(--transition-fast) var(--ease-default);
   color: var(--text-soft);
 }
 
-.nav-item:hover {
+.nav-link:hover {
   background: var(--glass-bg);
   color: var(--text);
 }
 
-.nav-item.active {
+.nav-item.active .nav-link {
   background: var(--primary-light);
   color: var(--primary);
   font-weight: 500;
@@ -242,7 +245,10 @@ defineExpose({ updateBalance })
 }
 
 .nav-group-items .nav-item {
-  padding: 0.5rem 1rem;
   font-size: 0.9rem;
+}
+
+.nav-group-items .nav-link {
+  padding: 0.5rem 1rem;
 }
 </style>
