@@ -776,12 +776,25 @@ def extract_category(title, plan_type=''):
 
 
 def get_plan_progress(plan_type):
-    """获取计划完成进度（包含过期继承的任务）"""
+    """获取计划完成进度（仅统计当前周期内完成的任务，继承的任务计入总数）"""
+    today = date.today()
+    if plan_type == 'today':
+        period_start = today.isoformat()
+    elif plan_type == 'weekly':
+        period_start = (today - timedelta(days=today.weekday())).isoformat()
+    elif plan_type == 'monthly':
+        period_start = today.replace(day=1).isoformat()
+    elif plan_type == 'yearly':
+        period_start = today.replace(month=1, day=1).isoformat()
+    else:
+        period_start = today.isoformat()
+
     with _conn() as conn:
         row = conn.execute(
             "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
-            "FROM plans WHERE plan_type = ?",
-            (plan_type,)
+            "FROM plans WHERE plan_type = ? "
+            "AND (completed = 0 OR DATE(completed_at) >= ?)",
+            (plan_type, period_start)
         ).fetchone()
         total = row['total'] or 0
         completed = row['completed'] or 0

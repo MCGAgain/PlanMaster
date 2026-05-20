@@ -19,7 +19,7 @@ import updater
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger('planmaster')
 
-CURRENT_VERSION = '1.9.0'
+CURRENT_VERSION = '1.9.1'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
