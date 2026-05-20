@@ -1,40 +1,89 @@
 <template>
   <div class="app">
-    <!-- 背景光球 -->
     <div class="bg-orbs">
       <div class="orb orb-1"></div>
       <div class="orb orb-2"></div>
       <div class="orb orb-3"></div>
     </div>
 
-    <Sidebar />
-    <Content>
-      <Header :title="currentTitle" />
-      <router-view />
-    </Content>
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <h1>Todo</h1>
+        <p class="subtitle">计划管理 & 心愿兑换</p>
+      </div>
+      <div class="balance-card" id="balanceCard">
+        <span class="balance-label">虚拟价值余额</span>
+        <span class="balance-value" id="balanceValue">{{ balance }}</span>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item" :class="{ active: currentRoute === '/checkin' }" @click="navigate('/checkin')">
+          <span class="nav-icon">&#9745;</span><span>打卡</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/important' }" @click="navigate('/important')">
+          <span class="nav-icon">&#9888;</span><span>重要事项</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/' }" @click="navigate('/')">
+          <span class="nav-icon">&#9728;</span><span>今日待办</span>
+        </li>
+        <li class="nav-group">
+          <div class="nav-group-header" :class="{ collapsed: !plansOpen }" @click="plansOpen = !plansOpen">
+            <span class="nav-icon">&#128197;</span>
+            <span>计划管理</span>
+            <span class="arrow">&#9662;</span>
+          </div>
+          <ul class="nav-group-items" :class="{ open: plansOpen }">
+            <li class="nav-item" :class="{ active: currentRoute === '/weekly' }" @click="navigate('/weekly')"><span>周计划</span></li>
+            <li class="nav-item" :class="{ active: currentRoute === '/monthly' }" @click="navigate('/monthly')"><span>月计划</span></li>
+            <li class="nav-item" :class="{ active: currentRoute === '/yearly' }" @click="navigate('/yearly')"><span>年计划</span></li>
+          </ul>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/stats' }" @click="navigate('/stats')">
+          <span class="nav-icon">&#128202;</span><span>统计数据</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/focus' }" @click="navigate('/focus')">
+          <span class="nav-icon">&#9201;</span><span>专注模式</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/wishes' }" @click="navigate('/wishes')">
+          <span class="nav-icon">&#9734;</span><span>心愿兑换单</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/transactions' }" @click="navigate('/transactions')">
+          <span class="nav-icon">&#128200;</span><span>价值流水</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/recycle' }" @click="navigate('/recycle')">
+          <span class="nav-icon">&#128465;</span><span>回收站</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/apibalance' }" @click="navigate('/apibalance')">
+          <span class="nav-icon">&#128176;</span><span>API余量</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/settings' }" @click="navigate('/settings')">
+          <span class="nav-icon">&#9881;</span><span>AI设置</span>
+        </li>
+      </ul>
+    </nav>
 
-    <!-- Toast通知 -->
-    <div class="toast" :class="{ show: toastVisible, error: toastIsError }">
-      {{ toastMessage }}
-    </div>
+    <main class="content">
+      <router-view />
+    </main>
+
+    <div class="toast" :class="{ show: toastVisible, error: toastIsError }">{{ toastMessage }}</div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/api'
-import Sidebar from './components/layout/Sidebar.vue'
-import Header from './components/layout/Header.vue'
-import Content from './components/layout/Content.vue'
 
 const route = useRoute()
+const router = useRouter()
 
-const currentTitle = computed(() => {
-  return route.meta?.title || 'Todo'
-})
+const balance = ref(0)
+const plansOpen = ref(true)
+const currentRoute = computed(() => route.path)
 
-// Toast通知
+const navigate = (path) => router.push(path)
+
+// Toast
 const toastVisible = ref(false)
 const toastMessage = ref('')
 const toastIsError = ref(false)
@@ -45,27 +94,21 @@ const showToast = (msg, isError = false) => {
   toastIsError.value = isError
   toastVisible.value = true
   clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    toastVisible.value = false
-  }, 3000)
+  toastTimer = setTimeout(() => { toastVisible.value = false }, 3000)
 }
 
-// 暴露给全局
 window.toast = showToast
 
-// 背景设置
-const loadBackground = async () => {
+const loadBalance = async () => {
   try {
-    const settings = await api.getSettings()
-    const mode = settings.bg_mode || 'orb'
-    const color = settings.bg_solid_color || '#f0eef8'
-    const image = settings.bg_image
-    applyBgMode(mode, color, image ? bgImageUrl(image) : '')
-  } catch (e) {
-    console.error('Failed to load background:', e)
-  }
+    const d = await api.getBalance()
+    balance.value = d.balance.toFixed(1)
+  } catch (e) {}
 }
 
+window.loadBalance = loadBalance
+
+// Background
 const bgImageUrl = (path) => {
   if (!path) return ''
   return path.replace('/static/bg_custom/', '/api/background/custom/')
@@ -77,8 +120,7 @@ const isColorDark = (hex) => {
   const r = parseInt(c.substring(0, 2), 16)
   const g = parseInt(c.substring(2, 4), 16)
   const b = parseInt(c.substring(4, 6), 16)
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return lum < 0.5
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5
 }
 
 const applyBgMode = (mode, color, image) => {
@@ -87,30 +129,33 @@ const applyBgMode = (mode, color, image) => {
     document.body.classList.add('bg-solid')
     document.body.style.backgroundColor = color
     document.body.style.backgroundImage = ''
-    if (isColorDark(color)) {
-      document.body.classList.add('theme-dark')
-    }
+    if (isColorDark(color)) document.body.classList.add('theme-dark')
   } else if (mode === 'image') {
     document.body.classList.add('bg-image', 'theme-dark')
     document.body.style.backgroundColor = ''
-    if (image) {
-      document.body.style.backgroundImage = `url(${image})`
-    }
+    if (image) document.body.style.backgroundImage = `url(${image})`
   } else {
     document.body.style.backgroundColor = ''
     document.body.style.backgroundImage = ''
   }
 }
 
-// ESC关闭弹窗
-const handleKeydown = (e) => {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'))
-  }
+window.applyBgMode = applyBgMode
+
+const loadBackground = async () => {
+  try {
+    const s = await api.getSettings()
+    applyBgMode(s.bg_mode || 'orb', s.bg_solid_color || '#f0eef8', s.bg_image ? bgImageUrl(s.bg_image) : '')
+  } catch (e) {}
 }
 
-onMounted(() => {
-  loadBackground()
+const handleKeydown = (e) => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'))
+}
+
+onMounted(async () => {
+  await loadBalance()
+  await loadBackground()
   document.addEventListener('keydown', handleKeydown)
 })
 
@@ -119,123 +164,3 @@ onUnmounted(() => {
   clearTimeout(toastTimer)
 })
 </script>
-
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
-/* 背景光球 */
-.bg-orbs {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: -1;
-  overflow: hidden;
-}
-
-body.bg-solid .bg-orbs,
-body.bg-image .bg-orbs {
-  display: none;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.6;
-  animation: float 20s ease-in-out infinite;
-}
-
-.orb-1 {
-  width: 400px;
-  height: 400px;
-  background: #7c6ef0;
-  top: -100px;
-  left: -100px;
-  animation-delay: 0s;
-}
-
-.orb-2 {
-  width: 350px;
-  height: 350px;
-  background: #3b82f6;
-  top: 50%;
-  right: -100px;
-  animation-delay: -7s;
-}
-
-.orb-3 {
-  width: 300px;
-  height: 300px;
-  background: #10b981;
-  bottom: -100px;
-  left: 30%;
-  animation-delay: -14s;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translate(0, 0) scale(1);
-  }
-  25% {
-    transform: translate(50px, -50px) scale(1.1);
-  }
-  50% {
-    transform: translate(-30px, 30px) scale(0.9);
-  }
-  75% {
-    transform: translate(30px, 50px) scale(1.05);
-  }
-}
-
-/* 背景图片模式 */
-body.bg-image {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-}
-
-/* Toast通知 */
-.toast {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  padding: 0.75rem 1.5rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  color: var(--text);
-  font-size: 0.9rem;
-  z-index: 10000;
-  opacity: 0;
-  transition: all 0.3s ease;
-  pointer-events: none;
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.toast.error {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-</style>

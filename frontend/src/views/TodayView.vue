@@ -1,135 +1,189 @@
 <template>
-  <div class="today-view">
-    <Header title="今日待办" searchable @search="handleSearch">
-      <template #actions>
-        <GlassButton variant="primary" @click="showAddModal = true">
-          + 新增计划
-        </GlassButton>
-        <GlassButton variant="gradient" @click="handleAiSort">
-          &#9889; AI智能排序
-        </GlassButton>
-      </template>
-    </Header>
-
-    <!-- 分类进度条 -->
+  <div class="page active">
+    <div class="page-header">
+      <h2>今日待办</h2>
+      <div class="page-actions">
+        <button class="btn btn-glass" @click="showAddPlanModal">+ 新增计划</button>
+        <button class="btn btn-gradient" @click="aiSortPlans">&#9889; AI智能排序</button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input type="text" class="search-input" placeholder="搜索计划... (支持拼音)" v-model="searchKeyword" @input="filterPlans">
+      <span class="search-clear" v-show="searchKeyword" @click="clearSearch">&times;</span>
+    </div>
     <div class="category-progress">
       <div class="category-progress-info">
         <span class="category-progress-label">完成进度</span>
         <span class="category-progress-text">{{ categoryProgress }}%</span>
       </div>
       <div class="category-progress-track">
-        <div class="category-progress-bar" :style="{ width: `${categoryProgress}%` }" />
+        <div class="category-progress-bar" :style="{ width: categoryProgress + '%' }"></div>
       </div>
     </div>
-
-    <!-- 个性签名 -->
-    <div v-if="currentSignature" class="signature-bar show">
-      {{ currentSignature }}
+    <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
+    <div class="plan-list">
+      <template v-if="filteredPlans.length">
+        <div v-for="p in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :data-id="p.id">
+          <div class="priority-ring">
+            <svg width="54" height="54" viewBox="0 0 54 54">
+              <circle class="ring-bg" cx="27" cy="27" r="24"/>
+              <circle class="ring-fill" cx="27" cy="27" r="24"
+                :stroke="priColor(p.priority) || 'rgba(168,163,191,0.4)'"
+                :stroke-dasharray="2 * Math.PI * 24"
+                :stroke-dashoffset="2 * Math.PI * 24 * (1 - getProgress(p) / 100)"/>
+            </svg>
+            <div class="priority-circle" :class="{ 'priority-none': !p.priority || p.priority <= 0 }"
+              :style="p.priority > 0 ? `background: radial-gradient(circle, ${priColorLight(p.priority)} 0%, ${priColor(p.priority)} 100%)` : ''">
+              {{ p.priority > 0 ? p.priority : '-' }}
+            </div>
+          </div>
+          <div class="plan-card-body">
+            <div class="plan-card-title">{{ p.title }}<span v-if="planDateLabel" class="plan-date-label">{{ planDateLabel }}</span></div>
+            <div class="plan-card-meta">
+              <span class="plan-type-tag" :style="{ background: '#7c6ef0' }">今日待办</span>
+              <template v-if="p.suggested_time">
+                <span class="plan-badge badge-time">&#128336; {{ p.suggested_time }}</span>
+                <button class="btn timer-btn" :class="{ counting: timers[p.id] }" @click="toggleTimer(p.id, p.suggested_time)">{{ timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始' }}</button>
+              </template>
+              <button class="btn focus-btn btn-sm" :class="{ focusing: activeFocusSession && activeFocusSession.plan_id === p.id }" @click="toggleFocus(p.id)">
+                {{ activeFocusSession && activeFocusSession.plan_id === p.id ? '&#9632; 停止' : '&#9654; 专注' }}
+              </button>
+              <span v-if="p.virtual_value > 0" class="plan-badge badge-value">{{ p.virtual_value }} 价值</span>
+            </div>
+            <div v-if="p.description" class="plan-card-desc">{{ p.description }}</div>
+            <div v-if="p.ai_reason" class="plan-card-reason">AI: {{ p.ai_reason }}</div>
+            <div class="plan-progress">
+              <div class="plan-progress-track">
+                <div class="plan-progress-bar" :style="{ width: getProgress(p) + '%' }"></div>
+                <input type="range" class="plan-progress-input" min="0" max="100" step="5" :value="getProgress(p)"
+                  @input="previewProgress($event)" @change="updateProgress(p.id, $event.target.value)">
+              </div>
+              <span class="plan-progress-text">{{ getProgress(p) }}%</span>
+            </div>
+            <div class="plan-card-actions">
+              <button v-if="!p.completed" class="btn btn-success btn-sm" @click="completePlan(p.id)">&#10003; 完成</button>
+              <button class="btn btn-glass btn-sm" @click="editPlan(p)">编辑</button>
+              <button class="btn btn-danger btn-sm" @click="deletePlan(p.id)">删除</button>
+            </div>
+          </div>
+        </div>
+      </template>
+      <div v-else class="empty-state">暂无计划，点击右上角添加</div>
     </div>
 
-    <!-- 计划列表 -->
-    <div class="plans-list">
-      <PlanCard
-        v-for="plan in filteredPlans"
-        :key="plan.id"
-        :plan="plan"
-        :is-focusing="activeFocusSession?.plan_id === plan.id"
-        :timer-remaining="timers[plan.id]?.remaining ?? null"
-        @complete="handleComplete"
-        @edit="handleEdit"
-        @delete="handleDelete"
-        @toggle-timer="handleToggleTimer"
-        @toggle-focus="handleToggleFocus"
-        @update-progress="handleUpdateProgress"
-      />
+    <!-- Add/Edit Plan Modal -->
+    <div class="modal" :class="{ show: showModal }">
+      <div class="modal-overlay" @click="closeModal"></div>
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h3>{{ editingPlanId ? '编辑计划' : '新增计划' }}</h3>
+          <span class="modal-close" @click="closeModal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>计划标题</label>
+            <input type="text" v-model="form.title" placeholder="输入计划标题">
+          </div>
+          <div class="form-group">
+            <label>计划描述</label>
+            <textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>优先级 (1-100)</label>
+              <input type="number" v-model="form.priority" min="1" max="100" step="1" placeholder="留空AI评估">
+            </div>
+            <div class="form-group">
+              <label>虚拟价值</label>
+              <input type="number" v-model="form.virtual_value" min="0" step="0.1" placeholder="留空AI评估">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>完成进度: {{ form.progress }}%</label>
+            <input type="range" class="progress-range-input" v-model="form.progress" min="0" max="100" step="5">
+          </div>
+          <small class="form-hint">优先级和价值留空时，配置AI后会自动评估；未配置AI则默认为0</small>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-glass" @click="closeModal">取消</button>
+          <button class="btn btn-gradient" @click="savePlan">保存</button>
+        </div>
+      </div>
     </div>
-
-    <GlassCard v-if="filteredPlans.length === 0" class="empty-state">
-      <p>暂无今日待办，点击右上角添加</p>
-    </GlassCard>
-
-    <!-- 新增计划弹窗 -->
-    <GlassModal v-model="showAddModal" title="新增今日计划">
-      <PlanForm @submit="handleAdd" @cancel="showAddModal = false" />
-    </GlassModal>
-
-    <!-- 编辑计划弹窗 -->
-    <GlassModal v-model="showEditModal" title="编辑计划">
-      <PlanForm
-        :plan="editingPlan"
-        @submit="handleUpdate"
-        @cancel="showEditModal = false"
-      />
-    </GlassModal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { usePlansStore } from '@/stores/plans'
 import { usePinyin } from '@/composables/usePinyin'
 import api from '@/api'
-import Header from '@/components/layout/Header.vue'
-import PlanCard from '@/components/business/PlanCard.vue'
-import GlassCard from '@/components/common/GlassCard.vue'
-import GlassModal from '@/components/common/GlassModal.vue'
-import GlassButton from '@/components/common/GlassButton.vue'
-import PlanForm from '@/components/forms/PlanForm.vue'
 
-const plansStore = usePlansStore()
 const { matchPinyin } = usePinyin()
 
-const showAddModal = ref(false)
-const showEditModal = ref(false)
-const editingPlan = ref(null)
-const searchQuery = ref('')
+const planType = 'today'
+const plans = ref([])
+const allPlans = ref([])
+const searchKeyword = ref('')
 const categoryProgress = ref(0)
 const signatures = ref([])
 const sigIndex = ref(0)
 const currentSignature = ref('')
-
-// 倒计时器
+const showModal = ref(false)
+const editingPlanId = ref(null)
+const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 })
 const timers = ref({})
-
-// 专注会话
 const activeFocusSession = ref(null)
+let planSaving = false
 
-const plans = computed(() => plansStore.todayPlans)
+const planDateLabel = computed(() => {
+  const d = new Date()
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日'
+})
 
 const filteredPlans = computed(() => {
-  if (!searchQuery.value) return plans.value
-  return plans.value.filter(p =>
-    matchPinyin(p.title, searchQuery.value) ||
-    matchPinyin(p.description || '', searchQuery.value)
-  )
+  if (!searchKeyword.value) return plans.value
+  return plans.value.filter(p => matchPinyin(p.title, searchKeyword.value) || matchPinyin(p.description || '', searchKeyword.value))
 })
 
-onMounted(async () => {
-  plansStore.setCurrentType('today')
-  await plansStore.fetchPlans()
-  await loadCategoryProgress()
-  await loadSignatures()
-  await restoreFocusSession()
-})
+const filterPlans = () => {}
+const clearSearch = () => { searchKeyword.value = '' }
 
-onUnmounted(() => {
-  // 清理所有定时器
-  Object.values(timers.value).forEach(t => {
-    if (t.interval) clearInterval(t.interval)
-  })
-})
+function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML }
+function priColor(p) { if (!p || p <= 0) return null; p = Math.min(100, Math.max(1, p)); return `hsl(${120 - (p / 100) * 120}, 72%, 52%)` }
+function priColorLight(p) { if (!p || p <= 0) return null; p = Math.min(100, Math.max(1, p)); return `hsl(${120 - (p / 100) * 120}, 72%, 92%)` }
 
-const handleSearch = (query) => {
-  searchQuery.value = query
+function getProgress(p) {
+  if (timers.value[p.id]) return Math.min(99, Math.round((1 - timers.value[p.id].remaining / timers.value[p.id].total) * 100))
+  return Math.min(100, Math.max(0, p.progress || 0))
 }
 
-const loadCategoryProgress = async () => {
+function fmtCountdown(s) { const m = Math.floor(s / 60), sec = Math.floor(s % 60); return m + ':' + String(sec).padStart(2, '0') }
+function parseSuggestedTime(str) { if (!str) return 0; const m = str.match(/([\d.]+)\s*(秒|分钟|小时)/); if (!m) return 0; const v = parseFloat(m[1]); return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : v * 3600 }
+
+function previewProgress(e) {
+  const track = e.target.closest('.plan-progress-track')
+  const bar = track.querySelector('.plan-progress-bar')
+  const text = e.target.closest('.plan-progress').querySelector('.plan-progress-text')
+  bar.style.width = e.target.value + '%'
+  text.textContent = e.target.value + '%'
+}
+
+const showNextSignature = () => {
+  if (!signatures.value.length) { currentSignature.value = ''; return }
+  currentSignature.value = signatures.value[sigIndex.value % signatures.value.length]
+  sigIndex.value++
+}
+
+const loadPlans = async () => {
   try {
-    const progress = await api.getPlanProgress('today')
+    const [active, progress] = await Promise.all([
+      api.getPlans(planType),
+      api.getPlanProgress(planType).catch(() => ({ completed: 0, total: 0, percentage: 0 }))
+    ])
+    plans.value = active
+    allPlans.value = active
     categoryProgress.value = progress.percentage || 0
-  } catch (e) {
-    console.error('Failed to load category progress:', e)
-  }
+  } catch (e) { window.toast('加载失败: ' + e.message, true) }
 }
 
 const loadSignatures = async () => {
@@ -137,154 +191,106 @@ const loadSignatures = async () => {
     const rows = await api.getSignatures()
     signatures.value = rows.map(r => r.content).filter(c => c.trim())
     showNextSignature()
-  } catch (e) {
-    console.error('Failed to load signatures:', e)
-  }
+  } catch (e) {}
 }
 
-const showNextSignature = () => {
-  if (signatures.value.length === 0) {
-    currentSignature.value = ''
+const showAddPlanModal = () => {
+  editingPlanId.value = null
+  form.value = { title: '', description: '', priority: '', virtual_value: '', progress: 0 }
+  showModal.value = true
+}
+
+const editPlan = (p) => {
+  editingPlanId.value = p.id
+  form.value = { title: p.title, description: p.description || '', priority: p.priority || '', virtual_value: p.virtual_value || '', progress: p.progress || 0 }
+  showModal.value = true
+}
+
+const closeModal = () => { showModal.value = false }
+
+const savePlan = async () => {
+  if (planSaving) return
+  const title = form.value.title.trim()
+  if (!title) { window.toast('请输入标题', true); return }
+  planSaving = true
+  try {
+    const body = { title, description: form.value.description.trim(), progress: parseInt(form.value.progress) || 0 }
+    if (form.value.priority !== '') body.priority = parseInt(form.value.priority)
+    if (form.value.virtual_value !== '') body.virtual_value = parseFloat(form.value.virtual_value)
+    if (editingPlanId.value) {
+      await api.updatePlan(editingPlanId.value, body)
+      window.toast('已更新')
+    } else {
+      body.plan_type = planType
+      const newPlan = await api.createPlan(body)
+      window.toast('已创建')
+      if (!form.value.priority && !form.value.virtual_value && newPlan && newPlan.id) {
+        let polls = 0
+        const poll = setInterval(async () => {
+          try {
+            const pl = await api.getPlans(planType)
+            const found = pl.find(x => x.id === newPlan.id)
+            if (found && found.priority > 0) { clearInterval(poll); loadPlans() }
+          } catch (_) {}
+          if (++polls >= 15) clearInterval(poll)
+        }, 1000)
+      }
+    }
+    closeModal()
+    await loadPlans()
+    showNextSignature()
+  } catch (e) { window.toast('保存失败: ' + e.message, true) }
+  finally { planSaving = false }
+}
+
+const deletePlan = async (id) => {
+  if (!confirm('确定删除此计划？')) return
+  if (timers.value[id]) stopTimer(id)
+  if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
+  try { await api.deletePlan(id); window.toast('计划已删除'); await loadPlans() }
+  catch (e) { window.toast('删除失败: ' + e.message, true) }
+}
+
+const completePlan = async (id) => {
+  if (timers.value[id]) stopTimer(id)
+  if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
+  try { await api.completePlan(id); window.toast('计划已完成，虚拟价值已入账！'); await loadPlans(); window.loadBalance && window.loadBalance() }
+  catch (e) { window.toast('操作失败: ' + e.message, true) }
+}
+
+const updateProgress = async (id, val) => {
+  const v = parseInt(val)
+  if (v >= 100) {
+    if (timers.value[id]) stopTimer(id)
+    if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
+    try { await api.completePlan(id); window.toast('计划已完成，虚拟价值已入账！'); await loadPlans(); window.loadBalance && window.loadBalance() }
+    catch (e) { window.toast('更新失败: ' + e.message, true) }
     return
   }
-  currentSignature.value = signatures.value[sigIndex.value % signatures.value.length]
-  sigIndex.value++
+  try { await api.updatePlan(id, { progress: v }); categoryProgress.value = (await api.getPlanProgress(planType)).percentage || 0 }
+  catch (e) { window.toast('更新失败: ' + e.message, true) }
 }
 
-const handleAiSort = async () => {
-  try {
-    const result = await api.sortPlans('today')
-    await plansStore.fetchPlans()
-    await loadCategoryProgress()
-    alert(`AI排序完成，已更新 ${result.length} 条计划`)
-  } catch (e) {
-    alert('AI排序失败: ' + e.message)
-  }
+const aiSortPlans = async () => {
+  try { const r = await api.sortPlans(planType); window.toast('AI排序完成，已更新 ' + r.length + ' 条计划'); await loadPlans() }
+  catch (e) { window.toast('AI排序失败: ' + e.message, true) }
 }
 
-const handleComplete = async (plan) => {
-  try {
-    // 停止倒计时
-    if (timers.value[plan.id]) {
-      stopTimer(plan.id)
-    }
-    // 停止专注
-    if (activeFocusSession.value?.plan_id === plan.id) {
-      await stopFocus()
-    }
-    await plansStore.completePlan(plan.id)
-    await loadCategoryProgress()
-    alert('计划已完成，虚拟价值已入账！')
-  } catch (error) {
-    console.error('Failed to complete plan:', error)
-    alert('完成计划失败: ' + error.message)
-  }
-}
-
-const handleEdit = (plan) => {
-  editingPlan.value = plan
-  showEditModal.value = true
-}
-
-const handleDelete = async (plan) => {
-  if (!confirm('确定删除此计划？')) return
-  try {
-    // 停止倒计时
-    if (timers.value[plan.id]) {
-      stopTimer(plan.id)
-    }
-    // 停止专注
-    if (activeFocusSession.value?.plan_id === plan.id) {
-      await stopFocus()
-    }
-    await plansStore.deletePlan(plan.id)
-    await loadCategoryProgress()
-  } catch (error) {
-    console.error('Failed to delete plan:', error)
-    alert('删除计划失败: ' + error.message)
-  }
-}
-
-const handleAdd = async (plan) => {
-  try {
-    await plansStore.createPlan({
-      ...plan,
-      plan_type: 'today'
-    })
-    showAddModal.value = false
-    await loadCategoryProgress()
-    showNextSignature()
-  } catch (error) {
-    console.error('Failed to create plan:', error)
-    alert('创建计划失败: ' + error.message)
-  }
-}
-
-const handleUpdate = async (plan) => {
-  try {
-    await plansStore.updatePlan(editingPlan.value.id, plan)
-    showEditModal.value = false
-    editingPlan.value = null
-  } catch (error) {
-    console.error('Failed to update plan:', error)
-    alert('更新计划失败: ' + error.message)
-  }
-}
-
-const handleUpdateProgress = async (planId, value) => {
-  try {
-    if (value >= 100) {
-      // 停止倒计时
-      if (timers.value[planId]) {
-        stopTimer(planId)
-      }
-      // 停止专注
-      if (activeFocusSession.value?.plan_id === planId) {
-        await stopFocus()
-      }
-      await api.completePlan(planId)
-      await plansStore.fetchPlans()
-      await loadCategoryProgress()
-      alert('计划已完成，虚拟价值已入账！')
-    } else {
-      await api.updatePlan(planId, { progress: value })
-      await loadCategoryProgress()
-    }
-  } catch (e) {
-    alert('更新失败: ' + e.message)
-  }
-}
-
-// 倒计时器功能
-const parseSuggestedTime = (str) => {
-  if (!str) return 0
-  const m = str.match(/([\d.]+)\s*(秒|分钟|小时)/)
-  if (!m) return 0
-  const v = parseFloat(m[1])
-  return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : v * 3600
-}
-
-const handleToggleTimer = (plan) => {
-  const id = plan.id
-  if (timers.value[id]) {
-    stopTimer(id)
-  } else {
-    const sec = parseSuggestedTime(plan.suggested_time)
-    if (sec > 0) startTimer(id, sec)
-  }
+// Timer
+const toggleTimer = (id, timeStr) => {
+  id = parseInt(id)
+  if (timers.value[id]) { stopTimer(id); return }
+  const sec = parseSuggestedTime(timeStr)
+  if (sec > 0) startTimer(id, sec)
 }
 
 const startTimer = (id, totalSec) => {
   if (timers.value[id]?.interval) return
   timers.value[id] = { remaining: totalSec, total: totalSec, startAt: Date.now(), interval: null }
-  const t = timers.value[id]
-  t.interval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - t.startAt) / 1000)
-    t.remaining = Math.max(0, t.total - elapsed)
-    if (t.remaining <= 0) {
-      clearInterval(t.interval)
-      delete timers.value[id]
-    }
+  timers.value[id].interval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - timers.value[id].startAt) / 1000)
+    timers.value[id].remaining = Math.max(0, timers.value[id].total - elapsed)
+    if (timers.value[id].remaining <= 0) { clearInterval(timers.value[id].interval); delete timers.value[id] }
   }, 1000)
 }
 
@@ -294,151 +300,50 @@ const stopTimer = (id) => {
   delete timers.value[id]
 }
 
-// 专注功能
-const restoreFocusSession = async () => {
-  try {
-    const sessions = await api.getSessions()
-    const unfinished = sessions.find(s => !s.end_time)
-    if (!unfinished) return
-
-    const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000
-    if (elapsed > 14400) {
-      await api.updateSession(unfinished.id, { end_time: new Date().toISOString() })
-      return
-    }
-
-    if (unfinished.plan_id) {
-      activeFocusSession.value = {
-        id: unfinished.id,
-        plan_id: unfinished.plan_id,
-        start_time: new Date(unfinished.start_time)
-      }
-    }
-  } catch (e) {
-    console.error('Failed to restore focus session:', e)
-  }
-}
-
-const handleToggleFocus = async (plan) => {
-  if (activeFocusSession.value?.plan_id === plan.id) {
+// Focus
+const toggleFocus = async (planId) => {
+  if (activeFocusSession.value && activeFocusSession.value.plan_id === planId) {
     await stopFocus()
   } else {
     if (activeFocusSession.value) await stopFocus()
     try {
-      const session = await api.createSession({
-        plan_id: plan.id,
-        start_time: new Date().toISOString()
-      })
-      activeFocusSession.value = {
-        id: session.id,
-        plan_id: plan.id,
-        start_time: new Date(session.start_time)
-      }
-      alert('专注已开始')
-    } catch (e) {
-      alert('启动失败: ' + e.message)
-    }
+      const session = await api.createSession({ plan_id: planId, start_time: new Date().toISOString() })
+      activeFocusSession.value = { id: session.id, plan_id: planId, start_time: new Date(session.start_time) }
+      window.toast('专注已开始')
+    } catch (e) { window.toast('启动失败: ' + e.message, true) }
   }
 }
 
 const stopFocus = async () => {
   if (!activeFocusSession.value) return
   try {
-    await api.updateSession(activeFocusSession.value.id, {
-      end_time: new Date().toISOString()
-    })
-    activeFocusSession.value = null
-    await plansStore.fetchPlans()
-  } catch (e) {
-    alert('结束失败: ' + e.message)
-  }
+    await api.endSession(activeFocusSession.value.id, { end_time: new Date().toISOString() })
+    window.toast('专注已结束')
+  } catch (e) { window.toast('结束失败: ' + e.message, true) }
+  activeFocusSession.value = null
+  await loadPlans()
 }
+
+const restoreFocusSession = async () => {
+  try {
+    const sessions = await api.getSessions()
+    const unfinished = sessions.find(s => !s.end_time)
+    if (!unfinished) return
+    const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000
+    if (elapsed > 14400) { await api.endSession(unfinished.id, { end_time: new Date().toISOString() }); return }
+    if (unfinished.plan_id) {
+      activeFocusSession.value = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() }
+    }
+  } catch (e) {}
+}
+
+onMounted(async () => {
+  await loadPlans()
+  await loadSignatures()
+  await restoreFocusSession()
+})
+
+onUnmounted(() => {
+  Object.values(timers.value).forEach(t => { if (t.interval) clearInterval(t.interval) })
+})
 </script>
-
-<style scoped>
-.today-view {
-  min-height: 100vh;
-}
-
-.category-progress {
-  margin: 0 2rem;
-  padding: 1rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--glass-blur));
-}
-
-.category-progress-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.category-progress-label {
-  font-size: 0.85rem;
-  color: var(--text-soft);
-}
-
-.category-progress-text {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.category-progress-track {
-  height: 8px;
-  background: rgba(124, 110, 240, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.category-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), #a78bfa);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.signature-bar {
-  margin: 0.5rem 2rem;
-  padding: 0.5rem 1rem;
-  background: var(--primary-light);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  color: var(--primary);
-  text-align: center;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
-}
-
-.signature-bar.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.plans-list {
-  padding: 1rem 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.empty-state {
-  margin: 2rem;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.btn-gradient {
-  background: linear-gradient(135deg, var(--primary), #a78bfa);
-  color: white;
-  border: none;
-}
-
-.btn-gradient:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(124, 110, 240, 0.3);
-}
-</style>

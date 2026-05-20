@@ -29,7 +29,7 @@ if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
     except Exception:
         pass
 
-CURRENT_VERSION = '2.0.3'
+CURRENT_VERSION = '2.0.4'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -1004,6 +1004,13 @@ def api_deepseek_balance():
 @app.route('/settings')
 @app.route('/focus')
 @app.route('/checkin')
+@app.route('/important')
+@app.route('/weekly')
+@app.route('/monthly')
+@app.route('/yearly')
+@app.route('/transactions')
+@app.route('/recycle')
+@app.route('/apibalance')
 def spa_catchall(**kwargs):
     vue_index = os.path.join(_sta_dir, 'dist', 'index.html')
     if os.path.isfile(vue_index):

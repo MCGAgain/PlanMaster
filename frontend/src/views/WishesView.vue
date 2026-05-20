@@ -1,144 +1,138 @@
 <template>
-  <div class="wishes-view">
-    <Header title="心愿兑换单">
-      <template #actions>
-        <GlassButton variant="primary" @click="showAddModal = true">
-          + 新增心愿
-        </GlassButton>
+  <div class="page active">
+    <div class="page-header">
+      <h2>心愿兑换单</h2>
+      <div class="page-actions">
+        <button class="btn btn-glass" @click="showAddWishModal">+ 新增心愿</button>
+      </div>
+    </div>
+    <div class="balance-display">
+      <span>当前余额</span>
+      <span class="balance-big">{{ balance }}</span>
+      <span>虚拟价值</span>
+    </div>
+    <div class="wish-list">
+      <template v-if="wishes.length">
+        <div v-for="w in wishes" :key="w.id" class="wish-card" :class="{ redeemed: w.redeemed }">
+          <div class="wish-info">
+            <h4>{{ w.name }}</h4>
+            <div class="wish-meta">{{ w.real_price > 0 ? '¥' + w.real_price : '' }}{{ w.redeemed ? ' · 已兑换' : '' }} · {{ w.quantity === null ? '无限' : '剩余 ' + w.quantity }}</div>
+          </div>
+          <div class="wish-actions">
+            <span class="wish-cost">{{ w.virtual_cost }}</span>
+            <template v-if="!w.redeemed">
+              <button class="btn btn-success btn-sm" @click="redeemWish(w.id)" :disabled="!(w.quantity === null || w.quantity > 0) || balance < w.virtual_cost">兑换</button>
+              <button class="btn btn-glass btn-sm" @click="showEditWishModal(w)">编辑</button>
+            </template>
+            <button class="btn btn-danger btn-sm" @click="deleteWish(w.id)">删除</button>
+          </div>
+        </div>
       </template>
-    </Header>
-
-    <div class="wishes-content">
-      <div class="balance-summary">
-        <GlassCard class="balance-card">
-          <span class="balance-label">当前余额</span>
-          <span class="balance-value">{{ wishesStore.balance }}</span>
-        </GlassCard>
-      </div>
-
-      <div class="wishes-list">
-        <WishCard
-          v-for="wish in wishesStore.activeWishes"
-          :key="wish.id"
-          :wish="wish"
-          :balance="wishesStore.balance"
-          @redeem="handleRedeem"
-          @edit="handleEdit"
-          @delete="handleDelete"
-        />
-      </div>
-
-      <GlassCard v-if="wishesStore.activeWishes.length === 0" class="empty-state">
-        <p>暂无心愿，点击右上角添加</p>
-      </GlassCard>
+      <div v-else class="empty-state">暂无心愿</div>
     </div>
 
-    <GlassModal v-model="showAddModal" title="新增心愿">
-      <WishForm @submit="handleAdd" @cancel="showAddModal = false" />
-    </GlassModal>
-
-    <GlassModal v-model="showEditModal" title="编辑心愿">
-      <WishForm
-        :wish="editingWish"
-        @submit="handleUpdate"
-        @cancel="showEditModal = false"
-      />
-    </GlassModal>
+    <div class="modal" :class="{ show: showModal }">
+      <div class="modal-overlay" @click="closeModal"></div>
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h3>{{ editingWishId ? '编辑心愿' : '新增心愿' }}</h3>
+          <span class="modal-close" @click="closeModal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label>心愿名称</label><input type="text" v-model="form.name" placeholder="输入心愿名称"></div>
+          <div class="form-group"><label>真实价格 (元)</label><input type="number" v-model="form.real_price" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="form-group"><label>所需虚拟价值 (留空则AI评估)</label><input type="number" v-model="form.virtual_cost" min="0" step="0.1" placeholder="留空自动评估"><small>配置AI后留空会自动评估，否则默认等于真实价格</small></div>
+          <div class="form-group">
+            <label>兑换数量</label>
+            <div class="qty-row">
+              <input type="number" v-model="form.quantity" min="1" step="1" placeholder="输入数量" :disabled="form.infinite" style="flex:1">
+              <label class="qty-infinite-label"><input type="checkbox" v-model="form.infinite" @change="toggleQtyInput"> 无限</label>
+            </div>
+            <small>勾选"无限"可一直兑换，否则用完自动删除</small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-glass" @click="closeModal">取消</button>
+          <button class="btn btn-gradient" @click="saveWish">保存</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useWishesStore } from '@/stores/wishes'
-import Header from '@/components/layout/Header.vue'
-import WishCard from '@/components/business/WishCard.vue'
-import GlassCard from '@/components/common/GlassCard.vue'
-import GlassModal from '@/components/common/GlassModal.vue'
-import GlassButton from '@/components/common/GlassButton.vue'
-import WishForm from '@/components/forms/WishForm.vue'
+import api from '@/api'
 
-const wishesStore = useWishesStore()
+const wishes = ref([])
+const balance = ref(0)
+const showModal = ref(false)
+const editingWishId = ref(null)
+const form = ref({ name: '', real_price: '', virtual_cost: '', quantity: '', infinite: true })
+let wishSaving = false
 
-const showAddModal = ref(false)
-const showEditModal = ref(false)
-const editingWish = ref(null)
+const loadWishes = async () => {
+  try {
+    const [w, b] = await Promise.all([api.getWishes(), api.getBalance()])
+    wishes.value = w
+    balance.value = b.balance
+  } catch (e) { window.toast('加载失败: ' + e.message, true) }
+}
 
-onMounted(() => {
-  wishesStore.fetchWishes()
-})
+const toggleQtyInput = () => { if (form.value.infinite) form.value.quantity = '' }
 
-const handleRedeem = async (wish) => {
-  if (confirm(`确定要兑换"${wish.name}"吗？`)) {
-    await wishesStore.redeemWish(wish.id)
+const showAddWishModal = () => {
+  editingWishId.value = null
+  form.value = { name: '', real_price: '', virtual_cost: '', quantity: '', infinite: true }
+  showModal.value = true
+}
+
+const showEditWishModal = (w) => {
+  editingWishId.value = w.id
+  form.value = {
+    name: w.name,
+    real_price: w.real_price || '',
+    virtual_cost: w.virtual_cost || '',
+    quantity: w.quantity === null ? '' : w.quantity,
+    infinite: w.quantity === null
   }
+  showModal.value = true
 }
 
-const handleEdit = (wish) => {
-  editingWish.value = wish
-  showEditModal.value = true
+const closeModal = () => { showModal.value = false }
+
+const saveWish = async () => {
+  if (wishSaving) return
+  const name = form.value.name.trim()
+  if (!name) { window.toast('请输入心愿名称', true); return }
+  const infinite = form.value.infinite
+  const qty = infinite ? null : (parseInt(form.value.quantity) || null)
+  if (!infinite && (!qty || qty <= 0)) { window.toast('请输入有效数量或勾选无限', true); return }
+  wishSaving = true
+  try {
+    const body = { name, real_price: parseFloat(form.value.real_price) || 0, virtual_cost: parseFloat(form.value.virtual_cost) || null, quantity: qty }
+    if (editingWishId.value) { await api.updateWish(editingWishId.value, body); window.toast('心愿已更新') }
+    else { await api.createWish(body); window.toast('心愿已添加') }
+    closeModal(); await loadWishes()
+  } catch (e) { window.toast('保存失败: ' + e.message, true) }
+  finally { wishSaving = false; editingWishId.value = null }
 }
 
-const handleDelete = async (wish) => {
-  if (confirm('确定要删除这个心愿吗？')) {
-    await wishesStore.deleteWish(wish.id)
-  }
+const redeemWish = async (id) => {
+  if (!confirm('确定兑换？')) return
+  try {
+    const r = await api.redeemWish(id)
+    const qtyInfo = r.quantity === null ? '（无限）' : (r.quantity <= 1 ? '（已用完，自动删除）' : `（剩余 ${r.quantity - 1}）`)
+    window.toast('兑换成功！' + qtyInfo)
+    await loadWishes(); window.loadBalance && window.loadBalance()
+  } catch (e) { window.toast('兑换失败: ' + e.message, true) }
 }
 
-const handleAdd = async (wish) => {
-  await wishesStore.createWish(wish)
-  showAddModal.value = false
+const deleteWish = async (id) => {
+  if (!confirm('确定删除？')) return
+  try { await api.deleteWish(id); window.toast('已删除'); await loadWishes() }
+  catch (e) { window.toast('删除失败: ' + e.message, true) }
 }
 
-const handleUpdate = async (wish) => {
-  await wishesStore.updateWish(editingWish.value.id, wish)
-  showEditModal.value = false
-  editingWish.value = null
-}
+onMounted(() => { loadWishes() })
 </script>
-
-<style scoped>
-.wishes-view {
-  min-height: 100vh;
-}
-
-.wishes-content {
-  padding: 2rem;
-}
-
-.balance-summary {
-  margin-bottom: 2rem;
-}
-
-.balance-card {
-  text-align: center;
-  padding: 2rem;
-}
-
-.balance-label {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
-}
-
-.balance-value {
-  display: block;
-  font-size: 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.wishes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.empty-state {
-  text-align: center;
-  color: var(--text-muted);
-}
-</style>

@@ -1,161 +1,43 @@
 <template>
-  <div class="api-balance-view">
-    <Header title="API余量" />
-
-    <div class="balance-content">
-      <GlassCard class="balance-card">
-        <div v-if="loading" class="loading-state">
-          <p>加载中...</p>
-        </div>
-
-        <div v-else-if="balance" class="balance-info">
-          <div class="balance-main">
-            <span class="balance-label">DeepSeek API 余额</span>
-            <span class="balance-value">{{ balance.balance || 0 }}</span>
-            <span class="balance-unit">tokens</span>
-          </div>
-
-          <div v-if="balance.total_granted" class="balance-details">
-            <div class="detail-item">
-              <span class="detail-label">总授予</span>
-              <span class="detail-value">{{ balance.total_granted }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">已使用</span>
-              <span class="detail-value">{{ balance.total_used || 0 }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="error-state">
-          <p>无法获取API余额信息</p>
-          <GlassButton variant="primary" @click="fetchBalance">
-            重试
-          </GlassButton>
-        </div>
-      </GlassCard>
-
-      <GlassButton variant="secondary" @click="fetchBalance" :loading="loading">
-        刷新
-      </GlassButton>
+  <div class="page active">
+    <div class="page-header">
+      <h2>API余量</h2>
     </div>
+    <div class="apibalance-content" v-html="content"></div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/api'
-import Header from '@/components/layout/Header.vue'
-import GlassCard from '@/components/common/GlassCard.vue'
-import GlassButton from '@/components/common/GlassButton.vue'
 
-const balance = ref(null)
-const loading = ref(false)
+const content = ref('<div class="empty-state">加载中...</div>')
 
-onMounted(() => {
-  fetchBalance()
-})
+function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML }
 
-const fetchBalance = async () => {
-  loading.value = true
+const loadApiBalance = async () => {
+  content.value = '<div class="empty-state">加载中...</div>'
   try {
-    balance.value = await api.getApiBalance()
-  } catch (error) {
-    console.error('Failed to fetch API balance:', error)
-    balance.value = null
-  } finally {
-    loading.value = false
+    const data = await api.getApiBalance()
+    if (data.supported === false) {
+      content.value = `<div class="glass-card apibalance-unsupported"><div class="apibalance-unsupported-icon">&#9888;</div><div class="apibalance-unsupported-title">功能不支持</div><div class="apibalance-unsupported-desc">${esc(data.message)}</div><div class="apibalance-unsupported-hint">请在 <strong>AI设置</strong> 中将 Base URL 切换为 DeepSeek 的 API 地址，例如：</div><div class="apibalance-url-example">https://api.deepseek.com/v1</div></div>`
+      return
+    }
+    if (data.error) {
+      content.value = `<div class="glass-card"><div class="apibalance-section-title">DeepSeek 账户</div><div class="apibalance-status apibalance-status-error"><span class="apibalance-status-icon">&#10060;</span><span>获取失败：${esc(data.error)}</span></div></div>`
+      return
+    }
+    const bv = parseFloat(data.balance)
+    const isAvail = data.is_available && bv > 0
+    const statusText = !data.is_available ? '已用尽' : bv <= 0 ? '余额为零' : '正常'
+    const statusType = isAvail ? 'ok' : 'warn'
+    const pct = Math.min(100, Math.round(bv))
+    const barColor = bv > 10 ? 'var(--success)' : bv > 1 ? 'var(--warning)' : 'var(--danger)'
+    content.value = `<div class="glass-card apibalance-hero" onclick="document.querySelector('[data-v-app]').__vue_app__.config.globalProperties.loadApiBalance && document.querySelector('[data-v-app]').__vue_app__.config.globalProperties.loadApiBalance()"><div class="apibalance-section-title">DeepSeek 账户</div><div class="apibalance-hero-amount"><span class="apibalance-hero-sign">&#165;</span><span class="apibalance-hero-val ${isAvail ? '' : 'apibalance-zero'}">${bv.toFixed(4)}</span><span class="apibalance-hero-unit">${esc(data.currency)}</span></div><div class="apibalance-bar-track"><div class="apibalance-bar-fill" style="width:${pct}%;background:${barColor}"></div></div><div class="apibalance-hero-footer"><span class="apibalance-status apibalance-status-${statusType}">${statusText}</span><span class="apibalance-refresh-hint">&#128260; 点击刷新</span></div></div><div class="apibalance-info-grid"><div class="glass-card apibalance-info-card"><div class="apibalance-info-icon">&#128176;</div><div class="apibalance-info-label">充值余额</div><div class="apibalance-info-val">${bv.toFixed(2)}</div></div><div class="glass-card apibalance-info-card"><div class="apibalance-info-icon">&#128200;</div><div class="apibalance-info-label">账户状态</div><div class="apibalance-info-val apibalance-info-status-${statusType}">${statusText}</div></div><div class="glass-card apibalance-info-card"><div class="apibalance-info-icon">&#127760;</div><div class="apibalance-info-label">币种</div><div class="apibalance-info-val">${esc(data.currency)}</div></div></div>`
+  } catch (e) {
+    content.value = `<div class="glass-card"><div class="apibalance-status apibalance-status-error"><span class="apibalance-status-icon">&#10060;</span><span>请求失败：${esc(e.message)}</span></div></div>`
   }
 }
+
+onMounted(() => { loadApiBalance() })
 </script>
-
-<style scoped>
-.api-balance-view {
-  min-height: 100vh;
-}
-
-.balance-content {
-  padding: 2rem;
-  max-width: 600px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.balance-card {
-  padding: 2rem;
-}
-
-.balance-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.balance-main {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.balance-label {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.balance-value {
-  font-size: 3rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.balance-unit {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.balance-details {
-  display: flex;
-  gap: 2rem;
-  justify-content: center;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--glass-border);
-}
-
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.detail-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.detail-value {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.loading-state,
-.error-state {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 2rem;
-}
-
-.error-state {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-}
-</style>

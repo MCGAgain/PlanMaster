@@ -1,100 +1,53 @@
 <template>
-  <div class="important-view">
-    <Header title="重要事项" searchable @search="handleSearch">
-      <template #actions>
-        <GlassButton variant="primary" @click="showAddModal = true">
-          + 新增事项
-        </GlassButton>
+  <div class="page active">
+    <div class="page-header">
+      <h2>重要事项</h2>
+      <div class="page-actions">
+        <button class="btn btn-glass" @click="showAddImportantModal">+ 新增事项</button>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input type="text" class="search-input" placeholder="搜索重要事项... (支持拼音)" v-model="searchKeyword">
+      <span class="search-clear" v-show="searchKeyword" @click="searchKeyword = ''">&times;</span>
+    </div>
+    <div class="plan-list">
+      <template v-if="filteredItems.length">
+        <div v-for="p in filteredItems" :key="p.id" class="plan-card" :data-id="p.id">
+          <div class="plan-card-body">
+            <div class="plan-card-title">{{ p.title }}</div>
+            <div class="plan-card-meta">
+              <span v-if="p.due_date" class="plan-badge badge-due badge-due-normal">{{ p.due_date }}</span>
+              <span v-if="dueBadge(p.due_date)" class="plan-badge" :class="dueBadgeClass(p.due_date)">{{ dueBadge(p.due_date) }}</span>
+            </div>
+            <div v-if="p.description" class="plan-card-desc">{{ p.description }}</div>
+            <div class="plan-card-actions">
+              <button class="btn btn-glass btn-sm" @click="editImportant(p)">编辑</button>
+              <button class="btn btn-danger btn-sm" @click="deleteImportant(p.id)">删除</button>
+            </div>
+          </div>
+        </div>
       </template>
-    </Header>
+      <div v-else class="empty-state">{{ allItems.length ? '没有匹配的事项' : '暂无重要事项，点击右上角添加' }}</div>
+    </div>
 
-    <div class="items-list">
-      <div
-        v-for="item in filteredItems"
-        :key="item.id"
-        class="plan-card"
-      >
-        <div class="plan-card-body">
-          <div class="plan-card-title">{{ item.title }}</div>
-          <div class="plan-card-meta">
-            <span v-if="item.due_date" class="plan-badge badge-due badge-due-normal">
-              {{ item.due_date }}
-            </span>
-            <span v-if="getDueBadge(item.due_date)" :class="getDueBadgeClass(item.due_date)">
-              {{ getDueBadge(item.due_date) }}
-            </span>
-          </div>
-          <div v-if="item.description" class="plan-card-desc">
-            {{ item.description }}
-          </div>
-          <div class="plan-card-actions">
-            <GlassButton variant="secondary" size="small" @click="handleEdit(item)">
-              编辑
-            </GlassButton>
-            <GlassButton variant="danger" size="small" @click="handleDelete(item)">
-              删除
-            </GlassButton>
-          </div>
+    <div class="modal" :class="{ show: showModal }">
+      <div class="modal-overlay" @click="closeModal"></div>
+      <div class="modal-content glass-card">
+        <div class="modal-header">
+          <h3>{{ editingId ? '编辑重要事项' : '新增重要事项' }}</h3>
+          <span class="modal-close" @click="closeModal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group"><label>计划标题</label><input type="text" v-model="form.title" placeholder="输入计划标题"></div>
+          <div class="form-group"><label>计划描述</label><textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea></div>
+          <div class="form-group"><label>截止日期</label><input type="date" v-model="form.due_date"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-glass" @click="closeModal">取消</button>
+          <button class="btn btn-gradient" @click="saveImportant">保存</button>
         </div>
       </div>
     </div>
-
-    <GlassCard v-if="filteredItems.length === 0" class="empty-state">
-      <p>{{ items.length > 0 ? '没有匹配的事项' : '暂无重要事项，点击右上角添加' }}</p>
-    </GlassCard>
-
-    <!-- 新增弹窗 -->
-    <GlassModal v-model="showAddModal" title="新增重要事项">
-      <form class="item-form" @submit.prevent="handleAdd">
-        <GlassInput
-          v-model="form.title"
-          label="事项标题"
-          placeholder="输入事项标题"
-          :error="formErrors.title"
-        />
-        <GlassInput
-          v-model="form.description"
-          label="事项描述（可选）"
-          placeholder="输入事项描述"
-        />
-        <GlassInput
-          v-model="form.due_date"
-          label="截止日期"
-          type="date"
-          :error="formErrors.due_date"
-        />
-        <div class="form-actions">
-          <GlassButton type="submit" variant="primary">添加</GlassButton>
-          <GlassButton type="button" variant="secondary" @click="showAddModal = false">取消</GlassButton>
-        </div>
-      </form>
-    </GlassModal>
-
-    <!-- 编辑弹窗 -->
-    <GlassModal v-model="showEditModal" title="编辑重要事项">
-      <form class="item-form" @submit.prevent="handleUpdate">
-        <GlassInput
-          v-model="editForm.title"
-          label="事项标题"
-          placeholder="输入事项标题"
-          :error="editFormErrors.title"
-        />
-        <GlassInput
-          v-model="editForm.description"
-          label="事项描述（可选）"
-          placeholder="输入事项描述"
-        />
-        <GlassInput
-          v-model="editForm.due_date"
-          label="截止日期"
-          type="date"
-        />
-        <div class="form-actions">
-          <GlassButton type="submit" variant="primary">更新</GlassButton>
-          <GlassButton type="button" variant="secondary" @click="showEditModal = false">取消</GlassButton>
-        </div>
-      </form>
-    </GlassModal>
   </div>
 </template>
 
@@ -102,121 +55,27 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
 import api from '@/api'
-import Header from '@/components/layout/Header.vue'
-import GlassCard from '@/components/common/GlassCard.vue'
-import GlassModal from '@/components/common/GlassModal.vue'
-import GlassButton from '@/components/common/GlassButton.vue'
-import GlassInput from '@/components/common/GlassInput.vue'
 
 const { matchPinyin } = usePinyin()
-
-const items = ref([])
-const loading = ref(false)
-const showAddModal = ref(false)
-const showEditModal = ref(false)
-const editingItem = ref(null)
-const searchQuery = ref('')
-
+const allItems = ref([])
+const searchKeyword = ref('')
+const showModal = ref(false)
+const editingId = ref(null)
 const form = ref({ title: '', description: '', due_date: '' })
-const formErrors = ref({ title: '', due_date: '' })
-const editForm = ref({ title: '', description: '', due_date: '' })
-const editFormErrors = ref({ title: '' })
 
 const filteredItems = computed(() => {
-  if (!searchQuery.value) return items.value
-  return items.value.filter(i =>
-    matchPinyin(i.title, searchQuery.value) ||
-    matchPinyin(i.description || '', searchQuery.value)
-  )
+  if (!searchKeyword.value) return allItems.value
+  return allItems.value.filter(p => matchPinyin(p.title, searchKeyword.value) || matchPinyin(p.description || '', searchKeyword.value))
 })
 
-onMounted(async () => {
-  await fetchItems()
-})
-
-const fetchItems = async () => {
-  loading.value = true
-  try {
-    items.value = await api.getImportantItems()
-  } catch (error) {
-    console.error('Failed to fetch important items:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleSearch = (query) => {
-  searchQuery.value = query
-}
-
-const handleEdit = (item) => {
-  editingItem.value = item
-  editForm.value = {
-    title: item.title,
-    description: item.description || '',
-    due_date: item.due_date || ''
-  }
-  showEditModal.value = true
-}
-
-const handleDelete = async (item) => {
-  if (!confirm(`确定要删除"${item.title}"吗？`)) return
-  try {
-    await api.deleteImportantItem(item.id)
-    items.value = items.value.filter(i => i.id !== item.id)
-  } catch (error) {
-    alert('删除失败: ' + error.message)
-  }
-}
-
-const handleAdd = async () => {
-  formErrors.value = { title: '', due_date: '' }
-  if (!form.value.title.trim()) {
-    formErrors.value.title = '请输入事项标题'
-    return
-  }
-  if (!form.value.due_date) {
-    formErrors.value.due_date = '请选择截止日期'
-    return
-  }
-  try {
-    const newItem = await api.createImportantItem(form.value)
-    items.value.push(newItem)
-    form.value = { title: '', description: '', due_date: '' }
-    showAddModal.value = false
-  } catch (error) {
-    alert('创建失败: ' + error.message)
-  }
-}
-
-const handleUpdate = async () => {
-  editFormErrors.value = { title: '' }
-  if (!editForm.value.title.trim()) {
-    editFormErrors.value.title = '请输入事项标题'
-    return
-  }
-  try {
-    const updated = await api.updateImportantItem(editingItem.value.id, editForm.value)
-    const index = items.value.findIndex(i => i.id === editingItem.value.id)
-    if (index !== -1) {
-      items.value[index] = updated
-    }
-    showEditModal.value = false
-    editingItem.value = null
-  } catch (error) {
-    alert('更新失败: ' + error.message)
-  }
-}
-
-const daysUntilDue = (dueDate) => {
+function daysUntilDue(dueDate) {
   if (!dueDate) return null
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
   const due = new Date(dueDate + 'T00:00:00')
   return Math.ceil((due - today) / 86400000)
 }
 
-const getDueBadge = (dueDate) => {
+function dueBadge(dueDate) {
   const days = daysUntilDue(dueDate)
   if (days === null) return ''
   if (days < 0) return '已过期'
@@ -225,109 +84,39 @@ const getDueBadge = (dueDate) => {
   return `还有${days}天`
 }
 
-const getDueBadgeClass = (dueDate) => {
+function dueBadgeClass(dueDate) {
   const days = daysUntilDue(dueDate)
   if (days === null) return ''
-  if (days < 0 || days === 0) return 'plan-badge badge-due badge-due-today'
-  if (days <= 3) return 'plan-badge badge-due badge-due-soon'
-  return 'plan-badge badge-due badge-due-normal'
+  if (days <= 0) return 'badge-due-today'
+  if (days <= 3) return 'badge-due-soon'
+  return 'badge-due-normal'
 }
+
+const loadImportantItems = async () => {
+  try { allItems.value = await api.getImportantItems() } catch (e) { window.toast('加载失败: ' + e.message, true) }
+}
+
+const showAddImportantModal = () => { editingId.value = null; form.value = { title: '', description: '', due_date: '' }; showModal.value = true }
+const editImportant = (p) => { editingId.value = p.id; form.value = { title: p.title, description: p.description || '', due_date: p.due_date || '' }; showModal.value = true }
+const closeModal = () => { showModal.value = false }
+
+const saveImportant = async () => {
+  const title = form.value.title.trim()
+  if (!title) { window.toast('请输入标题', true); return }
+  if (!form.value.due_date) { window.toast('请选择截止日期', true); return }
+  try {
+    const body = { title, description: form.value.description.trim(), due_date: form.value.due_date }
+    if (editingId.value) { await api.updateImportantItem(editingId.value, body); window.toast('已更新') }
+    else { await api.createImportantItem(body); window.toast('已创建') }
+    closeModal(); await loadImportantItems()
+  } catch (e) { window.toast('保存失败: ' + e.message, true) }
+}
+
+const deleteImportant = async (id) => {
+  if (!confirm('确定删除此重要事项？')) return
+  try { await api.deleteImportantItem(id); window.toast('已删除'); await loadImportantItems() }
+  catch (e) { window.toast('删除失败: ' + e.message, true) }
+}
+
+onMounted(() => { loadImportantItems() })
 </script>
-
-<style scoped>
-.important-view {
-  min-height: 100vh;
-}
-
-.items-list {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.plan-card {
-  display: flex;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--glass-blur));
-}
-
-.plan-card-body {
-  flex: 1;
-}
-
-.plan-card-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 0.5rem;
-}
-
-.plan-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.5rem;
-}
-
-.plan-badge {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
-}
-
-.badge-due {
-  font-weight: 500;
-}
-
-.badge-due-normal {
-  background: rgba(124, 110, 240, 0.1);
-  color: var(--primary);
-}
-
-.badge-due-soon {
-  background: rgba(251, 191, 36, 0.1);
-  color: var(--warning);
-}
-
-.badge-due-today {
-  background: rgba(248, 113, 113, 0.1);
-  color: var(--danger);
-}
-
-.plan-card-desc {
-  font-size: 0.9rem;
-  color: var(--text-soft);
-  margin-bottom: 0.75rem;
-  line-height: 1.5;
-}
-
-.plan-card-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.empty-state {
-  margin: 2rem;
-  text-align: center;
-  color: var(--text-muted);
-}
-
-.item-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
-</style>

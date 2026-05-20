@@ -1,270 +1,184 @@
 <template>
-  <div class="focus-view">
-    <Header title="专注模式" />
-
-    <div class="focus-content">
-      <FocusTimer
-        ref="focusTimerRef"
-        :phase="focusStore.phase"
-        :mode="focusStore.mode"
-        :elapsed="focusStore.elapsed"
-        :duration="focusStore.duration"
-        @start="handleStart"
-        @stop="handleStop"
-        @cancel="handleCancel"
-        @reset="handleReset"
-        @mode-change="handleModeChange"
-      />
-
-      <div v-if="focusStore.sessions.length > 0" class="sessions-history glass-card">
-        <h3>专注历史</h3>
-        <div class="sessions-list">
-          <div
-            v-for="session in focusStore.sessions"
-            :key="session.id"
-            class="session-item"
-          >
-            <div class="session-info">
-              <span class="session-task">{{ session.category || session.task || '无任务' }}</span>
-              <span class="session-duration">{{ formatDuration(session.duration) }}</span>
-            </div>
-            <span class="session-time">{{ formatDate(session.created_at || session.start_time) }}</span>
-          </div>
+  <div class="page active">
+    <div class="page-header">
+      <h2>专注模式</h2>
+    </div>
+    <div v-if="focusState === 'setup'" class="focus-setup glass-card">
+      <div class="form-group">
+        <label>任务名称</label>
+        <input type="text" v-model="focusTask" placeholder="输入你要专注的任务，如：高数作业">
+      </div>
+      <div class="focus-mode-select">
+        <button class="focus-mode-btn" :class="{ active: focusMode === 'unlimited' }" @click="selectFocusMode('unlimited')">不限时</button>
+        <button class="focus-mode-btn" :class="{ active: focusMode === 'countdown' }" @click="selectFocusMode('countdown')">倒计时</button>
+      </div>
+      <div v-show="focusMode === 'countdown'" class="focus-duration-input">
+        <label>时长</label>
+        <div class="duration-row">
+          <input type="number" v-model="focusHours" min="0" max="12" value="0" placeholder="0">
+          <span>小时</span>
+          <input type="number" v-model="focusMinutes" min="0" max="59" value="30" placeholder="30">
+          <span>分钟</span>
         </div>
       </div>
+      <button class="btn btn-gradient focus-start-btn" @click="startFocusTimer">&#9654; 开始专注</button>
+    </div>
+
+    <div v-if="focusState === 'running'" class="focus-timer-area">
+      <div class="focus-task-label">{{ focusCurrentTask }}</div>
+      <div class="focus-timer-ring">
+        <svg viewBox="0 0 280 280">
+          <defs>
+            <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#7c6ef0"/>
+              <stop offset="100%" style="stop-color:#a78bfa"/>
+            </linearGradient>
+          </defs>
+          <circle class="focus-ring-bg" cx="140" cy="140" r="120"/>
+          <circle class="focus-ring-fill" ref="focusRingFill" cx="140" cy="140" r="120"/>
+        </svg>
+        <div class="focus-timer-display">{{ focusTimerDisplay }}</div>
+      </div>
+      <div class="focus-timer-info">
+        <span>{{ focusModeLabel }}</span>
+      </div>
+      <div class="focus-actions">
+        <button class="btn btn-danger focus-stop-btn" @click="stopFocusTimer">&#9632; 结束专注</button>
+        <button class="btn btn-glass focus-cancel-btn" @click="cancelFocusTimer">取消</button>
+      </div>
+    </div>
+
+    <div v-if="focusState === 'complete'" class="focus-complete">
+      <div class="focus-complete-icon">&#10003;</div>
+      <div class="focus-complete-title">{{ focusCompleteTitle }}</div>
+      <div class="focus-complete-duration">{{ focusCompleteDuration }}</div>
+      <div class="focus-complete-category">任务: {{ focusCurrentTask }}</div>
+      <button class="btn btn-gradient" @click="resetFocusPage">继续专注</button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useFocusStore } from '@/stores/focus'
 import api from '@/api'
-import Header from '@/components/layout/Header.vue'
-import FocusTimer from '@/components/business/FocusTimer.vue'
 
-const focusStore = useFocusStore()
-const focusTimerRef = ref(null)
+const FOCUS_RING_CIRCUMFERENCE = 2 * Math.PI * 120
 
-// 倒计时结束自动调用
-let checkCountdownInterval = null
+const focusState = ref('setup')
+const focusMode = ref('unlimited')
+const focusTask = ref('')
+const focusHours = ref(0)
+const focusMinutes = ref(30)
+const focusTotalSec = ref(0)
+const focusElapsed = ref(0)
+const focusStartTime = ref(null)
+const focusCurrentSessionId = ref(null)
+const focusCurrentTask = ref('')
+const focusTimerDisplay = ref('00:00:00')
+const focusModeLabel = ref('')
+const focusCompleteTitle = ref('专注完成')
+const focusCompleteDuration = ref('')
+const focusRingFill = ref(null)
+let focusTimerInterval = null
 
-onMounted(async () => {
-  await focusStore.fetchSessions()
-  await restoreFocusSession()
+function fmtHMS(totalSec) {
+  const h = Math.floor(totalSec / 3600), m = Math.floor((totalSec % 3600) / 60), s = totalSec % 60
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+}
 
-  // 检查倒计时是否结束
-  checkCountdownInterval = setInterval(() => {
-    if (focusStore.phase === 'running' && focusStore.mode === 'countdown') {
-      if (focusStore.elapsed >= focusStore.duration) {
-        handleStop()
-      }
+function selectFocusMode(mode) { focusMode.value = mode }
+
+function updateFocusTimerRing() {
+  if (!focusRingFill.value) return
+  if (focusMode.value === 'unlimited') {
+    const segProgress = (focusElapsed.value % 3600) / 3600
+    focusRingFill.value.style.strokeDashoffset = FOCUS_RING_CIRCUMFERENCE * (1 - segProgress)
+  } else {
+    const progress = focusElapsed.value / focusTotalSec.value
+    focusRingFill.value.style.strokeDashoffset = FOCUS_RING_CIRCUMFERENCE * (1 - progress)
+  }
+}
+
+function startFocusTimerTick() {
+  if (focusTimerInterval) return
+  focusTimerInterval = setInterval(() => {
+    focusElapsed.value = Math.floor((Date.now() - focusStartTime.value.getTime()) / 1000)
+    if (focusMode.value === 'countdown' && focusElapsed.value >= focusTotalSec.value) {
+      focusElapsed.value = focusTotalSec.value
+      clearInterval(focusTimerInterval); focusTimerInterval = null
+      finishFocusTimer(); return
     }
+    if (focusMode.value === 'countdown') focusTimerDisplay.value = fmtHMS(Math.max(0, focusTotalSec.value - focusElapsed.value))
+    else focusTimerDisplay.value = fmtHMS(focusElapsed.value)
+    updateFocusTimerRing()
   }, 1000)
-})
+}
 
-onUnmounted(() => {
-  focusStore.cleanup()
-  if (checkCountdownInterval) {
-    clearInterval(checkCountdownInterval)
-    checkCountdownInterval = null
+const startFocusTimer = async () => {
+  const task = focusTask.value.trim()
+  if (!task) { window.toast('请输入任务名称', true); return }
+  if (focusMode.value === 'countdown') {
+    focusTotalSec.value = (parseInt(focusHours.value) || 0) * 3600 + (parseInt(focusMinutes.value) || 0) * 60
+    if (focusTotalSec.value <= 0) { window.toast('请设置倒计时时长', true); return }
   }
-})
-
-const handleStart = async (config) => {
   try {
-    focusStore.setMode(config.mode)
-    if (config.duration) {
-      focusStore.setDuration(config.duration)
-    }
-    focusStore.setTask(config.task)
-    await focusStore.start()
-  } catch (e) {
-    alert('启动失败: ' + e.message)
+    const session = await api.createSession({ plan_id: null, start_time: new Date().toISOString(), category: task })
+    focusCurrentSessionId.value = session.id; focusCurrentTask.value = task
+    focusStartTime.value = new Date(session.start_time); focusElapsed.value = 0; focusState.value = 'running'
+    focusModeLabel.value = focusMode.value === 'countdown' ? '倒计时 ' + fmtHMS(focusTotalSec.value) : '不限时专注中'
+    if (focusMode.value === 'countdown') focusTimerDisplay.value = fmtHMS(focusTotalSec.value)
+    if (focusRingFill.value) { focusRingFill.value.style.strokeDasharray = FOCUS_RING_CIRCUMFERENCE; focusRingFill.value.style.strokeDashoffset = FOCUS_RING_CIRCUMFERENCE }
+    startFocusTimerTick()
+  } catch (e) { window.toast('启动失败: ' + e.message, true) }
+}
+
+function finishFocusTimer() { stopFocusTimer() }
+
+const stopFocusTimer = async () => {
+  if (!focusCurrentSessionId.value) return
+  if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null }
+  try { await api.endSession(focusCurrentSessionId.value, { end_time: new Date().toISOString() }); window.toast('专注已结束') } catch (e) { window.toast('结束失败: ' + e.message, true) }
+  focusState.value = 'complete'
+  focusCompleteTitle.value = focusMode.value === 'countdown' && focusElapsed.value >= focusTotalSec.value ? '倒计时结束' : '专注完成'
+  focusCompleteDuration.value = fmtHMS(focusElapsed.value)
+  focusCurrentSessionId.value = null
+}
+
+const cancelFocusTimer = async () => {
+  if (focusCurrentSessionId.value) {
+    if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null }
+    try { await api.cancelSession(focusCurrentSessionId.value) } catch (e) {}
+    focusCurrentSessionId.value = null
   }
+  resetFocusPage()
 }
 
-const handleStop = async () => {
-  try {
-    await focusStore.complete()
-  } catch (e) {
-    console.error('Failed to complete focus session:', e)
-    alert('完成专注失败，请稍后重试')
-  }
+const resetFocusPage = () => {
+  focusState.value = 'setup'; focusElapsed.value = 0; focusStartTime.value = null; focusCurrentTask.value = ''
+  if (focusTimerInterval) { clearInterval(focusTimerInterval); focusTimerInterval = null }
+  if (focusRingFill.value) focusRingFill.value.style.strokeDashoffset = FOCUS_RING_CIRCUMFERENCE
 }
 
-const handleCancel = async () => {
-  try {
-    // 调用API删除未完成会话
-    if (focusStore.sessionId) {
-      await api.deleteSession(focusStore.sessionId).catch(() => {})
-    }
-    focusStore.reset()
-  } catch (e) {
-    console.error('Failed to cancel focus session:', e)
-  }
-}
-
-const handleReset = () => {
-  focusStore.reset()
-}
-
-const handleModeChange = (mode) => {
-  focusStore.setMode(mode)
-}
-
-// 恢复未完成的专注会话
 const restoreFocusSession = async () => {
   try {
     const sessions = await api.getSessions()
     const unfinished = sessions.find(s => !s.end_time)
     if (!unfinished) return
-
     const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000
-    // 超过4小时自动结束
-    if (elapsed > 14400) {
-      await api.updateSession(unfinished.id, {
-        end_time: new Date().toISOString()
-      })
-      return
+    if (elapsed > 14400) { await api.endSession(unfinished.id, { end_time: new Date().toISOString() }); return }
+    if (!unfinished.plan_id) {
+      focusCurrentSessionId.value = unfinished.id; focusCurrentTask.value = unfinished.category || ''
+      focusStartTime.value = new Date(unfinished.start_time)
+      focusElapsed.value = Math.floor((Date.now() - focusStartTime.value.getTime()) / 1000)
+      focusState.value = 'running'
+      focusMode.value = 'unlimited'
+      focusModeLabel.value = '不限时专注中'
+      if (focusRingFill.value) { focusRingFill.value.style.strokeDasharray = FOCUS_RING_CIRCUMFERENCE; focusRingFill.value.style.strokeDashoffset = FOCUS_RING_CIRCUMFERENCE }
+      startFocusTimerTick()
     }
-
-    // 恢复会话
-    const now = new Date()
-    await api.updateSession(unfinished.id, {
-      start_time: now.toISOString()
-    })
-
-    // 恢复专注状态
-    focusStore.sessionId = unfinished.id
-    focusStore.task = unfinished.category || ''
-    focusStore.startTime = now
-    focusStore.elapsed = 0
-    focusStore.phase = 'running'
-    focusStore.mode = 'unlimited'
-    focusStore._startTimer()
-  } catch (e) {
-    console.error('Failed to restore focus session:', e)
-  }
+  } catch (e) {}
 }
 
-const formatDuration = (seconds) => {
-  if (!seconds || seconds <= 0) return '0分钟'
-  const d = Math.floor(seconds / 86400)
-  const h = Math.floor((seconds % 86400) / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (d > 0) return d + '天' + h + '小时' + m + '分钟'
-  if (h > 0) return h + '小时' + m + '分钟'
-  return m + '分钟'
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+onMounted(() => { restoreFocusSession() })
+onUnmounted(() => { if (focusTimerInterval) clearInterval(focusTimerInterval) })
 </script>
-
-<style scoped>
-.focus-view {
-  min-height: 100vh;
-}
-
-.focus-content {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.sessions-history {
-  margin-top: 3rem;
-}
-
-.sessions-history h3 {
-  margin: 0 0 1rem;
-  font-size: 18px;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--text), var(--primary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255,255,255,.3);
-}
-
-.sessions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.session-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  background: rgba(255,255,255,.15);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
-}
-
-.session-item:hover {
-  background: rgba(255,255,255,.25);
-  transform: translateX(4px);
-}
-
-.session-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.session-task {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.session-duration {
-  font-size: 0.9rem;
-  color: var(--primary);
-  font-weight: 700;
-}
-
-.session-time {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-/* Glass Card */
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  box-shadow: var(--glass-shadow);
-  padding: 24px;
-  transition: var(--transition);
-}
-
-.glass-card:hover {
-  box-shadow: 0 12px 40px rgba(100,80,200,.12);
-}
-
-/* Dark Theme */
-body.theme-dark .session-item {
-  background: rgba(0,0,0,.2);
-  border-color: rgba(255,255,255,.1);
-}
-
-body.theme-dark .session-item:hover {
-  background: rgba(0,0,0,.3);
-}
-</style>
