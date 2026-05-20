@@ -1,190 +1,528 @@
-<!-- frontend/src/components/business/PlanCard.vue -->
 <template>
-  <GlassCard class="plan-card" :class="{ completed: plan.completed }">
-    <div class="plan-header">
-      <div class="plan-title">
-        <h3>{{ plan.title }}</h3>
-        <span v-if="plan.priority" class="priority-badge" :class="priorityClass">
-          {{ plan.priority }}
+  <div
+    class="plan-card"
+    :class="{ completed: plan.completed }"
+    :data-id="plan.id"
+  >
+    <!-- 优先级圆形徽章 -->
+    <div class="priority-ring">
+      <svg width="54" height="54" viewBox="0 0 54 54">
+        <circle class="ring-bg" cx="27" cy="27" r="24" />
+        <circle
+          class="ring-fill"
+          cx="27"
+          cy="27"
+          r="24"
+          :stroke="ringColor"
+          :stroke-dasharray="circumference"
+          :stroke-dashoffset="ringOffset"
+        />
+      </svg>
+      <div
+        class="priority-circle"
+        :class="{ 'priority-none': !hasPriority }"
+        :style="circleBg"
+      >
+        {{ hasPriority ? plan.priority : '-' }}
+      </div>
+    </div>
+
+    <div class="plan-card-body">
+      <!-- 标题和日期标签 -->
+      <div class="plan-card-title">
+        {{ plan.title }}
+        <span v-if="dateLabel" class="plan-date-label">{{ dateLabel }}</span>
+      </div>
+
+      <!-- 元信息 -->
+      <div class="plan-card-meta">
+        <span
+          class="plan-type-tag"
+          :style="{ background: typeColor }"
+        >
+          {{ typeLabel }}
+        </span>
+
+        <!-- 建议时间 -->
+        <span v-if="plan.suggested_time" class="plan-badge badge-time">
+          &#128336; {{ plan.suggested_time }}
+        </span>
+
+        <!-- 倒计时器按钮 -->
+        <button
+          v-if="plan.suggested_time"
+          class="btn timer-btn"
+          :class="{ counting: isTimerRunning }"
+          @click="$emit('toggleTimer', plan)"
+        >
+          {{ timerText }}
+        </button>
+
+        <!-- 专注按钮 -->
+        <button
+          class="btn focus-btn btn-sm"
+          :class="{ focusing: isFocusing }"
+          @click="$emit('toggleFocus', plan)"
+        >
+          {{ isFocusing ? '&#9632; 停止' : '&#9654; 专注' }}
+        </button>
+
+        <!-- 虚拟价值 -->
+        <span v-if="plan.virtual_value > 0" class="plan-badge badge-value">
+          {{ plan.virtual_value }} 价值
         </span>
       </div>
-      <div class="plan-actions">
-        <GlassButton
-          v-if="!plan.completed"
-          variant="success"
-          size="small"
-          @click="$emit('complete', plan)"
-        >
-          完成
-        </GlassButton>
-        <GlassButton
-          variant="secondary"
-          size="small"
-          @click="$emit('edit', plan)"
-        >
-          编辑
-        </GlassButton>
-        <GlassButton
-          variant="danger"
-          size="small"
-          @click="$emit('delete', plan)"
-        >
-          删除
-        </GlassButton>
-      </div>
-    </div>
 
-    <p v-if="plan.description" class="plan-description">
-      {{ plan.description }}
-    </p>
+      <!-- 描述 -->
+      <div v-if="plan.description" class="plan-card-desc">
+        {{ plan.description }}
+      </div>
 
-    <div class="plan-meta">
-      <div v-if="plan.virtual_value" class="meta-item">
-        <span class="meta-label">虚拟价值</span>
-        <span class="meta-value">{{ plan.virtual_value }}</span>
+      <!-- AI理由 -->
+      <div v-if="plan.ai_reason" class="plan-card-reason">
+        AI: {{ plan.ai_reason }}
       </div>
-      <div v-if="plan.suggested_time" class="meta-item">
-        <span class="meta-label">建议时间</span>
-        <span class="meta-value">{{ plan.suggested_time }}</span>
-      </div>
-      <div v-if="plan.progress !== undefined" class="meta-item">
-        <span class="meta-label">进度</span>
-        <div class="progress-bar">
-          <div
-            class="progress-fill"
-            :style="{ width: `${plan.progress}%` }"
+
+      <!-- 进度条 -->
+      <div class="plan-progress">
+        <div class="plan-progress-track">
+          <div class="plan-progress-bar" :style="{ width: `${currentProgress}%` }" />
+          <input
+            type="range"
+            class="plan-progress-input"
+            min="0"
+            max="100"
+            step="5"
+            :value="currentProgress"
+            @input="onProgressInput"
+            @change="onProgressChange"
           />
         </div>
-        <span class="meta-value">{{ plan.progress }}%</span>
+        <span class="plan-progress-text">{{ currentProgress }}%</span>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="plan-card-actions">
+        <button
+          v-if="!plan.completed"
+          class="btn btn-success btn-sm"
+          @click="$emit('complete', plan)"
+        >
+          &#10003; 完成
+        </button>
+        <button class="btn btn-glass btn-sm" @click="$emit('edit', plan)">
+          编辑
+        </button>
+        <button class="btn btn-danger btn-sm" @click="$emit('delete', plan)">
+          删除
+        </button>
       </div>
     </div>
-  </GlassCard>
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import GlassCard from '../common/GlassCard.vue'
-import GlassButton from '../common/GlassButton.vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   plan: {
     type: Object,
     required: true
+  },
+  isFocusing: {
+    type: Boolean,
+    default: false
+  },
+  focusElapsed: {
+    type: Number,
+    default: 0
+  },
+  timerRemaining: {
+    type: Number,
+    default: null
   }
 })
 
-defineEmits(['complete', 'edit', 'delete'])
+const emit = defineEmits(['complete', 'edit', 'delete', 'toggleTimer', 'toggleFocus', 'updateProgress'])
 
-const priorityClass = computed(() => {
-  const priority = props.plan.priority
-  if (priority >= 80) return 'high'
-  if (priority >= 50) return 'medium'
-  return 'low'
+const PLAN_TYPE_LABELS = {
+  important: '重要事项',
+  today: '今日待办',
+  weekly: '周计划',
+  monthly: '月计划',
+  yearly: '年计划'
+}
+
+const PLAN_TYPE_COLORS = {
+  important: '#ef4444',
+  today: '#7c6ef0',
+  weekly: '#3b82f6',
+  monthly: '#10b981',
+  yearly: '#f59e0b'
+}
+
+const circumference = 2 * Math.PI * 24
+
+const hasPriority = computed(() => props.plan.priority > 0)
+
+const currentProgress = ref(props.plan.progress || 0)
+
+watch(() => props.plan.progress, (newVal) => {
+  currentProgress.value = newVal || 0
 })
+
+const priColor = (p) => {
+  if (!p || p <= 0) return null
+  p = Math.min(100, Math.max(1, p))
+  const h = 120 - (p / 100) * 120
+  return `hsl(${h}, 72%, 52%)`
+}
+
+const priColorLight = (p) => {
+  if (!p || p <= 0) return null
+  p = Math.min(100, Math.max(1, p))
+  const h = 120 - (p / 100) * 120
+  return `hsl(${h}, 72%, 92%)`
+}
+
+const ringColor = computed(() => priColor(props.plan.priority) || 'rgba(168,163,191,0.4)')
+
+const ringOffset = computed(() => {
+  const prog = currentProgress.value
+  return circumference - (prog / 100) * circumference
+})
+
+const circleBg = computed(() => {
+  if (!hasPriority.value) return {}
+  const color = priColor(props.plan.priority)
+  const colorLight = priColorLight(props.plan.priority)
+  return {
+    background: `radial-gradient(circle, ${colorLight} 0%, ${color} 100%)`
+  }
+})
+
+const typeLabel = computed(() => PLAN_TYPE_LABELS[props.plan.plan_type] || props.plan.plan_type)
+const typeColor = computed(() => PLAN_TYPE_COLORS[props.plan.plan_type] || '#7c6ef0')
+
+const dateLabel = computed(() => {
+  const d = new Date()
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const type = props.plan.plan_type
+  if (type === 'today') return (d.getMonth() + 1) + '月' + d.getDate() + '日'
+  if (type === 'weekly') return weekdays[d.getDay()]
+  if (type === 'monthly') return (d.getMonth() + 1) + '月'
+  if (type === 'yearly') return d.getFullYear() + '年'
+  return ''
+})
+
+const isTimerRunning = computed(() => props.timerRemaining !== null)
+
+const timerText = computed(() => {
+  if (props.timerRemaining !== null) {
+    const m = Math.floor(props.timerRemaining / 60)
+    const sec = Math.floor(props.timerRemaining % 60)
+    return m + ':' + String(sec).padStart(2, '0')
+  }
+  return '开始'
+})
+
+const fmtHMS = (totalSec) => {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+}
+
+const onProgressInput = (e) => {
+  currentProgress.value = parseInt(e.target.value)
+}
+
+const onProgressChange = (e) => {
+  const val = parseInt(e.target.value)
+  emit('updateProgress', props.plan.id, val)
+}
 </script>
 
 <style scoped>
 .plan-card {
-  margin-bottom: 1rem;
+  display: flex;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: all var(--transition-normal) var(--ease-default);
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(100, 80, 200, 0.12);
 }
 
 .plan-card.completed {
   opacity: 0.7;
 }
 
-.plan-card.completed .plan-title h3 {
+.plan-card.completed .plan-card-title {
   text-decoration: line-through;
   color: var(--text-muted);
 }
 
-.plan-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
+/* 优先级圆形徽章 */
+.priority-ring {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
 }
 
-.plan-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.priority-ring svg {
+  transform: rotate(-90deg);
 }
 
-.plan-title h3 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: var(--text);
+.ring-bg {
+  fill: none;
+  stroke: rgba(168, 163, 191, 0.2);
+  stroke-width: 3;
 }
 
-.priority-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
+.ring-fill {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
 }
 
-.priority-badge.high {
-  background: rgba(248, 113, 113, 0.2);
-  color: var(--danger);
-}
-
-.priority-badge.medium {
-  background: rgba(251, 191, 36, 0.2);
-  color: var(--warning);
-}
-
-.priority-badge.low {
-  background: rgba(52, 211, 153, 0.2);
-  color: var(--success);
-}
-
-.plan-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.plan-description {
-  margin: 0 0 1rem;
-  color: var(--text-soft);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.plan-meta {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.meta-item {
+.priority-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 54px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.3);
 }
 
-.meta-label {
-  font-size: 0.8rem;
+.priority-circle.priority-none {
+  background: rgba(168, 163, 191, 0.3);
   color: var(--text-muted);
 }
 
-.meta-value {
-  font-size: 0.9rem;
+/* 计划卡片内容 */
+.plan-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
   color: var(--text);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.plan-date-label {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 4px;
   font-weight: 500;
 }
 
-.progress-bar {
-  width: 100px;
-  height: 6px;
-  background: var(--glass-bg);
-  border-radius: 3px;
-  overflow: hidden;
+.plan-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
 }
 
-.progress-fill {
+.plan-type-tag {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  color: white;
+  font-weight: 500;
+}
+
+.plan-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.badge-time {
+  background: rgba(124, 110, 240, 0.1);
+  color: var(--primary);
+}
+
+.badge-value {
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--success);
+}
+
+.plan-card-desc {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.plan-card-reason {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+/* 进度条 */
+.plan-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.plan-progress-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(124, 110, 240, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.plan-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  border-radius: 3px;
-  transition: width var(--transition-normal);
+  background: linear-gradient(90deg, var(--primary), #a78bfa);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.plan-progress-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.plan-progress-text {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  min-width: 35px;
+  text-align: right;
+}
+
+/* 操作按钮 */
+.plan-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.btn-success {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.btn-success:hover {
+  background: var(--success);
+  color: white;
+}
+
+.btn-glass {
+  background: var(--glass-bg);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-glass:hover {
+  background: var(--glass-border);
+}
+
+.btn-danger {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.timer-btn {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.timer-btn.counting {
+  background: var(--primary);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+.focus-btn {
+  background: rgba(124, 110, 240, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(124, 110, 240, 0.3);
+}
+
+.focus-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.focus-btn.focusing {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 </style>

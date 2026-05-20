@@ -3,294 +3,379 @@
     <Header title="统计数据" />
 
     <div class="stats-content">
-      <!-- Tab Navigation -->
-      <div class="stats-tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="tab-button"
-          :class="{ active: activeTab === tab.key }"
-          @click="activeTab = tab.key"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-
-      <!-- Cumulative Stats -->
-      <div v-if="activeTab === 'cumulative'" class="stats-section">
-        <GlassCard v-if="cumulativeData" class="stats-summary">
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">总专注时长</span>
-              <span class="summary-value">{{ formatDuration(cumulativeData.total_duration) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">总会话数</span>
-              <span class="summary-value">{{ cumulativeData.total_sessions || 0 }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">平均时长</span>
-              <span class="summary-value">{{ formatDuration(cumulativeData.avg_duration) }}</span>
-            </div>
-          </div>
-        </GlassCard>
-        <StatsChart
-          v-if="cumulativeChartData"
-          type="bar"
-          :data="cumulativeChartData"
-        />
-      </div>
-
-      <!-- Daily Stats -->
-      <div v-if="activeTab === 'daily'" class="stats-section">
-        <div class="date-picker">
-          <GlassInput
-            v-model="selectedDate"
-            type="date"
-            label="选择日期"
-          />
+      <!-- 累计统计 -->
+      <GlassCard class="stats-cumulative">
+        <div class="stats-section-header">
+          <h3>统计数据 <span v-if="cumulativeData?.first_date" class="stats-since">自 {{ cumulativeData.first_date }} 起</span></h3>
+          <GlassButton variant="secondary" size="small" @click="handleClearSessions">清除专注时长</GlassButton>
         </div>
-        <GlassCard v-if="dailyData" class="stats-summary">
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">当日专注时长</span>
-              <span class="summary-value">{{ formatDuration(dailyData.total_duration) }}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">当日会话数</span>
-              <span class="summary-value">{{ dailyData.total_sessions || 0 }}</span>
-            </div>
+        <div class="stats-cumulative-grid">
+          <div class="stat-item">
+            <span class="stat-value">{{ cumulativeData?.count || 0 }}</span>
+            <span class="stat-label">次数</span>
           </div>
-        </GlassCard>
-        <StatsChart
-          v-if="dailyChartData"
-          type="line"
-          :data="dailyChartData"
-        />
-      </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ formatDuration(cumulativeData?.total_duration) }}</span>
+            <span class="stat-label">时长</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ formatDuration(cumulativeData?.daily_avg) }}</span>
+            <span class="stat-label">日均时长</span>
+          </div>
+        </div>
+      </GlassCard>
 
-      <!-- Distribution Stats -->
-      <div v-if="activeTab === 'distribution'" class="stats-section">
-        <div class="period-selector">
+      <!-- 每日统计 -->
+      <GlassCard class="stats-daily">
+        <div class="stats-date-nav">
+          <GlassButton variant="secondary" size="small" @click="statsDatePrev">&#9664;</GlassButton>
+          <span class="stats-date-label">{{ formatDate(statsDate) }}</span>
+          <GlassButton variant="secondary" size="small" @click="statsDateNext">&#9654;</GlassButton>
+        </div>
+        <div class="stats-daily-grid">
+          <div class="stat-item">
+            <span class="stat-value">{{ dailyData?.count || 0 }}</span>
+            <span class="stat-label">专注次数</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ formatDuration(dailyData?.duration) }}</span>
+            <span class="stat-label">专注时长</span>
+          </div>
+        </div>
+      </GlassCard>
+
+      <!-- 专注时长分布 -->
+      <GlassCard class="stats-distribution">
+        <div class="stats-section-header">
+          <h3>专注时长分布</h3>
+          <span class="stats-date-badge">{{ formatDate(statsDate) }}</span>
+        </div>
+        <div class="stats-period-tabs">
           <button
             v-for="period in periods"
-            :key="period.value"
-            class="period-button"
-            :class="{ active: selectedPeriod === period.value }"
-            @click="selectPeriod(period.value)"
+            :key="period.key"
+            class="period-tab"
+            :class="{ active: activePeriod === period.key }"
+            @click="switchPeriod(period.key)"
           >
             {{ period.label }}
           </button>
         </div>
-        <StatsChart
-          v-if="distributionChartData"
-          type="pie"
-          :data="distributionChartData"
-        />
-      </div>
-
-      <!-- Monthly Stats -->
-      <div v-if="activeTab === 'monthly'" class="stats-section">
-        <div class="date-picker">
-          <GlassInput
-            v-model="selectedMonth"
-            type="month"
-            label="选择月份"
-          />
+        <div class="stats-chart-container">
+          <canvas ref="donutCanvas" width="280" height="280"></canvas>
         </div>
-        <StatsChart
-          v-if="monthlyChartData"
-          type="bar"
-          :data="monthlyChartData"
-        />
-      </div>
+        <div class="stats-legend" v-html="donutLegendHtml"></div>
+      </GlassCard>
 
-      <GlassCard v-if="loading" class="loading-state">
-        <p>加载中...</p>
+      <!-- 月度专注时段分布 -->
+      <GlassCard class="stats-monthly">
+        <div class="stats-section-header">
+          <h3>本月专注时段分布</h3>
+          <div class="stats-date-nav" style="margin: 0">
+            <GlassButton variant="secondary" size="small" @click="statsMonthPrev">&#9664;</GlassButton>
+            <span>{{ formatMonth(statsMonth) }}</span>
+            <GlassButton variant="secondary" size="small" @click="statsMonthNext">&#9654;</GlassButton>
+          </div>
+        </div>
+        <div class="stats-chart-container stats-bar-container">
+          <canvas ref="barCanvas" width="600" height="300"></canvas>
+        </div>
       </GlassCard>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
+import {
+  Chart,
+  DoughnutController,
+  BarController,
+  ArcElement,
+  BarElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Legend
+} from 'chart.js'
 import api from '@/api'
 import Header from '@/components/layout/Header.vue'
 import GlassCard from '@/components/common/GlassCard.vue'
-import GlassInput from '@/components/common/GlassInput.vue'
-import StatsChart from '@/components/business/StatsChart.vue'
+import GlassButton from '@/components/common/GlassButton.vue'
 
-const loading = ref(false)
-const activeTab = ref('cumulative')
+Chart.register(DoughnutController, BarController, ArcElement, BarElement, LinearScale, CategoryScale, Tooltip, Legend)
 
-const tabs = [
-  { key: 'cumulative', label: '累计统计' },
-  { key: 'daily', label: '每日统计' },
-  { key: 'distribution', label: '分布统计' },
-  { key: 'monthly', label: '月度统计' }
+const CHART_COLORS = [
+  '#7c6ef0', '#a78bfa', '#c4b5fd', '#3b82f6', '#60a5fa',
+  '#10b981', '#34d399', '#f59e0b', '#fbbf24', '#f87171',
+  '#ec4899', '#8b5cf6'
 ]
+
+const statsDate = ref(new Date())
+const statsMonth = ref(new Date())
+const activePeriod = ref('day')
+const cumulativeData = ref(null)
+const dailyData = ref(null)
+const distributionData = ref(null)
+const donutLegendHtml = ref('')
+
+const donutCanvas = ref(null)
+const barCanvas = ref(null)
+let donutChart = null
+let barChart = null
 
 const periods = [
-  { value: 'week', label: '本周' },
-  { value: 'month', label: '本月' },
-  { value: 'year', label: '本年' }
+  { key: 'day', label: '日' },
+  { key: 'week', label: '周' },
+  { key: 'month', label: '月' }
 ]
 
-// Cumulative
-const cumulativeData = ref(null)
-const cumulativeChartData = computed(() => {
-  if (!cumulativeData.value?.by_type) return null
-  const types = Object.keys(cumulativeData.value.by_type)
-  return {
-    labels: types.map(t => typeLabels[t] || t),
-    datasets: [{
-      label: '专注时长（分钟）',
-      data: types.map(t => Math.round((cumulativeData.value.by_type[t] || 0) / 60)),
-      backgroundColor: [
-        'rgba(99, 102, 241, 0.6)',
-        'rgba(139, 92, 246, 0.6)',
-        'rgba(236, 72, 153, 0.6)',
-        'rgba(248, 113, 113, 0.6)'
-      ]
-    }]
-  }
+onMounted(async () => {
+  await loadAllStats()
 })
 
-// Daily
-const selectedDate = ref(new Date().toISOString().split('T')[0])
-const dailyData = ref(null)
-const dailyChartData = computed(() => {
-  if (!dailyData.value?.hourly) return null
-  return {
-    labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
-    datasets: [{
-      label: '专注时长（分钟）',
-      data: dailyData.value.hourly.map(v => Math.round(v / 60)),
-      borderColor: 'rgba(99, 102, 241, 0.8)',
-      backgroundColor: 'rgba(99, 102, 241, 0.1)',
-      fill: true,
-      tension: 0.4
-    }]
-  }
-})
+const loadAllStats = async () => {
+  await Promise.all([
+    loadCumulativeStats(),
+    loadDailyStats(),
+    loadDistributionStats(),
+    loadMonthlyStats()
+  ])
+}
 
-// Distribution
-const selectedPeriod = ref('week')
-const distributionData = ref(null)
-const distributionChartData = computed(() => {
-  if (!distributionData.value?.by_type) return null
-  const types = Object.keys(distributionData.value.by_type)
-  return {
-    labels: types.map(t => typeLabels[t] || t),
-    datasets: [{
-      data: types.map(t => Math.round((distributionData.value.by_type[t] || 0) / 60)),
-      backgroundColor: [
-        'rgba(99, 102, 241, 0.6)',
-        'rgba(139, 92, 246, 0.6)',
-        'rgba(236, 72, 153, 0.6)',
-        'rgba(248, 113, 113, 0.6)'
-      ]
-    }]
+const loadCumulativeStats = async () => {
+  try {
+    cumulativeData.value = await api.getCumulativeStats()
+  } catch (e) {
+    console.error('Failed to load cumulative stats:', e)
   }
-})
+}
 
-// Monthly
-const selectedMonth = ref(new Date().toISOString().slice(0, 7))
-const monthlyData = ref(null)
-const monthlyChartData = computed(() => {
-  if (!monthlyData.value?.daily) return null
-  const days = Object.keys(monthlyData.value.daily).sort()
-  return {
-    labels: days.map(d => d.split('-')[2] + '日'),
-    datasets: [{
-      label: '专注时长（分钟）',
-      data: days.map(d => Math.round((monthlyData.value.daily[d] || 0) / 60)),
-      backgroundColor: 'rgba(99, 102, 241, 0.6)'
-    }]
+const loadDailyStats = async () => {
+  try {
+    dailyData.value = await api.getDailyStats(formatDate(statsDate.value))
+  } catch (e) {
+    console.error('Failed to load daily stats:', e)
   }
-})
+}
 
-const typeLabels = {
-  unlimited: '正计时',
-  countdown: '倒计时',
-  pomodoro: '番茄钟'
+const loadDistributionStats = async () => {
+  try {
+    const d = await api.getDistributionStats({
+      period: activePeriod.value,
+      date: formatDate(statsDate.value)
+    })
+    distributionData.value = d
+    await nextTick()
+    renderDonutChart(d.items || [], d.total_duration || 0)
+  } catch (e) {
+    console.error('Failed to load distribution stats:', e)
+  }
+}
+
+const loadMonthlyStats = async () => {
+  try {
+    const d = await api.getMonthlyStats(formatMonthParam(statsMonth.value))
+    await nextTick()
+    renderBarChart(d || [])
+  } catch (e) {
+    console.error('Failed to load monthly stats:', e)
+  }
+}
+
+const renderDonutChart = (items, totalDuration) => {
+  if (!donutCanvas.value) return
+  const ctx = donutCanvas.value.getContext('2d')
+  if (donutChart) {
+    donutChart.destroy()
+    donutChart = null
+  }
+
+  if (!items || !items.length) {
+    donutLegendHtml.value = '<div class="empty-state" style="padding:20px">暂无数据</div>'
+    return
+  }
+
+  donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: items.map(i => i.category),
+      datasets: [{
+        data: items.map(i => i.total_duration),
+        backgroundColor: items.map((_, idx) => CHART_COLORS[idx % CHART_COLORS.length]),
+        borderColor: 'rgba(255,255,255,.6)',
+        borderWidth: 2,
+        hoverBorderWidth: 3,
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '60%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,.9)',
+          titleColor: '#2d2655',
+          bodyColor: '#2d2655',
+          borderColor: 'rgba(124,110,240,.3)',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: (ctx) => ctx.label + ': ' + formatDuration(ctx.raw)
+          }
+        }
+      }
+    }
+  })
+
+  donutLegendHtml.value = items.map((item, idx) => {
+    const color = CHART_COLORS[idx % CHART_COLORS.length]
+    return `<div class="legend-item" data-idx="${idx}" onclick="window.toggleDonutSector(${idx})">
+      <div class="legend-left"><span class="legend-color" style="background:${color}"></span><span class="legend-name">${item.category}</span></div>
+      <div class="legend-right"><span class="legend-duration">${formatDuration(item.total_duration)}</span><span class="legend-pct">${item.percentage}%</span></div>
+    </div>`
+  }).join('')
+}
+
+const renderBarChart = (data) => {
+  if (!barCanvas.value) return
+  const ctx = barCanvas.value.getContext('2d')
+  if (barChart) {
+    barChart.destroy()
+    barChart = null
+  }
+
+  if (!data || !data.length) return
+
+  const labels = data.map(d => d.day)
+  const values = data.map(d => Math.round(d.duration / 60))
+  const chartWidth = Math.max(600, data.length * 24)
+  barCanvas.value.style.width = chartWidth + 'px'
+  barCanvas.value.width = chartWidth
+
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(124,110,240,.6)',
+        borderColor: 'rgba(124,110,240,.8)',
+        borderWidth: 1,
+        borderRadius: 4,
+        hoverBackgroundColor: 'rgba(124,110,240,.85)'
+      }]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,.9)',
+          titleColor: '#2d2655',
+          bodyColor: '#2d2655',
+          borderColor: 'rgba(124,110,240,.3)',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: (ctx) => ctx.raw + ' 分钟'
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#7a7494', font: { size: 11 } }
+        },
+        y: {
+          grid: { color: 'rgba(124,110,240,.08)', drawBorder: false },
+          ticks: {
+            color: '#7a7494',
+            font: { size: 11 },
+            callback: (val) => val + ' min'
+          },
+          beginAtZero: true
+        }
+      }
+    }
+  })
+}
+
+const switchPeriod = (period) => {
+  activePeriod.value = period
+  loadDistributionStats()
+}
+
+const statsDatePrev = () => {
+  statsDate.value = new Date(statsDate.value.getTime() - 86400000)
+  loadDailyStats()
+  loadDistributionStats()
+}
+
+const statsDateNext = () => {
+  statsDate.value = new Date(statsDate.value.getTime() + 86400000)
+  loadDailyStats()
+  loadDistributionStats()
+}
+
+const statsMonthPrev = () => {
+  const d = new Date(statsMonth.value)
+  d.setMonth(d.getMonth() - 1)
+  statsMonth.value = d
+  loadMonthlyStats()
+}
+
+const statsMonthNext = () => {
+  const d = new Date(statsMonth.value)
+  d.setMonth(d.getMonth() + 1)
+  statsMonth.value = d
+  loadMonthlyStats()
+}
+
+const handleClearSessions = async () => {
+  if (!confirm('确定要清除所有专注记录吗？此操作不可撤销。')) return
+  try {
+    await api.clearFocusSessions()
+    alert('专注记录已清除')
+    await loadAllStats()
+  } catch (e) {
+    alert('清除失败: ' + e.message)
+  }
 }
 
 const formatDuration = (seconds) => {
-  if (!seconds) return '0分钟'
-  const h = Math.floor(seconds / 3600)
+  if (!seconds || seconds <= 0) return '0分钟'
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (h > 0) return `${h}小时${m}分钟`
-  return `${m}分钟`
+  if (d > 0) return d + '天' + h + '小时' + m + '分钟'
+  if (h > 0) return h + '小时' + m + '分钟'
+  return m + '分钟'
 }
 
-const fetchCumulative = async () => {
-  loading.value = true
-  try {
-    cumulativeData.value = await api.getCumulativeStats()
-  } catch (error) {
-    console.error('Failed to fetch cumulative stats:', error)
-  } finally {
-    loading.value = false
-  }
+const formatDate = (d) => {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
-const fetchDaily = async () => {
-  loading.value = true
-  try {
-    dailyData.value = await api.getDailyStats(selectedDate.value)
-  } catch (error) {
-    console.error('Failed to fetch daily stats:', error)
-  } finally {
-    loading.value = false
-  }
+const formatMonth = (d) => {
+  return d.getFullYear() + '年' + String(d.getMonth() + 1).padStart(2, '0') + '月'
 }
 
-const fetchDistribution = async () => {
-  loading.value = true
-  try {
-    distributionData.value = await api.getDistributionStats({ period: selectedPeriod.value })
-  } catch (error) {
-    console.error('Failed to fetch distribution stats:', error)
-  } finally {
-    loading.value = false
-  }
+const formatMonthParam = (d) => {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
 }
 
-const fetchMonthly = async () => {
-  loading.value = true
-  try {
-    monthlyData.value = await api.getMonthlyStats(selectedMonth.value)
-  } catch (error) {
-    console.error('Failed to fetch monthly stats:', error)
-  } finally {
-    loading.value = false
-  }
+// 暴露给全局用于图例点击
+window.toggleDonutSector = (idx) => {
+  if (!donutChart) return
+  const meta = donutChart.getDatasetMeta(0)
+  meta.data[idx].hidden = !meta.data[idx].hidden
+  donutChart.update()
 }
-
-const selectPeriod = (period) => {
-  selectedPeriod.value = period
-  fetchDistribution()
-}
-
-onMounted(() => {
-  fetchCumulative()
-})
-
-watch(activeTab, (tab) => {
-  if (tab === 'cumulative') fetchCumulative()
-  else if (tab === 'daily') fetchDaily()
-  else if (tab === 'distribution') fetchDistribution()
-  else if (tab === 'monthly') fetchMonthly()
-})
-
-watch(selectedDate, () => {
-  if (activeTab.value === 'daily') fetchDaily()
-})
-
-watch(selectedMonth, () => {
-  if (activeTab.value === 'monthly') fetchMonthly()
-})
 </script>
 
 <style scoped>
@@ -300,100 +385,161 @@ watch(selectedMonth, () => {
 
 .stats-content {
   padding: 2rem;
-}
-
-.stats-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  background: var(--glass-bg);
-  padding: 0.25rem;
-  border-radius: var(--radius-sm);
-}
-
-.tab-button {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: var(--text-soft);
-  transition: all var(--transition-fast);
-}
-
-.tab-button.active {
-  background: var(--primary-light);
-  color: var(--primary);
-  font-weight: 500;
-}
-
-.tab-button:hover:not(.active) {
-  background: var(--glass-border);
-}
-
-.stats-section {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.stats-summary {
-  padding: 1.5rem;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.5rem;
-}
-
-.summary-item {
+.stats-section-header {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
-.summary-label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.summary-value {
-  font-size: 1.5rem;
-  font-weight: 700;
+.stats-section-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
   color: var(--text);
 }
 
-.date-picker {
-  max-width: 300px;
+.stats-since {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-soft);
 }
 
-.period-selector {
+.stats-cumulative-grid,
+.stats-daily-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.stat-item {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.stats-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stats-date-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stats-date-badge {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 4px;
+}
+
+.stats-period-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.period-tab {
+  padding: 0.4rem 1rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 0.9rem;
+}
+
+.period-tab.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.stats-chart-container {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.stats-bar-container {
+  overflow-x: auto;
+}
+
+.stats-legend {
+  margin-top: 1rem;
+}
+
+:deep(.legend-item) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+:deep(.legend-item:hover) {
+  background: var(--glass-bg);
+}
+
+:deep(.legend-item.disabled) {
+  opacity: 0.5;
+}
+
+:deep(.legend-left) {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.period-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+:deep(.legend-color) {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+:deep(.legend-name) {
   font-size: 0.9rem;
+  color: var(--text);
+}
+
+:deep(.legend-right) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+:deep(.legend-duration) {
+  font-size: 0.85rem;
   color: var(--text-soft);
-  transition: all var(--transition-fast);
 }
 
-.period-button.active {
-  background: var(--primary-light);
+:deep(.legend-pct) {
+  font-size: 0.85rem;
+  font-weight: 600;
   color: var(--primary);
-  border-color: var(--primary);
-}
-
-.loading-state {
-  text-align: center;
-  color: var(--text-muted);
 }
 </style>

@@ -16,12 +16,27 @@
       </div>
 
       <div v-if="currentMode === 'countdown'" class="duration-input">
-        <GlassInput
-          v-model="durationMinutes"
-          type="number"
-          label="专注时长（分钟）"
-          placeholder="25"
-        />
+        <label>时长</label>
+        <div class="duration-row">
+          <input
+            v-model.number="durationHours"
+            type="number"
+            min="0"
+            max="12"
+            placeholder="0"
+            class="duration-field"
+          />
+          <span>小时</span>
+          <input
+            v-model.number="durationMinutes"
+            type="number"
+            min="0"
+            max="59"
+            placeholder="30"
+            class="duration-field"
+          />
+          <span>分钟</span>
+        </div>
       </div>
 
       <GlassInput
@@ -151,7 +166,8 @@ const props = defineProps({
 const emit = defineEmits(['start', 'pause', 'resume', 'complete', 'reset', 'mode-change'])
 
 const currentMode = ref(props.mode)
-const durationMinutes = ref(25)
+const durationHours = ref(0)
+const durationMinutes = ref(30)
 const task = ref('')
 
 const modes = [
@@ -191,9 +207,10 @@ const selectMode = (mode) => {
 }
 
 const start = () => {
+  const totalSec = (durationHours.value || 0) * 3600 + (durationMinutes.value || 0) * 60
   emit('start', {
     mode: currentMode.value,
-    duration: currentMode.value === 'countdown' ? durationMinutes.value * 60 : 0,
+    duration: currentMode.value === 'countdown' ? totalSec : 0,
     task: task.value
   })
 }
@@ -246,6 +263,34 @@ onUnmounted(() => {
 .mode-button.active {
   background: var(--primary-light);
   color: var(--primary);
+}
+
+.duration-input label {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.duration-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.duration-field {
+  width: 60px;
+  padding: 0.5rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-align: center;
+  font-size: 1rem;
+}
+
+.duration-field:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .focus-running {
