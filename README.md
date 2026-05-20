@@ -4,6 +4,8 @@
 
 PlanMaster 是一个基于 Flask + SQLite 的本地桌面应用（支持 macOS 和 Windows），用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生窗口，支持应用内一键检查更新、专注模式、打卡、统计数据等功能。
 
+**v2.0.0 重大更新**: 前端从原生 HTML/CSS/JS 重构为 Vue 3 + Vite + Pinia + Vue Router，采用组件化架构，提升代码可维护性和动画流畅度。
+
 ## 技术栈
 
 - **后端**: Python 3.13 + Flask 3.x
@@ -56,6 +58,7 @@ PlanMaster/
 
 ## 启动方式
 
+**生产模式** (构建Vue后启动Flask):
 ```bash
 cd PlanMaster
 ./start.sh
@@ -65,6 +68,15 @@ python app.py
 ```
 
 服务启动在 `http://localhost:8080`，浏览器自动打开。
+
+**前端开发模式** (热更新):
+```bash
+cd PlanMaster/frontend
+npm install
+npm run dev
+```
+
+开发服务器启动在 `http://localhost:3000`，API请求代理到 `http://localhost:8080`。
 
 ## 数据库设计
 
@@ -327,25 +339,39 @@ python app.py
 
 ## 前端设计
 
-### 页面结构
+### 架构概览 (v2.0.0)
 
-前端是单页应用 (SPA)，所有页面在 `index.html` 中预定义，通过 CSS `display` 切换可见性。
+前端采用 Vue 3 组件化架构:
 
-**页面列表**:
-1. **今日待办** (`today`) - 计划页面，plan_type=today
-2. **打卡** (`checkin`) - 打卡管理
-3. **周计划** (`weekly`) - 计划页面，plan_type=weekly
-4. **月计划** (`monthly`) - 计划页面，plan_type=monthly
-5. **年计划** (`yearly`) - 计划页面，plan_type=yearly
-6. **锁机模式** (`focus`) - 专注锁定 (占位)
-7. **统计数据** (`stats`) - 专注统计 (累计/每日/饼图/柱状图)
-8. **API 余量** (`apibalance`) - DeepSeek 账户余额查看
-9. **心愿兑换单** (`wishes`) - 心愿管理
-10. **价值流水** (`transactions`) - 流水记录
-11. **回收站** (`recycle`) - 已完成计划 (可恢复/永久删除)
-12. **AI设置** (`settings`) - AI 配置 + 价值范围 + 数据管理
+```
+frontend/src/
+├── components/
+│   ├── layout/      # Sidebar, Header, Content
+│   ├── common/      # GlassCard, GlassButton, GlassModal, GlassInput, GlassToast
+│   ├── business/    # PlanCard, WishCard, CheckinItem, FocusTimer, StatsChart
+│   └── forms/       # PlanForm, WishForm
+├── views/           # 13个页面视图
+├── stores/          # Pinia状态管理 (plans, wishes, checkins, focus, transactions, settings)
+├── api/             # 统一API调用层
+├── composables/     # 组合式函数 (useTheme)
+└── styles/          # CSS变量、毛玻璃样式、动画、过渡
+```
 
-**计划页面共享同一个 DOM 容器** (`#page-plans`)，通过 `currentPage` 状态变量区分。
+### 页面列表
+
+1. **今日待办** (`/`) - 计划页面，plan_type=today
+2. **打卡** (`/checkin`) - 打卡管理
+3. **重要事项** (`/important`) - 重要事项管理
+4. **周计划** (`/weekly`) - 计划页面，plan_type=weekly
+5. **月计划** (`/monthly`) - 计划页面，plan_type=monthly
+6. **年计划** (`/yearly`) - 计划页面，plan_type=yearly
+7. **专注模式** (`/focus`) - 专注计时器 (正计时/倒计时)
+8. **统计数据** (`/stats`) - 专注统计 (累计/每日/饼图/柱状图)
+9. **心愿兑换单** (`/wishes`) - 心愿管理
+10. **价值流水** (`/transactions`) - 流水记录
+11. **回收站** (`/recycle`) - 已完成计划 (可恢复/永久删除)
+12. **API 余量** (`/apibalance`) - DeepSeek 账户余额查看
+13. **AI设置** (`/settings`) - AI 配置 + 价值范围 + 数据管理
 
 ### CSS 设计系统
 
@@ -529,6 +555,7 @@ pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "te
 
 ## 版本历史
 
+- v2.0.0: **前端重构** - 从原生 HTML/CSS/JS 迁移到 Vue 3 + Vite + Pinia + Vue Router；组件化架构提升可维护性；优化动画流畅度；统一API调用层；Pinia状态管理
 - v1.6.2: 修复任务倒计时停止后按钮图标未立即刷新的问题；修复删除/完成任务时专注计时器未正确终止的问题
 - v1.6.1: 修复旧版已兑换心愿无法删除的问题，数据库迁移时自动清理旧 redeemed 心愿，已兑换心愿也显示删除按钮
 - v1.6.0: 心愿兑换支持数量管理 (有限/无限) 和编辑功能；有限数量心愿兑换后自动递减，用完自动删除；新增 PUT 编辑心愿 API
