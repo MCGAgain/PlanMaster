@@ -75,7 +75,12 @@ const handleSearch = (query) => {
 }
 
 const handleComplete = async (plan) => {
-  await plansStore.completePlan(plan.id)
+  try {
+    await plansStore.completePlan(plan.id)
+  } catch (error) {
+    console.error('Failed to complete plan:', error)
+    alert('完成计划失败，请稍后重试')
+  }
 }
 
 const handleEdit = (plan) => {
@@ -85,22 +90,37 @@ const handleEdit = (plan) => {
 
 const handleDelete = async (plan) => {
   if (confirm('确定要删除这个计划吗？')) {
-    await plansStore.deletePlan(plan.id)
+    try {
+      await plansStore.deletePlan(plan.id)
+    } catch (error) {
+      console.error('Failed to delete plan:', error)
+      alert('删除计划失败，请稍后重试')
+    }
   }
 }
 
 const handleAdd = async (plan) => {
-  await plansStore.createPlan({
-    ...plan,
-    plan_type: 'monthly'
-  })
-  showAddModal.value = false
+  try {
+    await plansStore.createPlan({
+      ...plan,
+      plan_type: 'monthly'
+    })
+    showAddModal.value = false
+  } catch (error) {
+    console.error('Failed to create plan:', error)
+    alert('创建计划失败，请稍后重试')
+  }
 }
 
 const handleUpdate = async (plan) => {
-  await plansStore.updatePlan(editingPlan.value.id, plan)
-  showEditModal.value = false
-  editingPlan.value = null
+  try {
+    await plansStore.updatePlan(editingPlan.value.id, plan)
+    showEditModal.value = false
+    editingPlan.value = null
+  } catch (error) {
+    console.error('Failed to update plan:', error)
+    alert('更新计划失败，请稍后重试')
+  }
 }
 </script>
 

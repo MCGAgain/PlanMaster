@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useFocusStore } from '@/stores/focus'
 import Header from '@/components/layout/Header.vue'
 import FocusTimer from '@/components/business/FocusTimer.vue'
@@ -47,6 +47,10 @@ const focusStore = useFocusStore()
 
 onMounted(() => {
   focusStore.fetchSessions()
+})
+
+onUnmounted(() => {
+  focusStore.cleanup()
 })
 
 const handleStart = (config) => {
@@ -59,7 +63,12 @@ const handleStart = (config) => {
 }
 
 const handleComplete = async () => {
-  await focusStore.complete()
+  try {
+    await focusStore.complete()
+  } catch (error) {
+    console.error('Failed to complete focus session:', error)
+    alert('完成专注失败，请稍后重试')
+  }
 }
 
 const formatDuration = (seconds) => {
