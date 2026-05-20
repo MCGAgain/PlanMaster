@@ -19,7 +19,7 @@ import updater
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger('planmaster')
 
-CURRENT_VERSION = '1.9.2'
+CURRENT_VERSION = '1.9.3'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -641,30 +641,60 @@ PROGRESS_FILE = os.path.join(_update_dir, 'planmaster_update_progress.txt')
 def api_version():
     return jsonify({'version': CURRENT_VERSION})
 
-def _get_remote_version():
-    """获取远程版本号，优先从 raw 文件读取，失败则从 GitHub API 获取"""
-    # 方法1: 从 raw 文件读取 CURRENT_VERSION
+_release_cache = {'data': None, 'time': 0}
+
+
+def _fetch_release_info():
+    """获取 GitHub release 信息（带 5 分钟缓存，避免触发 API 速率限制）"""
+    import time as _time
+    now = _time.time()
+    if _release_cache['data'] and now - _release_cache['time'] < 300:
+        return _release_cache['data']
+
+    # 方法1: 从 raw 文件读取版本号（不消耗 API 配额）
     raw_url = f'https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/app.py'
+    raw_ver = None
     try:
         resp = requests.get(raw_url, timeout=10)
         if resp.status_code == 200:
             for line in resp.text.splitlines():
                 if line.startswith('CURRENT_VERSION'):
-                    return line.split("'")[1] if "'" in line else line.split('"')[1]
+                    raw_ver = line.split("'")[1] if "'" in line else line.split('"')[1]
     except Exception:
         pass
 
-    # 方法2: 从 GitHub API 获取最新 release tag
+    # 方法2: 从 GitHub API 获取 release 信息（版本号 + asset URL）
+    api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
     try:
-        api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
-        resp = requests.get(api_url, timeout=10, headers={'Accept': 'application/vnd.github.v3+json'})
+        resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
         if resp.status_code == 200:
-            tag = resp.json().get('tag_name', '')
-            return tag.lstrip('v') if tag else None
+            data = resp.json()
+            tag = data.get('tag_name', '').lstrip('v')
+            result = {
+                'version': raw_ver or tag,
+                'api_version': tag,
+                'assets': data.get('assets', []),
+            }
+            _release_cache['data'] = result
+            _release_cache['time'] = now
+            return result
     except Exception:
         pass
+
+    # API 也失败了，但 raw 文件成功了
+    if raw_ver:
+        result = {'version': raw_ver, 'api_version': None, 'assets': []}
+        _release_cache['data'] = result
+        _release_cache['time'] = now
+        return result
 
     return None
+
+
+def _get_remote_version():
+    """获取远程版本号"""
+    info = _fetch_release_info()
+    return info['version'] if info else None
 
 def _write_progress(msg):
     try:
@@ -802,25 +832,42 @@ def _download_and_install():
         _push_progress(-1, '正在获取更新信息...')
         is_windows = platform.system() == 'Windows'
 
+        # 复用缓存的 release 信息，避免重复调用 GitHub API
+        info = _fetch_release_info()
+        if not info:
+            _push_progress(0, '无法获取更新信息，请检查网络')
+            _update_state['status'] = 'error'
+            return
+
+        remote_ver = info.get('api_version') or info.get('version')
+        ghproxy = os.environ.get('GHPROXY')
+
+        # 从缓存的 assets 中查找下载链接
+        url = None
+        for asset in info.get('assets', []):
+            name = asset.get('name', '')
+            if is_windows and name.endswith('.exe'):
+                url = asset['browser_download_url']
+                break
+            if not is_windows and (name.endswith('.dmg') or name.endswith('.tar.gz')):
+                url = asset['browser_download_url']
+                break
+
+        if not url:
+            _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
+            _update_state['status'] = 'error'
+            return
+
+        if ghproxy:
+            url = ghproxy.rstrip('/') + '/' + url
+
         if is_windows:
-            url, remote_ver = _get_asset_download_url()
-            if not url:
-                _push_progress(0, '未找到安装包，请前往 GitHub 手动下载')
-                _update_state['status'] = 'error'
-                return
             dest = os.path.join(tempfile.gettempdir(), 'PlanMaster-Setup.exe')
             _push_progress(0, f'准备下载 v{remote_ver}...')
             if not _stream_download(url, dest):
                 _update_state['status'] = 'error'
                 return
         else:
-            ghproxy = os.environ.get('GHPROXY')
-            url, remote_ver = updater._resolve_asset_url(ghproxy)
-            if not url:
-                err_detail = updater._last_resolve_error or '未知原因'
-                _push_progress(0, f'未找到安装包: {err_detail}')
-                _update_state['status'] = 'error'
-                return
             ext = '.dmg' if url.endswith('.dmg') else '.tar.gz'
             dest = os.path.join(tempfile.gettempdir(), f'PlanMaster-macOS{ext}')
             _push_progress(0, f'准备下载 v{remote_ver}...')
