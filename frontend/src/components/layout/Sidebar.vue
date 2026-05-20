@@ -1,4 +1,3 @@
-<!-- frontend/src/components/layout/Sidebar.vue -->
 <template>
   <nav class="sidebar">
     <div class="sidebar-header">
@@ -6,7 +5,7 @@
       <p class="subtitle">计划管理 & 心愿兑换</p>
     </div>
 
-    <div class="balance-card">
+    <div class="balance-card" @click="$router.push('/wishes')">
       <span class="balance-label">虚拟价值余额</span>
       <span class="balance-value">{{ balance }}</span>
     </div>
@@ -17,11 +16,10 @@
         :key="item.path"
         class="nav-item"
         :class="{ active: currentRoute === item.path }"
+        @click="navigate(item.path)"
       >
-        <router-link :to="item.path" class="nav-link">
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </router-link>
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span>{{ item.label }}</span>
       </li>
 
       <li class="nav-group">
@@ -30,9 +28,9 @@
           :class="{ collapsed: !plansOpen }"
           @click="plansOpen = !plansOpen"
         >
-          <span class="nav-icon">📅</span>
+          <span class="nav-icon">&#128197;</span>
           <span>计划管理</span>
-          <span class="arrow" :class="{ open: plansOpen }">&#9662;</span>
+          <span class="arrow">&#9662;</span>
         </div>
         <ul v-show="plansOpen" class="nav-group-items">
           <li
@@ -40,10 +38,9 @@
             :key="plan.path"
             class="nav-item"
             :class="{ active: currentRoute === plan.path }"
+            @click="navigate(plan.path)"
           >
-            <router-link :to="plan.path" class="nav-link">
-              <span>{{ plan.label }}</span>
-            </router-link>
+            <span>{{ plan.label }}</span>
           </li>
         </ul>
       </li>
@@ -53,11 +50,10 @@
         :key="item.path"
         class="nav-item"
         :class="{ active: currentRoute === item.path }"
+        @click="navigate(item.path)"
       >
-        <router-link :to="item.path" class="nav-link">
-          <span class="nav-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </router-link>
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span>{{ item.label }}</span>
       </li>
     </ul>
   </nav>
@@ -65,9 +61,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 
 const balance = ref(0)
 const plansOpen = ref(true)
@@ -75,9 +72,9 @@ const plansOpen = ref(true)
 const currentRoute = computed(() => route.path)
 
 const menuItems = [
-  { path: '/checkin', label: '打卡', icon: '☑' },
-  { path: '/important', label: '重要事项', icon: '⚠' },
-  { path: '/', label: '今日待办', icon: '☀' }
+  { path: '/checkin', label: '打卡', icon: '&#9745;' },
+  { path: '/important', label: '重要事项', icon: '&#9888;' },
+  { path: '/', label: '今日待办', icon: '&#9728;' }
 ]
 
 const planTypes = [
@@ -87,14 +84,18 @@ const planTypes = [
 ]
 
 const bottomItems = [
-  { path: '/stats', label: '统计数据', icon: '📊' },
-  { path: '/focus', label: '专注模式', icon: '⏱' },
-  { path: '/wishes', label: '心愿兑换单', icon: '☆' },
-  { path: '/transactions', label: '价值流水', icon: '📈' },
-  { path: '/recycle', label: '回收站', icon: '🗑' },
-  { path: '/apibalance', label: 'API余量', icon: '💰' },
-  { path: '/settings', label: 'AI设置', icon: '⚙' }
+  { path: '/stats', label: '统计数据', icon: '&#128202;' },
+  { path: '/focus', label: '专注模式', icon: '&#9201;' },
+  { path: '/wishes', label: '心愿兑换单', icon: '&#9734;' },
+  { path: '/transactions', label: '价值流水', icon: '&#128200;' },
+  { path: '/recycle', label: '回收站', icon: '&#128465;' },
+  { path: '/apibalance', label: 'API余量', icon: '&#128176;' },
+  { path: '/settings', label: 'AI设置', icon: '&#9881;' }
 ]
+
+const navigate = (path) => {
+  router.push(path)
+}
 
 const updateBalance = (newBalance) => {
   balance.value = newBalance
@@ -111,23 +112,31 @@ defineExpose({ updateBalance })
   left: 0;
   top: 0;
   background: var(--sidebar-glass);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border-right: 1px solid var(--sidebar-border);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  flex-shrink: 0;
+  animation: slideInLeft 0.6s var(--transition);
   z-index: 100;
+  overflow-y: auto;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 .sidebar-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--sidebar-border);
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.2);
 }
 
 .sidebar-header h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 26px;
+  font-weight: 800;
   background: linear-gradient(135deg, var(--primary), #a78bfa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -135,31 +144,39 @@ defineExpose({ updateBalance })
 }
 
 .sidebar-header .subtitle {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-soft);
 }
 
 .balance-card {
-  margin: 1rem;
-  padding: 1rem;
-  background: linear-gradient(135deg, var(--primary-light), rgba(167, 139, 250, 0.2));
-  border: 1px solid var(--primary);
-  border-radius: var(--radius-sm);
-  text-align: center;
+  margin: 16px 20px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(124,110,240,.15), rgba(167,139,250,.1));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(124,110,240,.2);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.balance-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px var(--primary-glow);
 }
 
 .balance-label {
-  display: block;
-  font-size: 0.8rem;
+  font-size: 12px;
   color: var(--text-soft);
-  margin-bottom: 0.25rem;
+  font-weight: 500;
 }
 
 .balance-value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
   background: linear-gradient(135deg, var(--primary), #a78bfa);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -168,70 +185,83 @@ defineExpose({ updateBalance })
 
 .nav-menu {
   list-style: none;
-  padding: 0.5rem;
+  padding: 8px 0;
   margin: 0;
   flex: 1;
+  overflow-y: auto;
 }
 
 .nav-item {
-  margin: 0.25rem 0;
-  border-radius: var(--radius-sm);
-}
-
-.nav-link {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  text-decoration: none;
-  color: inherit;
+  gap: 10px;
+  padding: 11px 24px;
   cursor: pointer;
-  transition: all var(--transition-fast) var(--ease-default);
+  font-size: 14px;
   color: var(--text-soft);
+  transition: var(--transition);
+  border-left: 3px solid transparent;
+  position: relative;
 }
 
-.nav-link:hover {
-  background: var(--glass-bg);
+.nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(124,110,240,.1), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.nav-item:hover::before {
+  opacity: 1;
+}
+
+.nav-item:hover {
   color: var(--text);
 }
 
-.nav-item.active .nav-link {
-  background: var(--primary-light);
+.nav-item.active {
+  border-left-color: var(--primary);
   color: var(--primary);
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.nav-item.active::before {
+  opacity: 1;
 }
 
 .nav-icon {
-  font-size: 1.1rem;
-  width: 1.5rem;
+  font-size: 16px;
+  width: 20px;
   text-align: center;
 }
 
 .nav-group {
-  margin: 0.5rem 0;
+  margin: 8px 0;
 }
 
 .nav-group-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: 10px;
+  padding: 14px 24px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-soft);
-  transition: color var(--transition-fast);
+  transition: var(--transition);
 }
 
 .nav-group-header:hover {
-  color: var(--text);
+  background: rgba(124,110,240,.08);
+  color: var(--primary);
 }
 
 .nav-group-header .arrow {
   margin-left: auto;
-  transition: transform var(--transition-fast);
-}
-
-.nav-group-header .arrow.open {
-  transform: rotate(0);
+  font-size: 10px;
+  transition: transform 0.3s ease;
 }
 
 .nav-group-header.collapsed .arrow {
@@ -240,15 +270,19 @@ defineExpose({ updateBalance })
 
 .nav-group-items {
   list-style: none;
-  padding: 0 0 0 2.5rem;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.4s ease;
+  padding: 0;
   margin: 0;
 }
 
-.nav-group-items .nav-item {
-  font-size: 0.9rem;
+.nav-group-items[style*="display"] {
+  max-height: 200px;
 }
 
-.nav-group-items .nav-link {
-  padding: 0.5rem 1rem;
+.nav-group-items .nav-item {
+  padding-left: 50px;
+  font-size: 13px;
 }
 </style>

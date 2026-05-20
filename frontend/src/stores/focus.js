@@ -60,10 +60,18 @@ export const useFocusStore = defineStore('focus', {
       this.task = task
     },
 
-    start() {
-      this.phase = 'running'
-      this.startTime = new Date()
+    async start() {
+      // 先调用API创建会话
+      const session = await api.createSession({
+        plan_id: null,
+        start_time: new Date().toISOString(),
+        category: this.task
+      })
+
+      this.sessionId = session.id
+      this.startTime = new Date(session.start_time)
       this.elapsed = 0
+      this.phase = 'running'
       this._startTimer()
     },
 
@@ -81,19 +89,21 @@ export const useFocusStore = defineStore('focus', {
       this.phase = 'complete'
       this._stopTimer()
 
-      try {
-        const session = await api.createSession({
-          duration: this.elapsed,
-          task: this.task,
-          mode: this.mode
-        })
-        this.sessions.unshift(session)
-        return session
-      } catch (error) {
-        this.error = error.message
-        console.error('Failed to save focus session:', error)
-        throw error
+      // 调用API结束会话
+      if (this.sessionId) {
+        try {
+          await api.endSession(this.sessionId, {
+            end_time: new Date().toISOString()
+          })
+        } catch (error) {
+          console.error('Failed to end focus session:', error)
+        }
       }
+
+      // 刷新会话列表
+      await this.fetchSessions()
+
+      return { duration: this.elapsed, task: this.task }
     },
 
     reset() {
@@ -126,10 +136,6 @@ export const useFocusStore = defineStore('focus', {
       this._stopTimer()
       _timer = setInterval(() => {
         this.elapsed++
-
-        if (this.mode === 'countdown' && this.elapsed >= this.duration) {
-          this.complete()
-        }
       }, 1000)
     },
 
