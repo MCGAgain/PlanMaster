@@ -19,7 +19,7 @@ import updater
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger('planmaster')
 
-CURRENT_VERSION = '1.9.1'
+CURRENT_VERSION = '1.9.2'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -456,11 +456,19 @@ def api_checkin(item_id):
 
 # ---- Focus Sessions ----
 
+def _to_local_iso(ts):
+    """将前端传来的UTC时间戳(带Z)转为本地时间字符串，确保与datetime.now()格式一致"""
+    if ts and ts.endswith('Z'):
+        utc_dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+        return utc_dt.astimezone().replace(tzinfo=None).isoformat()
+    return ts
+
+
 @app.route('/api/sessions', methods=['POST'])
 def api_create_session():
     data = request.json
     plan_id = data.get('plan_id')
-    start_time = data.get('start_time', datetime.now().isoformat())
+    start_time = _to_local_iso(data.get('start_time')) or datetime.now().isoformat()
     category = data.get('category') or '未分类'
     if plan_id and not data.get('category'):
         plan = db.get_plan(plan_id)
@@ -473,19 +481,12 @@ def api_create_session():
 @app.route('/api/sessions/<int:session_id>', methods=['PUT'])
 def api_end_session(session_id):
     data = request.json
-    end_time = data.get('end_time', datetime.now().isoformat())
-    sessions = db.get_focus_sessions()
-    session = None
-    for s in sessions:
-        if s['id'] == session_id:
-            session = s
-            break
+    end_time = _to_local_iso(data.get('end_time')) or datetime.now().isoformat()
+    session = db.get_focus_session(session_id)
     if not session:
         return jsonify({'error': '会话不存在'}), 404
-    def _parse_ts(ts):
-        return datetime.fromisoformat(ts.replace('Z', ''))
-    start = _parse_ts(session['start_time'])
-    end = _parse_ts(end_time)
+    start = datetime.fromisoformat(session['start_time'])
+    end = datetime.fromisoformat(end_time)
     duration = (end - start).total_seconds()
     result = db.end_focus_session(session_id, end_time, duration)
     return jsonify(result)
@@ -494,7 +495,7 @@ def api_end_session(session_id):
 @app.route('/api/sessions/<int:session_id>', methods=['PATCH'])
 def api_update_session(session_id):
     data = request.json
-    start_time = data.get('start_time')
+    start_time = _to_local_iso(data.get('start_time'))
     if start_time:
         db.update_session_start_time(session_id, start_time)
     return jsonify({'ok': True})

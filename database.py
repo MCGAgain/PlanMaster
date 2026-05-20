@@ -793,7 +793,7 @@ def get_plan_progress(plan_type):
         row = conn.execute(
             "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
             "FROM plans WHERE plan_type = ? "
-            "AND (completed = 0 OR DATE(completed_at) >= ?)",
+            "AND (completed = 0 OR completed_at >= ?)",
             (plan_type, period_start)
         ).fetchone()
         total = row['total'] or 0
@@ -836,6 +836,12 @@ def update_session_start_time(session_id, start_time):
         conn.commit()
 
 
+def get_focus_session(session_id):
+    with _conn() as conn:
+        row = conn.execute("SELECT * FROM focus_sessions WHERE id=?", (session_id,)).fetchone()
+        return dict(row) if row else None
+
+
 def get_focus_sessions(plan_id=None, date_str=None, category=None):
     with _conn() as conn:
         query = "SELECT * FROM focus_sessions WHERE 1=1"
@@ -844,7 +850,7 @@ def get_focus_sessions(plan_id=None, date_str=None, category=None):
             query += " AND plan_id=?"
             params.append(plan_id)
         if date_str:
-            query += " AND DATE(start_time)=?"
+            query += " AND start_time LIKE ? || '%'"
             params.append(date_str)
         if category:
             query += " AND category=?"
@@ -870,7 +876,7 @@ def get_cumulative_stats():
     with _conn() as conn:
         row = conn.execute(
             "SELECT COUNT(*) as count, COALESCE(SUM(duration), 0) as total_duration, "
-            "MIN(DATE(start_time)) as first_date FROM focus_sessions"
+            "MIN(substr(start_time, 1, 10)) as first_date FROM focus_sessions"
         ).fetchone()
         count = row['count']
         total_duration = row['total_duration']
@@ -893,7 +899,7 @@ def get_daily_stats(date_str):
     with _conn() as conn:
         row = conn.execute(
             "SELECT COUNT(*) as count, COALESCE(SUM(duration), 0) as duration "
-            "FROM focus_sessions WHERE DATE(start_time)=?",
+            "FROM focus_sessions WHERE start_time LIKE ? || '%'",
             (date_str,)
         ).fetchone()
         return {'count': row['count'], 'duration': row['duration']}
@@ -905,22 +911,24 @@ def get_distribution_stats(period, date_str, start_date=None, end_date=None):
         params = []
 
         if period == 'day':
-            query += "DATE(start_time)=?"
+            query += "start_time LIKE ? || '%'"
             params.append(date_str)
         elif period == 'week':
             d = date.fromisoformat(date_str)
             sd = (d - timedelta(days=6)).isoformat()
-            query += "DATE(start_time) BETWEEN ? AND ?"
-            params.extend([sd, date_str])
+            ed = (d + timedelta(days=1)).isoformat()
+            query += "start_time >= ? AND start_time < ?"
+            params.extend([sd, ed])
         elif period == 'month':
             month_prefix = date_str[:7]
-            query += "strftime('%Y-%m', start_time)=?"
+            query += "start_time LIKE ? || '%'"
             params.append(month_prefix)
         elif period == 'custom' and start_date and end_date:
-            query += "DATE(start_time) BETWEEN ? AND ?"
-            params.extend([start_date, end_date])
+            ed = (date.fromisoformat(end_date) + timedelta(days=1)).isoformat()
+            query += "start_time >= ? AND start_time < ?"
+            params.extend([start_date, ed])
         else:
-            query += "DATE(start_time)=?"
+            query += "start_time LIKE ? || '%'"
             params.append(date_str)
 
         query += " GROUP BY category ORDER BY total_duration DESC"
@@ -937,8 +945,8 @@ def get_distribution_stats(period, date_str, start_date=None, end_date=None):
 def get_monthly_daily_stats(year_month):
     with _conn() as conn:
         rows = conn.execute(
-            "SELECT strftime('%d', start_time) as day, SUM(duration) as duration "
-            "FROM focus_sessions WHERE strftime('%Y-%m', start_time)=? "
+            "SELECT substr(start_time, 9, 2) as day, SUM(duration) as duration "
+            "FROM focus_sessions WHERE start_time LIKE ? || '%' "
             "GROUP BY day ORDER BY day",
             (year_month,)
         ).fetchall()
