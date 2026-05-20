@@ -24,10 +24,17 @@ class ApiClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}))
-        throw new Error(error.message || `HTTP ${response.status}`)
+        throw new Error(error.message || error.error || `HTTP ${response.status}`)
       }
 
-      return await response.json()
+      // Handle empty responses (e.g. 204 No Content)
+      const text = await response.text()
+      if (!text) return {}
+      try {
+        return JSON.parse(text)
+      } catch {
+        return {}
+      }
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error)
       throw error
@@ -35,8 +42,22 @@ class ApiClient {
   }
 
   // Plans
-  getPlans() {
-    return this.request('/api/plans')
+  getPlans(type) {
+    const qs = type ? `?type=${encodeURIComponent(type)}` : ''
+    return this.request(`/api/plans${qs}`)
+  }
+
+  getAllPlans(type) {
+    const qs = type ? `?type=${encodeURIComponent(type)}` : ''
+    return this.request(`/api/plans/all${qs}`)
+  }
+
+  getPlanProgress(type) {
+    return this.request(`/api/plans/progress?type=${encodeURIComponent(type || 'today')}`)
+  }
+
+  getCompletedPlans() {
+    return this.request('/api/plans/completed')
   }
 
   createPlan(plan) {
@@ -65,9 +86,23 @@ class ApiClient {
     })
   }
 
-  evaluatePlan(id) {
-    return this.request(`/api/plans/${id}/evaluate`, {
+  restorePlan(id) {
+    return this.request(`/api/plans/${id}/restore`, {
       method: 'POST'
+    })
+  }
+
+  batchDeletePlans(ids) {
+    return this.request('/api/plans/batch-delete', {
+      method: 'POST',
+      body: { ids }
+    })
+  }
+
+  sortPlans(planType) {
+    return this.request('/api/plans/sort', {
+      method: 'POST',
+      body: { plan_type: planType }
     })
   }
 
@@ -107,56 +142,110 @@ class ApiClient {
     return this.request('/api/balance')
   }
 
+  resetBalance() {
+    return this.request('/api/balance/reset', {
+      method: 'POST'
+    })
+  }
+
   getTransactions() {
     return this.request('/api/transactions')
   }
 
-  // Checkins
-  getCheckins() {
-    return this.request('/api/checkins')
+  // Check-in Items
+  getCheckinItems() {
+    return this.request('/api/checkin-items')
   }
 
-  createCheckin(checkin) {
-    return this.request('/api/checkins', {
+  createCheckinItem(name) {
+    return this.request('/api/checkin-items', {
       method: 'POST',
-      body: checkin
+      body: { name }
     })
   }
 
-  updateCheckin(id, checkin) {
-    return this.request(`/api/checkins/${id}`, {
-      method: 'PUT',
-      body: checkin
-    })
-  }
-
-  deleteCheckin(id) {
-    return this.request(`/api/checkins/${id}`, {
+  deleteCheckinItem(id) {
+    return this.request(`/api/checkin-items/${id}`, {
       method: 'DELETE'
     })
   }
 
-  toggleCheckin(id) {
-    return this.request(`/api/checkins/${id}/toggle`, {
+  checkin(itemId) {
+    return this.request(`/api/checkin/${itemId}`, {
       method: 'POST'
     })
   }
 
   // Focus Sessions
-  getFocusSessions() {
-    return this.request('/api/focus-sessions')
+  getSessions(params) {
+    const qs = new URLSearchParams()
+    if (params) {
+      if (params.plan_id) qs.set('plan_id', params.plan_id)
+      if (params.date) qs.set('date', params.date)
+      if (params.category) qs.set('category', params.category)
+    }
+    const query = qs.toString()
+    return this.request(`/api/sessions${query ? '?' + query : ''}`)
   }
 
-  createFocusSession(session) {
-    return this.request('/api/focus-sessions', {
+  createSession(session) {
+    return this.request('/api/sessions', {
       method: 'POST',
       body: session
     })
   }
 
+  endSession(id, data) {
+    return this.request(`/api/sessions/${id}`, {
+      method: 'PUT',
+      body: data
+    })
+  }
+
+  updateSession(id, data) {
+    return this.request(`/api/sessions/${id}`, {
+      method: 'PATCH',
+      body: data
+    })
+  }
+
+  deleteSession(id) {
+    return this.request(`/api/sessions/${id}`, {
+      method: 'DELETE'
+    })
+  }
+
   // Stats
-  getStats() {
-    return this.request('/api/stats')
+  getCumulativeStats() {
+    return this.request('/api/stats/cumulative')
+  }
+
+  getDailyStats(dateStr) {
+    const qs = dateStr ? `?date=${encodeURIComponent(dateStr)}` : ''
+    return this.request(`/api/stats/daily${qs}`)
+  }
+
+  getDistributionStats(params) {
+    const qs = new URLSearchParams()
+    if (params) {
+      if (params.period) qs.set('period', params.period)
+      if (params.date) qs.set('date', params.date)
+      if (params.start_date) qs.set('start_date', params.start_date)
+      if (params.end_date) qs.set('end_date', params.end_date)
+    }
+    const query = qs.toString()
+    return this.request(`/api/stats/distribution${query ? '?' + query : ''}`)
+  }
+
+  getMonthlyStats(month) {
+    const qs = month ? `?month=${encodeURIComponent(month)}` : ''
+    return this.request(`/api/stats/monthly${qs}`)
+  }
+
+  clearFocusSessions() {
+    return this.request('/api/stats/clear', {
+      method: 'POST'
+    })
   }
 
   // Settings
@@ -171,31 +260,28 @@ class ApiClient {
     })
   }
 
-  // AI
+  // AI Settings
+  getAISettings() {
+    return this.request('/api/ai-settings')
+  }
+
+  updateAISettings(settings) {
+    return this.request('/api/ai-settings', {
+      method: 'PUT',
+      body: settings
+    })
+  }
+
   testAI() {
-    return this.request('/api/ai/test', {
+    return this.request('/api/ai-settings/test', {
       method: 'POST'
     })
   }
 
-  getModels() {
-    return this.request('/api/ai/models')
-  }
-
-  // Recycle Bin
-  getRecycleBin() {
-    return this.request('/api/recycle')
-  }
-
-  restorePlan(id) {
-    return this.request(`/api/recycle/${id}/restore`, {
-      method: 'POST'
-    })
-  }
-
-  permanentDelete(id) {
-    return this.request(`/api/recycle/${id}`, {
-      method: 'DELETE'
+  getModels(base_url, api_key, extra_headers) {
+    return this.request('/api/ai-settings/models', {
+      method: 'POST',
+      body: { base_url, api_key, extra_headers }
     })
   }
 
@@ -224,9 +310,62 @@ class ApiClient {
     })
   }
 
-  // API Balance
+  // Signatures
+  getSignatures() {
+    return this.request('/api/signatures')
+  }
+
+  saveSignatures(contents) {
+    return this.request('/api/signatures', {
+      method: 'PUT',
+      body: { contents }
+    })
+  }
+
+  // Background
+  uploadBackground(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    return fetch(`${this.baseUrl}/api/background/upload`, {
+      method: 'POST',
+      body: formData
+    }).then(async response => {
+      const text = await response.text()
+      if (!text) return {}
+      try {
+        const data = JSON.parse(text)
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`)
+        return data
+      } catch (e) {
+        if (!response.ok) throw e
+        return {}
+      }
+    })
+  }
+
+  // Version & Update
+  getVersion() {
+    return this.request('/api/version')
+  }
+
+  checkUpdate() {
+    return this.request('/api/update', {
+      method: 'POST'
+    })
+  }
+
+  getUpdateStatus() {
+    return this.request('/api/update/status')
+  }
+
+  // DeepSeek API Balance
   getApiBalance() {
-    return this.request('/api/apibalance')
+    return this.request('/api/deepseek/balance')
+  }
+
+  // Health
+  getHealth() {
+    return this.request('/api/health')
   }
 }
 
