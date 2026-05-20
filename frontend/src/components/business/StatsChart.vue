@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import {
   Chart,
   BarController,
@@ -55,46 +55,57 @@ const props = defineProps({
 const chartCanvas = ref(null)
 let chartInstance = null
 
-const defaultOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: 'bottom',
-      labels: {
-        color: 'var(--text-soft)',
-        padding: 16,
-        usePointStyle: true
+/**
+ * Reads the computed value of a CSS variable from the document root.
+ * Chart.js renders to <canvas>, which cannot resolve CSS variables,
+ * so we must resolve them to concrete color strings before passing them.
+ */
+function getCSSVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+}
+
+function buildDefaultOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: getCSSVar('--text-soft'),
+          padding: 16,
+          usePointStyle: true
+        }
+      },
+      tooltip: {
+        backgroundColor: getCSSVar('--glass-bg'),
+        titleColor: getCSSVar('--text'),
+        bodyColor: getCSSVar('--text-soft'),
+        borderColor: getCSSVar('--glass-border'),
+        borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12
       }
     },
-    tooltip: {
-      backgroundColor: 'var(--glass-bg)',
-      titleColor: 'var(--text)',
-      bodyColor: 'var(--text-soft)',
-      borderColor: 'var(--glass-border)',
-      borderWidth: 1,
-      cornerRadius: 8,
-      padding: 12
-    }
-  },
-  scales: props.type !== 'pie' ? {
-    x: {
-      grid: {
-        color: 'var(--glass-border)'
+    scales: props.type !== 'pie' ? {
+      x: {
+        grid: {
+          color: getCSSVar('--glass-border')
+        },
+        ticks: {
+          color: getCSSVar('--text-muted')
+        }
       },
-      ticks: {
-        color: 'var(--text-muted)'
+      y: {
+        grid: {
+          color: getCSSVar('--glass-border')
+        },
+        ticks: {
+          color: getCSSVar('--text-muted')
+        }
       }
-    },
-    y: {
-      grid: {
-        color: 'var(--glass-border)'
-      },
-      ticks: {
-        color: 'var(--text-muted)'
-      }
-    }
-  } : undefined
+    } : undefined
+  }
 }
 
 const createChart = () => {
@@ -104,11 +115,14 @@ const createChart = () => {
 
   const ctx = chartCanvas.value.getContext('2d')
 
+  // Build options fresh each time so that:
+  // 1. CSS variables are resolved at render time (canvas can't use var())
+  // 2. props.type is re-evaluated (not captured once at module scope)
   chartInstance = new Chart(ctx, {
     type: props.type,
     data: props.data,
     options: {
-      ...defaultOptions,
+      ...buildDefaultOptions(),
       ...props.options
     }
   })
@@ -125,6 +139,14 @@ onMounted(() => {
   nextTick(() => {
     createChart()
   })
+})
+
+// Prevent Chart instance leak when the component is unmounted
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
+  }
 })
 
 watch(() => props.data, updateChart, { deep: true })
