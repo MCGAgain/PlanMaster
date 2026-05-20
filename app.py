@@ -19,7 +19,17 @@ import updater
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger('planmaster')
 
-CURRENT_VERSION = '1.9.3'
+# 自动从 gh CLI 获取 GitHub token（如果环境变量中没有）
+if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
+    try:
+        import subprocess as _sp
+        _tok = _sp.check_output(['gh', 'auth', 'token'], stderr=_sp.DEVNULL, timeout=5).decode().strip()
+        if _tok:
+            os.environ['GITHUB_TOKEN'] = _tok
+    except Exception:
+        pass
+
+CURRENT_VERSION = '1.9.4'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -641,6 +651,15 @@ PROGRESS_FILE = os.path.join(_update_dir, 'planmaster_update_progress.txt')
 def api_version():
     return jsonify({'version': CURRENT_VERSION})
 
+def _gh_headers():
+    """返回带认证的 GitHub API 请求头（如有 token）"""
+    token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
+    headers = {'Accept': 'application/vnd.github.v3+json'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    return headers
+
+
 _release_cache = {'data': None, 'time': 0}
 
 
@@ -666,7 +685,7 @@ def _fetch_release_info():
     # 方法2: 从 GitHub API 获取 release 信息（版本号 + asset URL）
     api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
     try:
-        resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
+        resp = requests.get(api_url, timeout=15, headers=_gh_headers())
         if resp.status_code == 200:
             data = resp.json()
             tag = data.get('tag_name', '').lstrip('v')
@@ -719,7 +738,7 @@ def _push_progress(pct, msg=None):
 def _get_asset_download_url():
     api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
     try:
-        resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
+        resp = requests.get(api_url, timeout=15, headers=_gh_headers())
     except Exception as e:
         print(f'[updater] GitHub API 请求失败: {e}')
         return None, None

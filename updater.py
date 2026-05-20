@@ -14,6 +14,15 @@ from datetime import datetime
 
 GITHUB_REPO = 'MCGAgain/PlanMaster'
 APP_NAME = 'PlanMaster'
+
+
+def _gh_headers():
+    """返回带认证的 GitHub API 请求头（如有 token）"""
+    token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
+    headers = {'Accept': 'application/vnd.github.v3+json'}
+    if token:
+        headers['Authorization'] = f'Bearer {token}'
+    return headers
 _last_resolve_error = None
 UPDATE_DIR = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'PlanMaster', 'update')
 PROGRESS_FILE = os.path.join(UPDATE_DIR, 'planmaster_update_progress.txt')
@@ -68,7 +77,7 @@ def get_remote_version():
     """
     try:
         api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
-        resp = requests.get(api_url, timeout=10, headers={'Accept': 'application/vnd.github.v3+json'})
+        resp = requests.get(api_url, timeout=10, headers=_gh_headers())
         if resp.status_code == 200:
             tag = resp.json().get('tag_name', '')
             return tag.lstrip('v') if tag else None
@@ -141,7 +150,7 @@ def _resolve_asset_url(ghproxy=None):
     _last_resolve_error = None
     try:
         api_url = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
-        resp = requests.get(api_url, timeout=15, headers={'Accept': 'application/vnd.github.v3+json'})
+        resp = requests.get(api_url, timeout=15, headers=_gh_headers())
         if resp.status_code != 200:
             _last_resolve_error = f'GitHub API 返回 HTTP {resp.status_code}'
             print(f'[updater] GitHub API 返回 {resp.status_code}: {resp.text[:200]}')
