@@ -2,6 +2,30 @@ import { ref, onMounted } from 'vue'
 
 const theme = ref(localStorage.getItem('theme') || 'light')
 
+let initialized = false
+
+const applyTheme = () => {
+  document.body.classList.toggle('theme-dark', theme.value === 'dark')
+}
+
+const initTheme = () => {
+  if (initialized) return
+  initialized = true
+
+  if (!localStorage.getItem('theme')) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    theme.value = prefersDark ? 'dark' : 'light'
+  }
+  applyTheme()
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      theme.value = e.matches ? 'dark' : 'light'
+      applyTheme()
+    }
+  })
+}
+
 export function useTheme() {
   const toggleTheme = () => {
     theme.value = theme.value === 'light' ? 'dark' : 'light'
@@ -15,25 +39,6 @@ export function useTheme() {
     applyTheme()
   }
 
-  const applyTheme = () => {
-    document.body.classList.toggle('theme-dark', theme.value === 'dark')
-  }
-
-  const initTheme = () => {
-    if (!localStorage.getItem('theme')) {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      theme.value = prefersDark ? 'dark' : 'light'
-    }
-    applyTheme()
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem('theme')) {
-        theme.value = e.matches ? 'dark' : 'light'
-        applyTheme()
-      }
-    })
-  }
-
   onMounted(() => {
     initTheme()
   })
@@ -41,7 +46,6 @@ export function useTheme() {
   return {
     theme,
     toggleTheme,
-    setTheme,
-    initTheme
+    setTheme
   }
 }
