@@ -2,19 +2,20 @@
 import { defineStore } from 'pinia'
 import api from '@/api'
 
+let _timer = null
+
 export const useFocusStore = defineStore('focus', {
   state: () => ({
     mode: 'unlimited',
     duration: 0,
-    state: 'setup',
+    phase: 'setup',
     startTime: null,
     elapsed: 0,
     sessionId: null,
     task: '',
     sessions: [],
     loading: false,
-    error: null,
-    _timer: null
+    error: null
   }),
 
   getters: {
@@ -40,10 +41,10 @@ export const useFocusStore = defineStore('focus', {
       return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     },
 
-    isRunning: (state) => state.state === 'running',
-    isPaused: (state) => state.state === 'paused',
-    isComplete: (state) => state.state === 'complete',
-    isSetup: (state) => state.state === 'setup'
+    isRunning: (state) => state.phase === 'running',
+    isPaused: (state) => state.phase === 'paused',
+    isComplete: (state) => state.phase === 'complete',
+    isSetup: (state) => state.phase === 'setup'
   },
 
   actions: {
@@ -60,24 +61,24 @@ export const useFocusStore = defineStore('focus', {
     },
 
     start() {
-      this.state = 'running'
+      this.phase = 'running'
       this.startTime = new Date()
       this.elapsed = 0
       this._startTimer()
     },
 
     pause() {
-      this.state = 'paused'
+      this.phase = 'paused'
       this._stopTimer()
     },
 
     resume() {
-      this.state = 'running'
+      this.phase = 'running'
       this._startTimer()
     },
 
     async complete() {
-      this.state = 'complete'
+      this.phase = 'complete'
       this._stopTimer()
 
       try {
@@ -91,15 +92,20 @@ export const useFocusStore = defineStore('focus', {
       } catch (error) {
         this.error = error.message
         console.error('Failed to save focus session:', error)
+        throw error
       }
     },
 
     reset() {
-      this.state = 'setup'
+      this.phase = 'setup'
       this.elapsed = 0
       this.startTime = null
       this.sessionId = null
       this.task = ''
+      this._stopTimer()
+    },
+
+    cleanup() {
       this._stopTimer()
     },
 
@@ -118,7 +124,7 @@ export const useFocusStore = defineStore('focus', {
 
     _startTimer() {
       this._stopTimer()
-      this._timer = setInterval(() => {
+      _timer = setInterval(() => {
         this.elapsed++
 
         if (this.mode === 'countdown' && this.elapsed >= this.duration) {
@@ -128,9 +134,9 @@ export const useFocusStore = defineStore('focus', {
     },
 
     _stopTimer() {
-      if (this._timer) {
-        clearInterval(this._timer)
-        this._timer = null
+      if (_timer) {
+        clearInterval(_timer)
+        _timer = null
       }
     }
   }
