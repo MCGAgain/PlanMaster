@@ -89,7 +89,6 @@ jobs:
   release:
     needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     permissions:
       contents: write
     steps:
