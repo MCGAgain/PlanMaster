@@ -594,6 +594,7 @@ body.bg-image {
 }
 
 /* ---- Plan Cards ---- */
+.plan-list { display: flex; flex-direction: column; gap: 14px; }
 .plan-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -1880,6 +1881,7 @@ body.bg-image {
 }
 
 /* ---- Wish & Transaction Cards ---- */
+.wish-list,.tx-list { display: flex; flex-direction: column; gap: 12px; }
 .wish-card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -2206,6 +2208,7 @@ body.theme-dark .apibalance-url-example {
 }
 
 /* ---- Checkin ---- */
+.checkin-list { display: flex; flex-direction: column; gap: 14px; }
 .checkin-icon {
   display: flex;
   align-items: center;
