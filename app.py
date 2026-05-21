@@ -29,7 +29,7 @@ if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
     except Exception:
         pass
 
-CURRENT_VERSION = '2.0.10'
+CURRENT_VERSION = '2.1.0'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -1019,9 +1019,18 @@ def spa_catchall(**kwargs):
 
 
 if __name__ == '__main__':
-    port = 8080
+    port = int(os.environ.get('FLASK_PORT', 8080))
+    electron_mode = os.environ.get('ELECTRON_MODE', 'false').lower() == 'true'
 
-    if getattr(sys, 'frozen', False):
+    if electron_mode:
+        # Electron mode - just start Flask
+        db.init_db()
+        db.close_stale_focus_sessions()
+        db.checkin_missed_penalty()
+        print(f"PlanMaster Flask backend starting on port {port}")
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
+    elif getattr(sys, 'frozen', False):
+        # Legacy pywebview mode (kept for backward compatibility)
         import webview
 
         flask_thread = threading.Thread(target=start_flask, args=(port,), daemon=True)
@@ -1042,9 +1051,10 @@ if __name__ == '__main__':
 
         webview.start(_on_loaded)
     else:
+        # Development mode - open browser
         db.init_db()
         db.close_stale_focus_sessions()
         db.checkin_missed_penalty()
         threading.Timer(1.0, lambda: webbrowser.open(f'http://localhost:{port}')).start()
-        print(f"Todo 启动中... 浏览器将自动打开 http://localhost:{port}")
+        print(f"PlanMaster 启动中... 浏览器将自动打开 http://localhost:{port}")
         app.run(host='0.0.0.0', port=port, debug=False)

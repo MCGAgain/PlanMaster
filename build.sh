@@ -5,7 +5,7 @@
 set -e
 
 APP_NAME="PlanMaster"
-VERSION="2.0.10"
+VERSION="2.1.0"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DIST_DIR="dist"
 BUILD_DIR="build"

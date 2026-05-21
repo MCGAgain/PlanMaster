@@ -122,7 +122,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import gsap from 'gsap'
 
 const props = defineProps({
   plan: {
@@ -241,6 +242,45 @@ const onProgressChange = (e) => {
   const val = parseInt(e.target.value)
   emit('updateProgress', props.plan.id, val)
 }
+
+// GSAP hover effects
+const cardRef = ref(null)
+
+onMounted(() => {
+  // Find the card element
+  const card = document.querySelector(`[data-id="${props.plan.id}"]`)
+  if (!card) return
+
+  cardRef.value = card
+
+  // Entrance animation
+  gsap.from(card, {
+    opacity: 0,
+    y: 20,
+    scale: 0.95,
+    duration: 0.4,
+    ease: 'power2.out'
+  })
+
+  // Hover effects
+  card.addEventListener('mouseenter', () => {
+    gsap.to(card, {
+      y: -3,
+      boxShadow: '0 16px 48px rgba(100,80,200,.14)',
+      duration: 0.2,
+      ease: 'power2.out'
+    })
+  })
+
+  card.addEventListener('mouseleave', () => {
+    gsap.to(card, {
+      y: 0,
+      boxShadow: '0 8px 32px rgba(100,80,200,.08)',
+      duration: 0.2,
+      ease: 'power2.out'
+    })
+  })
+})
 </script>
 
 <style scoped>

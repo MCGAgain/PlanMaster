@@ -6,7 +6,7 @@
       <div class="orb orb-3"></div>
     </div>
 
-    <nav class="sidebar">
+    <nav class="sidebar" ref="sidebarRef">
       <div class="sidebar-header">
         <h1>Todo</h1>
         <p class="subtitle">计划管理 & 心愿兑换</p>
@@ -61,23 +61,29 @@
       </ul>
     </nav>
 
-    <main class="content">
-      <router-view v-slot="{ Component }">
-        <transition name="page-fade" mode="out-in">
-          <component :is="Component" />
+    <main class="content" ref="contentRef">
+      <router-view v-slot="{ Component, route }">
+        <transition
+          @before-enter="onBeforeEnter"
+          @enter="onEnter"
+          @leave="onLeave"
+          mode="out-in"
+        >
+          <component :is="Component" :key="route.path" />
         </transition>
       </router-view>
     </main>
 
-    <transition name="toast-slide">
+    <transition @enter="onToastEnter" @leave="onToastLeave">
       <div v-if="toastVisible" class="toast" :class="{ error: toastIsError }">{{ toastMessage }}</div>
     </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import gsap from 'gsap'
 import api from '@/api'
 
 const route = useRoute()
@@ -87,6 +93,10 @@ const balance = ref(0)
 const plansOpen = ref(true)
 const currentRoute = computed(() => route.path)
 const navigate = (path) => router.push(path)
+
+// Refs
+const sidebarRef = ref(null)
+const contentRef = ref(null)
 
 // Toast
 const toastVisible = ref(false)
@@ -128,6 +138,72 @@ const loadBackground = async () => {
 
 const handleKeydown = (e) => { if (e.key === 'Escape') document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show')) }
 
-onMounted(async () => { await loadBalance(); await loadBackground(); document.addEventListener('keydown', handleKeydown) })
-onUnmounted(() => { document.removeEventListener('keydown', handleKeydown); clearTimeout(toastTimer) })
+// GSAP Transition hooks
+function onBeforeEnter(el) {
+  gsap.set(el, { opacity: 0, y: 20 })
+}
+
+function onEnter(el, done) {
+  gsap.to(el, {
+    opacity: 1,
+    y: 0,
+    duration: 0.4,
+    ease: 'power3.out',
+    onComplete: done
+  })
+}
+
+function onLeave(el, done) {
+  gsap.to(el, {
+    opacity: 0,
+    y: -10,
+    duration: 0.2,
+    ease: 'power2.in',
+    onComplete: done
+  })
+}
+
+// Toast transitions
+function onToastEnter(el, done) {
+  gsap.from(el, {
+    opacity: 0,
+    y: 50,
+    x: '-50%',
+    duration: 0.4,
+    ease: 'back.out(1.7)',
+    onComplete: done
+  })
+}
+
+function onToastLeave(el, done) {
+  gsap.to(el, {
+    opacity: 0,
+    y: 50,
+    x: '-50%',
+    duration: 0.3,
+    ease: 'power2.in',
+    onComplete: done
+  })
+}
+
+onMounted(async () => {
+  await loadBalance()
+  await loadBackground()
+  document.addEventListener('keydown', handleKeydown)
+
+  // Animate sidebar entrance with GSAP
+  if (sidebarRef.value) {
+    gsap.from(sidebarRef.value, {
+      x: -40,
+      opacity: 0,
+      duration: 0.6,
+      ease: 'power3.out'
+    })
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+  clearTimeout(toastTimer)
+})
 </script>

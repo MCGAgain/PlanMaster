@@ -1,11 +1,11 @@
 <template>
-  <nav class="sidebar">
+  <nav class="sidebar" ref="sidebarRef">
     <div class="sidebar-header">
       <h1>Todo</h1>
       <p class="subtitle">计划管理 & 心愿兑换</p>
     </div>
 
-    <div class="balance-card" @click="$router.push('/wishes')">
+    <div class="balance-card" @click="$router.push('/wishes')" ref="balanceCardRef">
       <span class="balance-label">虚拟价值余额</span>
       <span class="balance-value">{{ balance }}</span>
     </div>
@@ -60,14 +60,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import gsap from 'gsap'
 
 const route = useRoute()
 const router = useRouter()
 
 const balance = ref(0)
 const plansOpen = ref(true)
+const sidebarRef = ref(null)
+const balanceCardRef = ref(null)
 
 const currentRoute = computed(() => route.path)
 
@@ -101,6 +104,51 @@ const updateBalance = (newBalance) => {
   balance.value = newBalance
 }
 
+// Add hover effects with GSAP
+onMounted(() => {
+  // Balance card hover effect
+  if (balanceCardRef.value) {
+    const card = balanceCardRef.value
+    card.addEventListener('mouseenter', () => {
+      gsap.to(card, {
+        scale: 1.02,
+        boxShadow: '0 4px 20px var(--primary-glow)',
+        duration: 0.2,
+        ease: 'power2.out'
+      })
+    })
+    card.addEventListener('mouseleave', () => {
+      gsap.to(card, {
+        scale: 1,
+        boxShadow: 'none',
+        duration: 0.2,
+        ease: 'power2.out'
+      })
+    })
+  }
+
+  // Nav item hover effects
+  const navItems = sidebarRef.value?.querySelectorAll('.nav-item')
+  if (navItems) {
+    navItems.forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        gsap.to(item, {
+          x: 4,
+          duration: 0.2,
+          ease: 'power2.out'
+        })
+      })
+      item.addEventListener('mouseleave', () => {
+        gsap.to(item, {
+          x: 0,
+          duration: 0.2,
+          ease: 'power2.out'
+        })
+      })
+    })
+  }
+})
+
 defineExpose({ updateBalance })
 </script>
 
@@ -118,15 +166,8 @@ defineExpose({ updateBalance })
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  animation: slideInLeft 0.6s var(--transition);
   z-index: 100;
   overflow: hidden;
-  will-change: backdrop-filter;
-}
-
-@keyframes slideInLeft {
-  from { transform: translateX(-40px); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
 }
 
 .sidebar-header {
@@ -161,14 +202,7 @@ defineExpose({ updateBalance })
   display: flex;
   flex-direction: column;
   gap: 4px;
-  transition: var(--transition);
   cursor: pointer;
-  will-change: backdrop-filter;
-}
-
-.balance-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 20px var(--primary-glow);
 }
 
 .balance-label {
@@ -202,7 +236,6 @@ defineExpose({ updateBalance })
   cursor: pointer;
   font-size: 14px;
   color: var(--text-soft);
-  transition: var(--transition);
   border-left: 3px solid transparent;
   position: relative;
 }
