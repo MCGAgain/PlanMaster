@@ -97,6 +97,7 @@ const handleOverlayClick = () => {
   justify-content: center;
   z-index: 1000;
   padding: 2rem;
+  will-change: backdrop-filter;
 }
 
 .glass-modal {
@@ -109,6 +110,7 @@ const handleOverlayClick = () => {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  will-change: backdrop-filter;
 }
 
 .glass-modal.small {

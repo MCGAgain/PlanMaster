@@ -113,6 +113,7 @@ defineExpose({ focus, blur })
   -webkit-backdrop-filter: blur(10px);
   transition: all var(--transition-fast) var(--ease-default);
   overflow: hidden;
+  will-change: backdrop-filter;
 }
 
 .glass-input-wrapper.focused .glass-input-container {

@@ -79,6 +79,7 @@ defineExpose({ add, remove, success, error, warning, info })
   -webkit-backdrop-filter: blur(var(--glass-blur));
   min-width: 300px;
   max-width: 500px;
+  will-change: backdrop-filter;
 }
 
 .glass-toast.success {

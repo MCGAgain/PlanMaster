@@ -46,6 +46,7 @@ defineEmits(['click'])
   -webkit-backdrop-filter: blur(var(--glass-blur));
   padding: 1.5rem;
   transition: all var(--transition-normal) var(--ease-default);
+  will-change: backdrop-filter;
 }
 
 .glass-card.hoverable {

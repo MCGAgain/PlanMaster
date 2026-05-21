@@ -65,6 +65,7 @@ const handleClick = (e) => {
   -webkit-backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
+  will-change: backdrop-filter;
 }
 
 .glass-button::after {

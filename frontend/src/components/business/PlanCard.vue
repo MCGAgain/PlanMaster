@@ -254,6 +254,7 @@ const onProgressChange = (e) => {
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   transition: all var(--transition-normal) var(--ease-default);
+  will-change: backdrop-filter;
 }
 
 .plan-card:hover {

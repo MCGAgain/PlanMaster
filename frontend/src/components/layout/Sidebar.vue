@@ -120,7 +120,8 @@ defineExpose({ updateBalance })
   flex-shrink: 0;
   animation: slideInLeft 0.6s var(--transition);
   z-index: 100;
-  overflow-y: auto;
+  overflow: hidden;
+  will-change: backdrop-filter;
 }
 
 @keyframes slideInLeft {
@@ -154,6 +155,7 @@ defineExpose({ updateBalance })
   padding: 18px;
   background: linear-gradient(135deg, rgba(124,110,240,.15), rgba(167,139,250,.1));
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(124,110,240,.2);
   border-radius: var(--radius);
   display: flex;
@@ -161,6 +163,7 @@ defineExpose({ updateBalance })
   gap: 4px;
   transition: var(--transition);
   cursor: pointer;
+  will-change: backdrop-filter;
 }
 
 .balance-card:hover {
