@@ -49,7 +49,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "icon": "static/icon.png",
+      "icon": "static/icon.jpg",
       "target": [
         {
           "target": "dmg",
@@ -58,7 +58,7 @@
       ]
     },
     "win": {
-      "icon": "static/icon.png",
+      "icon": "static/icon.jpg",
       "target": [
         {
           "target": "nsis",
@@ -67,7 +67,7 @@
       ]
     },
     "linux": {
-      "icon": "static/icon.png",
+      "icon": "static/icon.jpg",
       "target": ["AppImage", "deb"],
       "category": "Office"
     },

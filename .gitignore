@@ -3,6 +3,7 @@ __pycache__/
 venv/
 dist/
 build/
+release/
 *.spec
 *.db
 *.dmg
@@ -13,3 +14,4 @@ icon_*.png
 .superpowers
 frontend/node_modules
 frontend/dist
+node_modules/

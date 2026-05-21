@@ -15,7 +15,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install root dependencies (Electron)
+        run: npm ci
 
       - name: Build Vue frontend
         run: |
@@ -24,29 +26,16 @@ jobs:
           npm run build
           cd ..
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          pip install flask requests pyinstaller pywebview
-
-      - name: Build EXE
-        run: |
-          pyinstaller --name PlanMaster --onedir --windowed --icon icon.ico --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --exclude-module simplejson --noconfirm --clean app.py
-        shell: bash
-
-      - name: Build Setup
-        run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" build_setup.iss
-        shell: cmd
+      - name: Build Electron app for Windows
+        run: npx electron-builder --win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: PlanMaster-Windows-Setup
-          path: dist/PlanMaster-Setup.exe
+          path: release/*.exe
 
   build-macos:
     runs-on: macos-latest
@@ -57,7 +46,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install root dependencies (Electron)
+        run: npm ci
 
       - name: Build Vue frontend
         run: |
@@ -66,30 +57,16 @@ jobs:
           npm run build
           cd ..
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          pip install flask requests pyinstaller pywebview
-
-      - name: Build app
-        run: |
-          pyinstaller --name PlanMaster --onedir --windowed --icon icon.icns --add-data "templates:templates" --add-data "static:static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.cocoa --exclude-module simplejson --noconfirm --clean app.py
-
-      - name: Create DMG
-        run: |
-          mkdir -p dist/dmg_temp
-          cp -r dist/PlanMaster.app dist/dmg_temp/
-          ln -sf /Applications dist/dmg_temp/Applications
-          hdiutil create -volname PlanMaster -srcfolder dist/dmg_temp -ov -format UDZO PlanMaster.dmg
+      - name: Build Electron app for macOS
+        run: npx electron-builder --mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
           name: PlanMaster-macOS
-          path: PlanMaster.dmg
+          path: release/*.dmg
 
   release:
     needs: [build-windows, build-macos]
@@ -108,8 +85,10 @@ jobs:
       - name: Rename artifacts with version
         run: |
           VERSION=$(grep "CURRENT_VERSION" app.py | head -1 | sed "s/.*'\\(.*\\)'.*/\\1/")
-          mv artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup.exe "artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup-v${VERSION}.exe"
-          mv artifacts/PlanMaster-macOS/PlanMaster.dmg "artifacts/PlanMaster-macOS/PlanMaster-macOS-v${VERSION}.dmg"
+          echo "Version: $VERSION"
+          # Find and rename the exe and dmg files
+          find artifacts/PlanMaster-Windows-Setup -name "*.exe" -exec mv {} "artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup-v${VERSION}.exe" \;
+          find artifacts/PlanMaster-macOS -name "*.dmg" -exec mv {} "artifacts/PlanMaster-macOS/PlanMaster-macOS-v${VERSION}.dmg" \;
 
       - name: Check version and create release
         env:

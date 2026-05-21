@@ -119,7 +119,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'PlanMaster - 计划管理',
-    icon: path.join(__dirname, '..', 'static', 'icon.png'),
+    icon: path.join(__dirname, '..', 'static', 'icon.jpg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
