@@ -431,16 +431,22 @@ body.bg-image {
   overflow-y: auto;
 }
 
+.nav-group {
+  margin: 6px 0;
+}
+
 .nav-group-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 24px;
+  padding: 12px 20px;
+  margin: 0 10px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-soft);
-  transition: var(--transition);
+  transition: background 0.2s ease, color 0.2s ease;
+  border-radius: 10px;
 }
 
 .nav-group-header:hover {
@@ -462,7 +468,9 @@ body.bg-image {
   list-style: none;
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.4s ease;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  margin: 0;
 }
 
 .nav-group-items.open {
@@ -474,7 +482,7 @@ body.bg-image {
   align-items: center;
   gap: 10px;
   padding: 12px 20px;
-  margin: 3px 10px;
+  margin: 4px 10px;
   cursor: pointer;
   font-size: 14px;
   color: var(--text-soft);
@@ -508,7 +516,9 @@ body.bg-image {
 }
 
 .nav-group-items .nav-item {
-  padding-left: 50px;
+  padding-left: 20px;
+  margin-left: 24px;
+  margin-right: 10px;
 }
 
 .nav-icon {

@@ -16,26 +16,47 @@
         <span class="balance-value" id="balanceValue">{{ balance }}</span>
       </div>
       <ul class="nav-menu">
-        <li v-for="item in navItems" :key="item.path || item.label"
-          :class="['nav-item', { active: currentRoute === item.path, 'nav-group': item.children }]"
-          @click="item.path ? navigate(item.path) : null">
-          <template v-if="!item.children">
-            <span class="nav-icon" v-html="item.icon"></span><span>{{ item.label }}</span>
-          </template>
-          <template v-else>
-            <div class="nav-group-header" :class="{ collapsed: !plansOpen }" @click="plansOpen = !plansOpen">
-              <span class="nav-icon" v-html="item.icon"></span>
-              <span>{{ item.label }}</span>
-              <span class="arrow">&#9662;</span>
-            </div>
-            <ul class="nav-group-items" :style="{ maxHeight: plansOpen ? '200px' : '0' }">
-              <li v-for="child in item.children" :key="child.path"
-                class="nav-item" :class="{ active: currentRoute === child.path }"
-                @click.stop="navigate(child.path)">
-                <span>{{ child.label }}</span>
-              </li>
-            </ul>
-          </template>
+        <li class="nav-item" :class="{ active: currentRoute === '/checkin' }" @click="navigate('/checkin')">
+          <span class="nav-icon">&#9745;</span><span>打卡</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/important' }" @click="navigate('/important')">
+          <span class="nav-icon">&#9888;</span><span>重要事项</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/' }" @click="navigate('/')">
+          <span class="nav-icon">&#9728;</span><span>今日待办</span>
+        </li>
+        <li class="nav-group">
+          <div class="nav-group-header" :class="{ collapsed: !plansOpen }" @click="plansOpen = !plansOpen">
+            <span class="nav-icon">&#128197;</span>
+            <span>计划管理</span>
+            <span class="arrow">&#9662;</span>
+          </div>
+          <ul class="nav-group-items" :class="{ open: plansOpen }">
+            <li class="nav-item" :class="{ active: currentRoute === '/weekly' }" @click="navigate('/weekly')"><span>周计划</span></li>
+            <li class="nav-item" :class="{ active: currentRoute === '/monthly' }" @click="navigate('/monthly')"><span>月计划</span></li>
+            <li class="nav-item" :class="{ active: currentRoute === '/yearly' }" @click="navigate('/yearly')"><span>年计划</span></li>
+          </ul>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/stats' }" @click="navigate('/stats')">
+          <span class="nav-icon">&#128202;</span><span>统计数据</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/focus' }" @click="navigate('/focus')">
+          <span class="nav-icon">&#9201;</span><span>专注模式</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/wishes' }" @click="navigate('/wishes')">
+          <span class="nav-icon">&#9734;</span><span>心愿兑换单</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/transactions' }" @click="navigate('/transactions')">
+          <span class="nav-icon">&#128200;</span><span>价值流水</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/recycle' }" @click="navigate('/recycle')">
+          <span class="nav-icon">&#128465;</span><span>回收站</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/apibalance' }" @click="navigate('/apibalance')">
+          <span class="nav-icon">&#128176;</span><span>API余量</span>
+        </li>
+        <li class="nav-item" :class="{ active: currentRoute === '/settings' }" @click="navigate('/settings')">
+          <span class="nav-icon">&#9881;</span><span>AI设置</span>
         </li>
       </ul>
     </nav>
@@ -66,24 +87,6 @@ const balance = ref(0)
 const plansOpen = ref(true)
 const currentRoute = computed(() => route.path)
 const navigate = (path) => router.push(path)
-
-const navItems = [
-  { path: '/checkin', label: '打卡', icon: '&#9745;' },
-  { path: '/important', label: '重要事项', icon: '&#9888;' },
-  { path: '/', label: '今日待办', icon: '&#9728;' },
-  { label: '计划管理', icon: '&#128197;', children: [
-    { path: '/weekly', label: '周计划' },
-    { path: '/monthly', label: '月计划' },
-    { path: '/yearly', label: '年计划' }
-  ]},
-  { path: '/stats', label: '统计数据', icon: '&#128202;' },
-  { path: '/focus', label: '专注模式', icon: '&#9201;' },
-  { path: '/wishes', label: '心愿兑换单', icon: '&#9734;' },
-  { path: '/transactions', label: '价值流水', icon: '&#128200;' },
-  { path: '/recycle', label: '回收站', icon: '&#128465;' },
-  { path: '/apibalance', label: 'API余量', icon: '&#128176;' },
-  { path: '/settings', label: 'AI设置', icon: '&#9881;' }
-]
 
 // Toast
 const toastVisible = ref(false)
