@@ -16,8 +16,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install root dependencies (Electron)
-        run: npm ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Build Vue frontend
         run: |
@@ -25,6 +26,14 @@ jobs:
           npm ci
           npm run build
           cd ..
+
+      - name: Build Python backend with PyInstaller
+        run: |
+          pip install pyinstaller flask requests
+          pyinstaller --name PlanMaster-Backend --onedir --console --add-data "templates;templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --exclude-module simplejson --noconfirm --clean app.py
+
+      - name: Install Electron dependencies
+        run: npm ci
 
       - name: Build Electron app for Windows
         run: npx electron-builder --win
@@ -47,8 +56,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install root dependencies (Electron)
-        run: npm ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Build Vue frontend
         run: |
@@ -56,6 +66,14 @@ jobs:
           npm ci
           npm run build
           cd ..
+
+      - name: Build Python backend with PyInstaller
+        run: |
+          pip install pyinstaller flask requests
+          pyinstaller --name PlanMaster-Backend --onedir --console --add-data "templates:templates" --add-data "static:static" --hidden-import flask --hidden-import sqlite3 --exclude-module simplejson --noconfirm --clean app.py
+
+      - name: Install Electron dependencies
+        run: npm ci
 
       - name: Build Electron app for macOS
         run: npx electron-builder --mac
@@ -86,7 +104,6 @@ jobs:
         run: |
           VERSION=$(grep "CURRENT_VERSION" app.py | head -1 | sed "s/.*'\\(.*\\)'.*/\\1/")
           echo "Version: $VERSION"
-          # Find and rename the exe and dmg files
           find artifacts/PlanMaster-Windows-Setup -name "*.exe" -exec mv {} "artifacts/PlanMaster-Windows-Setup/PlanMaster-Setup-v${VERSION}.exe" \;
           find artifacts/PlanMaster-macOS -name "*.dmg" -exec mv {} "artifacts/PlanMaster-macOS/PlanMaster-macOS-v${VERSION}.dmg" \;
 

@@ -1,7 +1,8 @@
 const { app, BrowserWindow, shell, ipcMain } = require('electron')
-const { spawn } = require('child_process')
+const { spawn, execFile } = require('child_process')
 const path = require('path')
 const net = require('net')
+const fs = require('fs')
 
 // Flask backend configuration
 const FLASK_PORT = 8080
@@ -29,7 +30,6 @@ function waitForFlask(port, timeout = 30000) {
 
     function check() {
       const socket = new net.Socket()
-
       socket.setTimeout(100)
 
       socket.on('connect', () => {
@@ -62,29 +62,70 @@ function waitForFlask(port, timeout = 30000) {
   })
 }
 
+// Get the backend executable path
+function getBackendPath() {
+  const isPackaged = app.isPackaged
+  const platform = process.platform
+
+  if (isPackaged) {
+    // In packaged app, backend is in resources
+    const resourcesPath = process.resourcesPath
+    if (platform === 'win32') {
+      return path.join(resourcesPath, 'backend', 'PlanMaster-Backend.exe')
+    } else {
+      return path.join(resourcesPath, 'backend', 'PlanMaster-Backend')
+    }
+  } else {
+    // In development, use PyInstaller output or Python directly
+    const distBackend = path.join(__dirname, '..', 'dist', 'PlanMaster-Backend')
+    const distBackendExe = path.join(__dirname, '..', 'dist', 'PlanMaster-Backend.exe')
+
+    if (fs.existsSync(distBackend)) {
+      return distBackend
+    } else if (fs.existsSync(distBackendExe)) {
+      return distBackendExe
+    } else {
+      // Fallback to Python
+      return null
+    }
+  }
+}
+
 // Start Flask backend
 function startFlask() {
   return new Promise((resolve, reject) => {
-    // Find Python executable
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
-
-    // Get the app path
+    const backendPath = getBackendPath()
     const appPath = app.getAppPath()
 
-    // Flask app entry point
-    const flaskApp = path.join(appPath, 'app.py')
+    if (backendPath && fs.existsSync(backendPath)) {
+      // Use bundled backend
+      console.log(`Starting bundled backend: ${backendPath}`)
 
-    console.log(`Starting Flask backend: ${pythonCmd} ${flaskApp}`)
+      flaskProcess = spawn(backendPath, [], {
+        cwd: path.dirname(backendPath),
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          FLASK_PORT: FLASK_PORT.toString()
+        }
+      })
+    } else {
+      // Fallback to Python (development mode)
+      const pythonCmd = process.platform === 'win32' ? 'python' : 'python3'
+      const flaskApp = path.join(appPath, 'app.py')
 
-    flaskProcess = spawn(pythonCmd, [flaskApp], {
-      cwd: appPath,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        ELECTRON_MODE: 'true',
-        FLASK_PORT: FLASK_PORT.toString()
-      }
-    })
+      console.log(`Starting Flask backend: ${pythonCmd} ${flaskApp}`)
+
+      flaskProcess = spawn(pythonCmd, [flaskApp], {
+        cwd: appPath,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          ELECTRON_MODE: 'true',
+          FLASK_PORT: FLASK_PORT.toString()
+        }
+      })
+    }
 
     flaskProcess.stdout.on('data', (data) => {
       console.log(`Flask stdout: ${data}`)

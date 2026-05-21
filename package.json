@@ -45,6 +45,10 @@
       {
         "from": "templates/",
         "to": "templates/"
+      },
+      {
+        "from": "dist/PlanMaster-Backend/",
+        "to": "backend/"
       }
     ],
     "mac": {
