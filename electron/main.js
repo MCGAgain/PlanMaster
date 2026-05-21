@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron')
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron')
 const { spawn, execFile } = require('child_process')
 const path = require('path')
 const net = require('net')
@@ -67,14 +67,40 @@ function getBackendPath() {
   const isPackaged = app.isPackaged
   const platform = process.platform
 
+  console.log('isPackaged:', isPackaged)
+  console.log('platform:', platform)
+  console.log('app.getPath("exe"):', app.getPath('exe'))
+  console.log('process.resourcesPath:', process.resourcesPath)
+
   if (isPackaged) {
     // In packaged app, backend is in resources
     const resourcesPath = process.resourcesPath
+    let backendPath
+
     if (platform === 'win32') {
-      return path.join(resourcesPath, 'backend', 'PlanMaster-Backend.exe')
+      backendPath = path.join(resourcesPath, 'backend', 'PlanMaster-Backend.exe')
     } else {
-      return path.join(resourcesPath, 'backend', 'PlanMaster-Backend')
+      backendPath = path.join(resourcesPath, 'backend', 'PlanMaster-Backend')
     }
+
+    console.log('Looking for backend at:', backendPath)
+    console.log('Backend exists:', fs.existsSync(backendPath))
+
+    // List backend directory contents
+    const backendDir = path.join(resourcesPath, 'backend')
+    if (fs.existsSync(backendDir)) {
+      console.log('Backend directory contents:', fs.readdirSync(backendDir))
+    } else {
+      console.log('Backend directory does not exist:', backendDir)
+      // Try alternative path
+      const altDir = path.join(resourcesPath, 'app', 'backend')
+      if (fs.existsSync(altDir)) {
+        console.log('Found backend at alternative path:', altDir)
+        return path.join(altDir, platform === 'win32' ? 'PlanMaster-Backend.exe' : 'PlanMaster-Backend')
+      }
+    }
+
+    return backendPath
   } else {
     // In development, use PyInstaller output or Python directly
     const distBackend = path.join(__dirname, '..', 'dist', 'PlanMaster-Backend')
@@ -100,6 +126,13 @@ function startFlask() {
     if (backendPath && fs.existsSync(backendPath)) {
       // Use bundled backend
       console.log(`Starting bundled backend: ${backendPath}`)
+
+      // Make sure the backend is executable
+      try {
+        fs.chmodSync(backendPath, '755')
+      } catch (e) {
+        console.log('Could not chmod backend:', e.message)
+      }
 
       flaskProcess = spawn(backendPath, [], {
         cwd: path.dirname(backendPath),
@@ -127,12 +160,19 @@ function startFlask() {
       })
     }
 
+    let stdoutData = ''
+    let stderrData = ''
+
     flaskProcess.stdout.on('data', (data) => {
-      console.log(`Flask stdout: ${data}`)
+      const msg = data.toString()
+      console.log(`Flask stdout: ${msg}`)
+      stdoutData += msg
     })
 
     flaskProcess.stderr.on('data', (data) => {
-      console.log(`Flask stderr: ${data}`)
+      const msg = data.toString()
+      console.log(`Flask stderr: ${msg}`)
+      stderrData += msg
     })
 
     flaskProcess.on('error', (error) => {
@@ -140,15 +180,22 @@ function startFlask() {
       reject(error)
     })
 
-    flaskProcess.on('exit', (code) => {
-      console.log(`Flask process exited with code ${code}`)
+    flaskProcess.on('exit', (code, signal) => {
+      console.log(`Flask process exited with code ${code}, signal ${signal}`)
+      console.log('Flask stdout:', stdoutData)
+      console.log('Flask stderr:', stderrData)
       flaskProcess = null
     })
 
     // Wait for Flask to be ready
     waitForFlask(FLASK_PORT)
       .then(() => resolve())
-      .catch(reject)
+      .catch((err) => {
+        console.error('Flask failed to start:', err)
+        console.error('Flask stdout:', stdoutData)
+        console.error('Flask stderr:', stderrData)
+        reject(err)
+      })
   })
 }
 
@@ -186,6 +233,11 @@ function createWindow() {
       app.dock.show()
     }
     mainWindow.focus()
+  })
+
+  // Handle load errors
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription)
   })
 
   // Handle external links
@@ -235,6 +287,13 @@ app.whenReady().then(async () => {
     })
   } catch (error) {
     console.error('Failed to start:', error)
+
+    // Show error dialog
+    dialog.showErrorBox(
+      '启动失败',
+      `PlanMaster 启动失败:\n\n${error.message}\n\n请检查应用是否完整安装。`
+    )
+
     app.quit()
   }
 })
