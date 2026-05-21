@@ -1,6 +1,6 @@
 {
   "name": "planmaster",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "PlanMaster - 计划管理 & 心愿兑换",
   "main": "electron/main.js",
   "author": "MCGAgain",
@@ -62,7 +62,9 @@
       ],
       "identity": null,
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "notarize": false,
+      "forceCodeSigning": false
     },
     "win": {
       "icon": "static/icon.jpg",

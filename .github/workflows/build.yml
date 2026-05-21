@@ -83,6 +83,23 @@ jobs:
           CSC_LINK: ""
           CSC_KEY_PASSWORD: ""
 
+      - name: Remove quarantine attributes
+        run: |
+          # Remove quarantine attributes from DMG files
+          for dmg in release/*.dmg; do
+            if [ -f "$dmg" ]; then
+              echo "Removing quarantine from: $dmg"
+              xattr -cr "$dmg"
+            fi
+          done
+          # Also remove from any .app bundles in release
+          for app in release/*.app; do
+            if [ -d "$app" ]; then
+              echo "Removing quarantine from: $app"
+              xattr -cr "$app"
+            fi
+          done
+
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
