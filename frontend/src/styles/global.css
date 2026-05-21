@@ -618,7 +618,7 @@ body.bg-image {
   box-shadow: var(--glass-shadow);
   -webkit-transition: transform 0.2s ease, box-shadow 0.2s ease;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  will-change: backdrop-filter;
+  will-change: transform, box-shadow;
   transform: translateZ(0);
   display: flex;
   gap: 16px;

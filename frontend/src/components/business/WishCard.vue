@@ -3,13 +3,13 @@
   <GlassCard class="wish-card">
     <div class="wish-header">
       <h3>{{ wish.name }}</h3>
-      <span class="wish-cost">{{ wish.virtual_cost }} 虚拟价值</span>
+      <span class="wish-cost">{{ Number(wish.virtual_cost).toFixed(2) }} 虚拟价值</span>
     </div>
 
     <div class="wish-details">
       <div v-if="wish.real_price" class="detail-item">
         <span class="detail-label">真实价格</span>
-        <span class="detail-value">¥{{ wish.real_price }}</span>
+        <span class="detail-value">¥{{ Number(wish.real_price).toFixed(2) }}</span>
       </div>
       <div v-if="wish.quantity !== null" class="detail-item">
         <span class="detail-label">剩余次数</span>

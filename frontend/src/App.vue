@@ -116,7 +116,7 @@ window.toast = showToast
 const loadBalance = async () => {
   try {
     const d = await api.getBalance()
-    balance.value = d.balance.toFixed(1)
+    balance.value = d.balance.toFixed(2)
   } catch (e) {}
 }
 window.loadBalance = loadBalance

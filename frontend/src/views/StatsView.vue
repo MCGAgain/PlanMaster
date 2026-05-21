@@ -95,8 +95,8 @@ const updateDateLabels = () => { statsDateLabel.value = fmtDate(statsDate.value)
 
 const loadCumulative = async () => { try { cumulative.value = await api.getCumulativeStats() } catch (e) {} }
 const loadDaily = async () => { try { daily.value = await api.getDailyStats(fmtDate(statsDate.value)) } catch (e) {} }
-const statsDatePrev = () => { statsDate.value.setDate(statsDate.value.getDate() - 1); updateDateLabels(); loadDaily() }
-const statsDateNext = () => { statsDate.value.setDate(statsDate.value.getDate() + 1); updateDateLabels(); loadDaily() }
+const statsDatePrev = () => { statsDate.value.setDate(statsDate.value.getDate() - 1); updateDateLabels(); loadDaily(); loadDistribution() }
+const statsDateNext = () => { statsDate.value.setDate(statsDate.value.getDate() + 1); updateDateLabels(); loadDaily(); loadDistribution() }
 
 const switchStatsPeriod = (period) => { statsPeriod.value = period; loadDistribution() }
 

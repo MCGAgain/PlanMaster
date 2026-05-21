@@ -15,7 +15,7 @@
             <span class="tx-note">{{ tx.note || tx.source }}</span>
             <span class="tx-time">{{ fmtTime(tx.created_at) }}</span>
           </div>
-          <span class="tx-amount" :class="{ positive: tx.amount >= 0, negative: tx.amount < 0 }">{{ tx.amount >= 0 ? '+' : '' }}{{ tx.amount.toFixed(1) }}</span>
+          <span class="tx-amount" :class="{ positive: tx.amount >= 0, negative: tx.amount < 0 }">{{ tx.amount >= 0 ? '+' : '' }}{{ tx.amount.toFixed(2) }}</span>
         </div>
       </TransitionGroup>
       <div v-if="!transactions.length" class="empty-state">暂无流水记录</div>
@@ -36,7 +36,7 @@ onMounted(async () => {
   try {
     const [txs, b] = await Promise.all([api.getTransactions(), api.getBalance()])
     transactions.value = txs
-    balance.value = b.balance.toFixed(1)
+    balance.value = b.balance.toFixed(2)
   } catch (e) { window.toast('加载失败: ' + e.message, true) }
 })
 </script>

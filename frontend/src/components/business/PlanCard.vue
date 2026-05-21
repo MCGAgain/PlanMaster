@@ -253,6 +253,10 @@ onMounted(() => {
 
   cardRef.value = card
 
+  // Ensure backdrop-filter blur is applied from frame 1 (not animated)
+  card.style.backdropFilter = 'blur(20px)'
+  card.style.webkitBackdropFilter = 'blur(20px)'
+
   // Entrance animation
   gsap.from(card, {
     opacity: 0,
@@ -293,8 +297,8 @@ onMounted(() => {
   border-radius: var(--radius);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  transition: all var(--transition-normal) var(--ease-default);
-  will-change: backdrop-filter;
+  transition: transform var(--transition-normal) var(--ease-default), box-shadow var(--transition-normal) var(--ease-default);
+  will-change: transform, box-shadow;
 }
 
 .plan-card:hover {

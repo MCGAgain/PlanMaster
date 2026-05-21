@@ -16,10 +16,10 @@
         <div v-for="(w, idx) in wishes" :key="w.id" class="wish-card" :class="{ redeemed: w.redeemed }" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="wish-info">
             <h4>{{ w.name }}</h4>
-            <div class="wish-meta">{{ w.real_price > 0 ? '¥' + w.real_price : '' }}{{ w.redeemed ? ' · 已兑换' : '' }} · {{ w.quantity === null ? '无限' : '剩余 ' + w.quantity }}</div>
+            <div class="wish-meta">{{ w.real_price > 0 ? '¥' + Number(w.real_price).toFixed(2) : '' }}{{ w.redeemed ? ' · 已兑换' : '' }} · {{ w.quantity === null ? '无限' : '剩余 ' + w.quantity }}</div>
           </div>
           <div class="wish-actions">
-            <span class="wish-cost">{{ w.virtual_cost }}</span>
+            <span class="wish-cost">{{ Number(w.virtual_cost).toFixed(2) }}</span>
             <template v-if="!w.redeemed">
               <button class="btn btn-success btn-sm" @click="redeemWish(w.id)" :disabled="!(w.quantity === null || w.quantity > 0) || balance < w.virtual_cost">兑换</button>
               <button class="btn btn-glass btn-sm" @click="showEditWishModal(w)">编辑</button>
@@ -75,7 +75,7 @@ const loadWishes = async () => {
   try {
     const [w, b] = await Promise.all([api.getWishes(), api.getBalance()])
     wishes.value = w
-    balance.value = b.balance
+    balance.value = b.balance.toFixed(2)
   } catch (e) { window.toast('加载失败: ' + e.message, true) }
 }
 
