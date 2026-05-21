@@ -139,7 +139,8 @@ function startFlask() {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          FLASK_PORT: FLASK_PORT.toString()
+          FLASK_PORT: FLASK_PORT.toString(),
+          ELECTRON_MODE: 'true'
         }
       })
     } else {
