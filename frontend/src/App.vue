@@ -132,6 +132,16 @@ const applyBgMode = (mode, color, image) => {
 }
 window.applyBgMode = applyBgMode
 
+// Glass Style
+const applyGlassStyle = (style) => {
+  document.body.classList.remove('glass-liquid')
+  if (style === 'liquid') {
+    document.body.classList.add('glass-liquid')
+  }
+  localStorage.setItem('glass_style', style)
+}
+window.applyGlassStyle = applyGlassStyle
+
 const loadBackground = async () => {
   try { const s = await api.getSettings(); applyBgMode(s.bg_mode || 'orb', s.bg_solid_color || '#f0eef8', s.bg_image ? bgImageUrl(s.bg_image) : '') } catch (e) {}
 }
@@ -189,6 +199,8 @@ function onToastLeave(el, done) {
 onMounted(async () => {
   await loadBalance()
   await loadBackground()
+  const savedGlassStyle = localStorage.getItem('glass_style') || 'default'
+  applyGlassStyle(savedGlassStyle)
   document.addEventListener('keydown', handleKeydown)
 
   // Animate sidebar entrance with GSAP

@@ -1,0 +1,385 @@
+/* ============================================
+   Liquid Glass Theme - iOS 26 Style
+   ============================================ */
+
+/* ---- Liquid Glass Variables ---- */
+body.glass-liquid {
+  --glass-bg: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 8px 32px rgba(100, 80, 200, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --glass-blur: 40px;
+  --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.08) 100%);
+  --sidebar-glass: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.25);
+}
+
+body.glass-liquid.theme-dark {
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --glass-specular: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.03) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.04) 100%);
+  --sidebar-glass: rgba(255, 255, 255, 0.04);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Shimmer Animation ---- */
+@keyframes liquidShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes liquidPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* ---- Glass Card - Liquid ---- */
+body.glass-liquid .glass-card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    var(--glass-shadow),
+    0 1px 0 0 rgba(255, 255, 255, 0.3) inset,
+    0 -1px 0 0 rgba(255, 255, 255, 0.05) inset;
+  overflow: hidden;
+}
+
+body.glass-liquid .glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-specular);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+body.glass-liquid .glass-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.08) 55%,
+    transparent 60%
+  );
+  background-size: 200% 200%;
+  animation: liquidShimmer 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+body.glass-liquid .glass-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.glass-liquid .glass-card:hover {
+  box-shadow:
+    0 12px 40px rgba(100, 80, 200, 0.1),
+    0 1px 0 0 rgba(255, 255, 255, 0.4) inset,
+    0 -1px 0 0 rgba(255, 255, 255, 0.05) inset;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* ---- Glass Card h3 - Liquid ---- */
+body.glass-liquid .glass-card h3 {
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ---- Sidebar - Liquid ---- */
+body.glass-liquid .sidebar {
+  background: var(--sidebar-glass);
+  backdrop-filter: blur(50px) saturate(2);
+  -webkit-backdrop-filter: blur(50px) saturate(2);
+  border-right: 1px solid var(--sidebar-border);
+  box-shadow: 1px 0 0 0 rgba(255, 255, 255, 0.1) inset;
+}
+
+body.glass-liquid .sidebar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 30%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.glass-liquid .sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Balance Card - Liquid ---- */
+body.glass-liquid .balance-card {
+  background: linear-gradient(135deg, rgba(124,110,240,0.12), rgba(167,139,250,0.08));
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow:
+    0 4px 16px rgba(124, 110, 240, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+body.glass-liquid .balance-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ---- Plan Card - Liquid ---- */
+body.glass-liquid .plan-card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  overflow: hidden;
+}
+
+body.glass-liquid .plan-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-specular);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+body.glass-liquid .plan-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.glass-liquid .plan-card:hover {
+  box-shadow:
+    0 16px 48px rgba(100, 80, 200, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* ---- Buttons - Liquid ---- */
+body.glass-liquid .btn-glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+body.glass-liquid .btn-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+body.glass-liquid .btn-glass:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 6px 24px rgba(100, 80, 200, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ---- Inputs - Liquid ---- */
+body.glass-liquid .form-group input,
+body.glass-liquid .form-group textarea,
+body.glass-liquid .form-group select,
+body.glass-liquid input[type="text"],
+body.glass-liquid input[type="password"],
+body.glass-liquid input[type="number"],
+body.glass-liquid input[type="date"],
+body.glass-liquid textarea,
+body.glass-liquid select {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+body.glass-liquid .form-group input:focus,
+body.glass-liquid .form-group textarea:focus,
+body.glass-liquid .form-group select:focus {
+  border-color: var(--primary);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 0 3px var(--primary-light);
+}
+
+/* ---- Modal - Liquid ---- */
+body.glass-liquid .modal-overlay {
+  backdrop-filter: blur(12px) saturate(1.5);
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+}
+
+body.glass-liquid .glass-modal {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(2);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(2);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+body.glass-liquid .glass-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-specular);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+body.glass-liquid .glass-modal > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Toast - Liquid ---- */
+body.glass-liquid .toast {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 12px 40px rgba(100, 80, 200, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Modal Content - Liquid ---- */
+body.glass-liquid .modal-content {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(2);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+body.glass-liquid .modal-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--glass-specular);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+body.glass-liquid .modal-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Nav Items - Liquid ---- */
+body.glass-liquid .nav-item.active {
+  background: rgba(124, 110, 240, 0.08);
+}
+
+body.glass-liquid .nav-item:hover {
+  background: rgba(124, 110, 240, 0.05);
+}
+
+/* ---- Orbs - slightly enhanced for liquid ---- */
+body.glass-liquid .orb {
+  filter: blur(100px);
+  opacity: 0.7;
+}
+
+/* ---- Range Items - Liquid ---- */
+body.glass-liquid .range-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+body.glass-liquid .range-inputs input,
+body.glass-liquid .duration-field {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* ---- Dark theme range items ---- */
+body.glass-liquid.theme-dark .range-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.glass-liquid.theme-dark .range-inputs input,
+body.glass-liquid.theme-dark .duration-field {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Dark theme form inputs ---- */
+body.glass-liquid.theme-dark .form-group input,
+body.glass-liquid.theme-dark .form-group textarea,
+body.glass-liquid.theme-dark .form-group select,
+body.glass-liquid.theme-dark input[type="text"],
+body.glass-liquid.theme-dark input[type="password"],
+body.glass-liquid.theme-dark input[type="number"],
+body.glass-liquid.theme-dark input[type="date"],
+body.glass-liquid.theme-dark textarea,
+body.glass-liquid.theme-dark select {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+body.glass-liquid.theme-dark .form-group input:focus,
+body.glass-liquid.theme-dark .form-group textarea:focus,
+body.glass-liquid.theme-dark .form-group select:focus {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Bg mode buttons - Liquid ---- */
+body.glass-liquid .bg-mode-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+body.glass-liquid .bg-mode-btn.active {
+  border-color: var(--primary);
+  background: rgba(124, 110, 240, 0.15);
+}
+
+/* ---- Model select row - Liquid ---- */
+body.glass-liquid .model-select-row select,
+body.glass-liquid .model-select-row input {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+}

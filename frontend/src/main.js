@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import './styles/global.css'
 import './styles/blur-fix.css'
+import './styles/liquid-glass.css'
 import { vGsap } from './utils/animations'
 
 const app = createApp(App)

@@ -90,6 +90,27 @@
       </div>
 
       <div class="glass-card">
+        <h3>玻璃效果</h3>
+        <p class="form-hint" style="margin-top:0;margin-bottom:16px;">选择卡片、侧边栏等元素的玻璃视觉风格。</p>
+        <div class="glass-style-options">
+          <div class="glass-style-card" :class="{ active: glassStyle === 'default' }" @click="switchGlassStyle('default')">
+            <div class="glass-style-preview default-preview">
+              <div class="preview-card"></div>
+            </div>
+            <span class="glass-style-label">经典毛玻璃</span>
+            <span class="glass-style-desc">高斯模糊，柔和透明</span>
+          </div>
+          <div class="glass-style-card" :class="{ active: glassStyle === 'liquid' }" @click="switchGlassStyle('liquid')">
+            <div class="glass-style-preview liquid-preview">
+              <div class="preview-card"></div>
+            </div>
+            <span class="glass-style-label">液态玻璃</span>
+            <span class="glass-style-desc">iOS 26 风格，光泽流动</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card">
         <h3>应用信息</h3>
         <div class="app-info"><span class="app-version">Todo v{{ appVersion }}</span></div>
         <div class="form-actions" style="margin-top:12px;">
@@ -128,6 +149,7 @@ const updateProgressLabel = ref('下载中...')
 const updateProgressPct = ref(0)
 const bgMode = ref('orb')
 const bgColor = ref('#f0eef8')
+const glassStyle = ref('default')
 const bgColors = ['#f0eef8', '#e8e8e8', '#1a1a2e', '#16213e', '#0f3460', '#2d2d2d', '#1b4332', '#3c1642']
 const bgFileName = ref('')
 const bgPreviewSrc = ref('')
@@ -148,6 +170,7 @@ const loadSettings = async () => {
     form.value.checkin_daily_inc = s.checkin_daily_increment || 1; form.value.checkin_max_val = s.checkin_max_value || 30
     form.value.signatures = sigs.map(r => r.content).join('\n')
     bgMode.value = s.bg_mode || 'orb'; bgColor.value = s.bg_solid_color || '#f0eef8'
+    glassStyle.value = localStorage.getItem('glass_style') || 'default'
     if (s.bg_image) { bgPreviewSrc.value = bgImageUrl(s.bg_image); bgFileName.value = '' }
     loadVersion()
   } catch (e) { window.toast('加载失败: ' + e.message, true) }
@@ -211,6 +234,11 @@ const pickBgColor = (color) => {
   if (window.applyBgMode) window.applyBgMode('solid', color, '')
 }
 
+const switchGlassStyle = (style) => {
+  glassStyle.value = style
+  if (window.applyGlassStyle) window.applyGlassStyle(style)
+}
+
 const previewBgImage = (e) => {
   const file = e.target.files[0]; if (!file) return
   bgFileName.value = file.name
@@ -269,3 +297,139 @@ const pollUpdateStatus = () => {
 
 onMounted(() => { loadSettings() })
 </script>
+
+<style scoped>
+.glass-style-options {
+  display: flex;
+  gap: 16px;
+}
+
+.glass-style-card {
+  flex: 1;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.glass-style-card:hover {
+  border-color: rgba(124, 110, 240, 0.3);
+  background: rgba(124, 110, 240, 0.05);
+}
+
+.glass-style-card.active {
+  border-color: var(--primary);
+  background: rgba(124, 110, 240, 0.08);
+}
+
+.glass-style-preview {
+  height: 80px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.default-preview {
+  background: linear-gradient(135deg, #e8e4f0 0%, #d4cceb 100%);
+}
+
+.default-preview .preview-card {
+  width: 70%;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(100, 80, 200, 0.08);
+}
+
+.liquid-preview {
+  background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #7c6ef0 100%);
+  position: relative;
+}
+
+.liquid-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+}
+
+.liquid-preview .preview-card {
+  width: 70%;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(100, 80, 200, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-preview .preview-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.08) 100%);
+  pointer-events: none;
+}
+
+.glass-style-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.glass-style-desc {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+body.theme-dark .glass-style-card {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .glass-style-card:hover {
+  background: rgba(124, 110, 240, 0.08);
+}
+
+body.theme-dark .glass-style-card.active {
+  background: rgba(124, 110, 240, 0.12);
+}
+
+body.theme-dark .default-preview {
+  background: linear-gradient(135deg, #2d2655 0%, #1a1625 100%);
+}
+
+body.theme-dark .default-preview .preview-card {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+body.theme-dark .liquid-preview {
+  background: linear-gradient(135deg, #1a1625 0%, #2d2655 50%, #3c1642 100%);
+}
+
+body.theme-dark .liquid-preview .preview-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+@media (max-width: 600px) {
+  .glass-style-options {
+    flex-direction: column;
+  }
+}
+</style>
