@@ -292,40 +292,33 @@ const onRelease = () => {
   gsap.to(cardRef.value, {
     scale: 1,
     duration: 0.6,
-    ease: 'elastic.out(1, 0.7)'
+    ease: 'elastic.out(1, 0.7)',
+    clearProps: 'transform'
+  })
+}
+
+const onHoverEnter = () => {
+  gsap.to(cardRef.value, {
+    y: -5,
+    boxShadow: '0 20px 40px rgba(100, 80, 200, 0.15)',
+    duration: 0.4,
+    ease: 'power2.out'
+  })
+}
+
+const onHoverLeave = () => {
+  gsap.to(cardRef.value, {
+    y: 0,
+    scale: 1,
+    boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
+    duration: 0.4,
+    ease: 'power2.out',
+    clearProps: 'transform'
   })
 }
 
 onMounted(() => {
-  if (!cardRef.value) return
-
-  // 1. Entrance animation (iOS-style staggered fade and slide)
-  gsap.fromTo(cardRef.value, 
-    { opacity: 0, y: 30, scale: 0.9, filter: 'blur(10px)' }, 
-    { 
-      opacity: 1, y: 0, scale: 1, filter: 'blur(0px)',
-      duration: 1.2, ease: 'expo.out', clearProps: 'filter'
-    }
-  )
-
-  // 2. Hover logic
-  cardRef.value.addEventListener('mouseenter', () => {
-    gsap.to(cardRef.value, {
-      y: -5,
-      boxShadow: '0 20px 40px rgba(100, 80, 200, 0.15)',
-      duration: 0.4,
-      ease: 'power2.out'
-    })
-  })
-
-  cardRef.value.addEventListener('mouseleave', () => {
-    gsap.to(cardRef.value, {
-      y: 0,
-      boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
-      duration: 0.4,
-      ease: 'power2.out'
-    })
-  })
+  // Entrance animation handled by parent TransitionGroup
 })
 </script>
 
@@ -336,14 +329,15 @@ onMounted(() => {
   gap: 1.25rem;
   padding: 1.5rem;
   margin-bottom: 1rem;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
   cursor: pointer;
   z-index: 1;
   will-change: transform, box-shadow;
+  /* Removed transform transition to prevent conflict with GSAP */
+  transition: box-shadow 0.4s ease, opacity 0.4s ease;
 }
 
 .plan-card::before {

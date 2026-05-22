@@ -405,29 +405,36 @@ onUnmounted(() => {
   will-change: transform, opacity;
 }
 
-.category-progress {
-  margin-bottom: 1.5rem;
-  padding: 1.25rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(10px);
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
 }
 
-.category-progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
 }
 
-.category-progress-label {
-  font-weight: 700;
-  color: var(--text);
-  font-size: 0.95rem;
+/* Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
-.category-progress-text {
+.list-move {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.list-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
+.ss-text {
   font-weight: 800;
   color: var(--primary);
   font-size: 1.1rem;

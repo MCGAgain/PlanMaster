@@ -87,7 +87,10 @@ function onItemEnter(el, done) {
     duration: 0.8,
     delay: delay,
     ease: 'expo.out',
-    onComplete: done
+    onComplete: () => {
+      gsap.set(el, { clearProps: 'all' })
+      done()
+    }
   })
 }
 
@@ -102,7 +105,6 @@ function onItemLeave(el, done) {
   })
 }
 
-const planDateLabel = computed(() => { const d = new Date(); return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()] })
 const filteredPlans = computed(() => { if (!searchKeyword.value) return plans.value; return plans.value.filter(p => matchPinyin(p.title, searchKeyword.value) || matchPinyin(p.description || '', searchKeyword.value)) })
 function parseSuggestedTime(str) { if (!str) return 0; const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/); if (!m) return 0; const v = parseFloat(m[1]); return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : m[2] === '小时' ? v * 3600 : m[2] === '天' ? v * 86400 : v * 604800 }
 const showNextSignature = () => { if (!signatures.value.length) { currentSignature.value = ''; return }; currentSignature.value = signatures.value[sigIndex.value % signatures.value.length]; sigIndex.value++ }
