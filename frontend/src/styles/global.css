@@ -2408,9 +2408,11 @@ body.theme-dark .apibalance-url-example {
 }
 
 /* List item transition */
+/* Note: Enter animation uses only transform (no opacity) to avoid
+   WebKit not rendering backdrop-filter on elements with zero opacity. */
 .list-enter-active {
-  -webkit-transition: opacity 0.35s ease, transform 0.35s ease;
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  -webkit-transition: transform 0.35s ease;
+  transition: transform 0.35s ease;
 }
 
 .list-leave-active {
@@ -2419,7 +2421,6 @@ body.theme-dark .apibalance-url-example {
 }
 
 .list-enter-from {
-  opacity: 0;
   -webkit-transform: translateY(12px);
   transform: translateY(12px);
 }

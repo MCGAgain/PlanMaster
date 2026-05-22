@@ -158,7 +158,7 @@ function getProgress(p) {
 }
 
 function fmtCountdown(s) { const m = Math.floor(s / 60), sec = Math.floor(s % 60); return m + ':' + String(sec).padStart(2, '0') }
-function parseSuggestedTime(str) { if (!str) return 0; const m = str.match(/([\d.]+)\s*(秒|分钟|小时)/); if (!m) return 0; const v = parseFloat(m[1]); return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : v * 3600 }
+function parseSuggestedTime(str) { if (!str) return 0; const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/); if (!m) return 0; const v = parseFloat(m[1]); return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : m[2] === '小时' ? v * 3600 : m[2] === '天' ? v * 86400 : v * 604800 }
 
 function previewProgress(e) {
   const track = e.target.closest('.plan-progress-track')

@@ -149,13 +149,14 @@ const loadBackground = async () => {
 const handleKeydown = (e) => { if (e.key === 'Escape') document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show')) }
 
 // GSAP Transition hooks
+// Note: Enter animation uses only y transform (no opacity) to avoid
+// WebKit not rendering backdrop-filter on elements with zero parent opacity.
 function onBeforeEnter(el) {
-  gsap.set(el, { opacity: 0, y: 20 })
+  gsap.set(el, { y: 20 })
 }
 
 function onEnter(el, done) {
   gsap.to(el, {
-    opacity: 1,
     y: 0,
     duration: 0.4,
     ease: 'power3.out',
