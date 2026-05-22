@@ -101,12 +101,12 @@ onUnmounted(() => {
   font-size: 14px;
   font-family: inherit;
   background: rgba(255,255,255,.35);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  
+  
   color: var(--text);
   transition: var(--transition);
   min-width: 200px;
-  will-change: backdrop-filter;
+  
 }
 
 .search-input:focus {

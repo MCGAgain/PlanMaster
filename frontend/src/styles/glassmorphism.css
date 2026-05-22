@@ -16,8 +16,8 @@
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: inherit;
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  
+  
 }
 
 .glass-card.hoverable:hover {
@@ -37,9 +37,9 @@
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast) var(--ease-default);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  will-change: backdrop-filter;
+  
+  
+  
 }
 
 .glass-button.primary {
@@ -83,10 +83,10 @@
   border-radius: var(--radius-sm);
   font-size: 0.95rem;
   color: var(--text);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  
+  
   transition: all var(--transition-fast) var(--ease-default);
-  will-change: backdrop-filter;
+  
 }
 
 .glass-input:focus {
@@ -102,13 +102,13 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  
+  
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  will-change: backdrop-filter;
+  
 }
 
 .glass-modal {
@@ -116,12 +116,12 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  
+  
   padding: 2rem;
   min-width: 400px;
   max-width: 600px;
   max-height: 80vh;
   overflow-y: auto;
-  will-change: backdrop-filter;
+  
 }

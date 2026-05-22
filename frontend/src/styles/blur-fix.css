@@ -226,9 +226,9 @@
 
 /* Enhanced backdrop-filter with GPU acceleration */
 .backdrop-blur {
-  backdrop-filter: blur(var(--blur-amount, 20px));
-  -webkit-backdrop-filter: blur(var(--blur-amount, 20px));
-  will-change: backdrop-filter;
+  
+  
+  
   transform: translateZ(0);
 }
 
@@ -240,13 +240,12 @@
 
 /* Animated blur transition */
 .backdrop-blur-animated {
-  backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
-  transition: backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-              -webkit-backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  
+  
 }
 
 .backdrop-blur-animated.active {
-  backdrop-filter: blur(var(--blur-amount, 20px));
-  -webkit-backdrop-filter: blur(var(--blur-amount, 20px));
+  
+  
 }

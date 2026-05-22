@@ -90,14 +90,14 @@ const handleOverlayClick = () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  
+  
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 2rem;
-  will-change: backdrop-filter;
+  
 }
 
 .glass-modal {
@@ -105,12 +105,12 @@ const handleOverlayClick = () => {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  
+  
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  will-change: backdrop-filter;
+  
 }
 
 .glass-modal.small {

@@ -42,11 +42,11 @@ defineEmits(['click'])
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow: var(--glass-shadow);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  
+  
   padding: 1.5rem;
   transition: all var(--transition-normal) var(--ease-default);
-  will-change: backdrop-filter;
+  
 }
 
 .glass-card.hoverable {

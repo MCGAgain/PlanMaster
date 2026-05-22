@@ -243,8 +243,8 @@ watch(() => props.src, async (newSrc) => {
      只要类名存在，模糊就存在。
      使用 translateZ(0) 强制开启 GPU 加速，减少首帧重绘计算。
   */
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  
+  
   
   background: rgba(255, 255, 255, var(--glass-bg-opacity));
   border-radius: var(--glass-radius);

@@ -271,11 +271,11 @@ defineExpose({
   font-size: 14px;
   font-family: inherit;
   background: rgba(255,255,255,.35);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  
+  
   color: var(--text);
   transition: var(--transition);
-  will-change: backdrop-filter;
+  
 }
 
 .focus-task-input:focus {
@@ -297,14 +297,14 @@ defineExpose({
   border: 1px solid rgba(255,255,255,.4);
   border-radius: var(--radius-sm);
   background: rgba(255,255,255,.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  
+  
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-soft);
   transition: var(--transition);
-  will-change: backdrop-filter;
+  
 }
 
 .focus-mode-btn:hover {
@@ -560,12 +560,12 @@ body.theme-dark .duration-row input {
 
 .btn-glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  
+  
   border: 1px solid var(--glass-border);
   color: var(--text);
   box-shadow: var(--glass-shadow);
-  will-change: backdrop-filter;
+  
 }
 
 .btn-glass:hover {

@@ -160,8 +160,8 @@ defineExpose({ updateBalance })
   left: 0;
   top: 0;
   background: var(--sidebar-glass);
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  
+  
   border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
@@ -195,8 +195,8 @@ defineExpose({ updateBalance })
   margin: 16px 20px;
   padding: 18px;
   background: linear-gradient(135deg, rgba(124,110,240,.15), rgba(167,139,250,.1));
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  
+  
   border: 1px solid rgba(124,110,240,.2);
   border-radius: var(--radius);
   display: flex;

@@ -315,8 +315,8 @@ onMounted(() => { loadSettings() })
   width: 70%;
   height: 50px;
   background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  
+  
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(100, 80, 200, 0.08);
@@ -338,8 +338,8 @@ onMounted(() => { loadSettings() })
   width: 70%;
   height: 50px;
   background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  
+  
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(100, 80, 200, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4);

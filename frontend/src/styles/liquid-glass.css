@@ -37,8 +37,8 @@ body.glass-liquid.theme-dark {
 body.glass-liquid .glass-card {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  
+  
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow:
@@ -101,8 +101,8 @@ body.glass-liquid .glass-card h3 {
 /* ---- Sidebar - Liquid ---- */
 body.glass-liquid .sidebar {
   background: var(--sidebar-glass);
-  backdrop-filter: blur(50px) saturate(2);
-  -webkit-backdrop-filter: blur(50px) saturate(2);
+  
+  
   border-right: 1px solid var(--sidebar-border);
   box-shadow: 1px 0 0 0 rgba(255, 255, 255, 0.1) inset;
 }
@@ -124,8 +124,8 @@ body.glass-liquid .sidebar > * {
 /* ---- Balance Card - Liquid ---- */
 body.glass-liquid .balance-card {
   background: linear-gradient(135deg, rgba(124,110,240,0.12), rgba(167,139,250,0.08));
-  backdrop-filter: blur(30px) saturate(1.5);
-  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  
+  
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow:
     0 4px 16px rgba(124, 110, 240, 0.08),
@@ -171,8 +171,8 @@ body.glass-liquid .plan-card > * {
 body.glass-liquid .btn-glass {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  
+  
   border: 1px solid var(--glass-border);
   box-shadow:
     var(--glass-shadow),
@@ -207,8 +207,8 @@ body.glass-liquid input[type="date"],
 body.glass-liquid textarea,
 body.glass-liquid select {
   background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  
+  
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
@@ -224,14 +224,14 @@ body.glass-liquid .form-group select:focus {
 
 /* ---- Modal - Liquid ---- */
 body.glass-liquid .modal-overlay {
-  backdrop-filter: blur(12px) saturate(1.5);
-  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  
+  
 }
 
 body.glass-liquid .glass-modal {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(2);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(2);
+  
+  
   border: 1px solid var(--glass-border);
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.15),
@@ -257,8 +257,8 @@ body.glass-liquid .glass-modal > * {
 /* ---- Toast - Liquid ---- */
 body.glass-liquid .toast {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  
+  
   border: 1px solid var(--glass-border);
   box-shadow:
     0 12px 40px rgba(100, 80, 200, 0.12),
@@ -268,8 +268,8 @@ body.glass-liquid .toast {
 /* ---- Modal Content - Liquid ---- */
 body.glass-liquid .modal-content {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(2);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(2);
+  
+  
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow:
@@ -357,8 +357,8 @@ body.glass-liquid.theme-dark .form-group select:focus {
 /* ---- Empty State - Liquid ---- */
 body.glass-liquid .empty-state {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  
+  
   border: 1px solid var(--glass-border);
   border-style: dashed;
   box-shadow: var(--glass-shadow);

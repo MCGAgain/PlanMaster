@@ -75,11 +75,11 @@ defineExpose({ add, remove, success, error, warning, info })
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  
+  
   min-width: 300px;
   max-width: 500px;
-  will-change: backdrop-filter;
+  
 }
 
 .glass-toast.success {

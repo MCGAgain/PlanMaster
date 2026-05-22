@@ -61,11 +61,11 @@ const handleClick = (e) => {
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast) var(--ease-default);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  
+  
   position: relative;
   overflow: hidden;
-  will-change: backdrop-filter;
+  
 }
 
 .glass-button::after {
