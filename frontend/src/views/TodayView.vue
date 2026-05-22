@@ -22,7 +22,7 @@
     </div>
     <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
     <div class="plan-list">
-      <TransitionGroup name="list">
+      <div ref="planListRef">
         <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :data-id="p.id" :style="{ animationDelay: (idx * 0.04) + 's' }">
           <div class="priority-ring">
             <svg width="54" height="54" viewBox="0 0 54 54">
@@ -67,7 +67,7 @@
             </div>
           </div>
         </div>
-      </TransitionGroup>
+      </div>
       <div v-if="!filteredPlans.length" class="empty-state">暂无计划，点击右上角添加</div>
     </div>
 
@@ -114,8 +114,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
+import gsap from 'gsap'
 import api from '@/api'
 
 const { matchPinyin } = usePinyin()
@@ -133,7 +134,27 @@ const editingPlanId = ref(null)
 const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 })
 const timers = ref({})
 const activeFocusSession = ref(null)
+const planListRef = ref(null)
 let planSaving = false
+let cardTween = null
+
+function animateCards() {
+  if (cardTween) cardTween.kill()
+  nextTick(() => {
+    if (!planListRef.value) return
+    const cards = planListRef.value.querySelectorAll('.plan-card')
+    if (!cards.length) return
+    gsap.set(cards, { clearProps: 'clipPath,willChange' })
+    cardTween = gsap.from(cards, {
+      y: 16,
+      clipPath: 'inset(100% 0 0 0)',
+      duration: 0.4,
+      stagger: 0.04,
+      ease: 'power3.out',
+      onComplete: () => gsap.set(cards, { clearProps: 'willChange' })
+    })
+  })
+}
 
 const planDateLabel = computed(() => {
   const d = new Date()
@@ -183,6 +204,7 @@ const loadPlans = async () => {
     plans.value = active
     allPlans.value = active
     categoryProgress.value = progress.percentage || 0
+    animateCards()
   } catch (e) { window.toast('加载失败: ' + e.message, true) }
 }
 
