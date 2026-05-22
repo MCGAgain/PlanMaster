@@ -90,27 +90,6 @@
       </div>
 
       <div class="glass-card">
-        <h3>玻璃效果</h3>
-        <p class="form-hint" style="margin-top:0;margin-bottom:16px;">选择卡片、侧边栏等元素的玻璃视觉风格。</p>
-        <div class="glass-style-options">
-          <div class="glass-style-card" :class="{ active: glassStyle === 'default' }" @click="switchGlassStyle('default')">
-            <div class="glass-style-preview default-preview">
-              <div class="preview-card"></div>
-            </div>
-            <span class="glass-style-label">经典毛玻璃</span>
-            <span class="glass-style-desc">高斯模糊，柔和透明</span>
-          </div>
-          <div class="glass-style-card" :class="{ active: glassStyle === 'liquid' }" @click="switchGlassStyle('liquid')">
-            <div class="glass-style-preview liquid-preview">
-              <div class="preview-card"></div>
-            </div>
-            <span class="glass-style-label">液态玻璃</span>
-            <span class="glass-style-desc">iOS 26 风格，光泽流动</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="glass-card">
         <h3>应用信息</h3>
         <div class="app-info"><span class="app-version">Todo v{{ appVersion }}</span></div>
         <div class="form-actions" style="margin-top:12px;">
@@ -149,7 +128,6 @@ const updateProgressLabel = ref('下载中...')
 const updateProgressPct = ref(0)
 const bgMode = ref('orb')
 const bgColor = ref('#f0eef8')
-const glassStyle = ref('default')
 const bgColors = ['#f0eef8', '#e8e8e8', '#1a1a2e', '#16213e', '#0f3460', '#2d2d2d', '#1b4332', '#3c1642']
 const bgFileName = ref('')
 const bgPreviewSrc = ref('')
@@ -170,7 +148,6 @@ const loadSettings = async () => {
     form.value.checkin_daily_inc = s.checkin_daily_increment || 1; form.value.checkin_max_val = s.checkin_max_value || 30
     form.value.signatures = sigs.map(r => r.content).join('\n')
     bgMode.value = s.bg_mode || 'orb'; bgColor.value = s.bg_solid_color || '#f0eef8'
-    glassStyle.value = localStorage.getItem('glass_style') || 'default'
     if (s.bg_image) { bgPreviewSrc.value = bgImageUrl(s.bg_image); bgFileName.value = '' }
     loadVersion()
   } catch (e) { window.toast('加载失败: ' + e.message, true) }
@@ -232,11 +209,6 @@ const switchBgMode = (mode) => {
 const pickBgColor = (color) => {
   bgColor.value = color
   if (window.applyBgMode) window.applyBgMode('solid', color, '')
-}
-
-const switchGlassStyle = (style) => {
-  glassStyle.value = style
-  if (window.applyGlassStyle) window.applyGlassStyle(style)
 }
 
 const previewBgImage = (e) => {

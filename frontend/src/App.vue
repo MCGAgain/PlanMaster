@@ -134,11 +134,8 @@ window.applyBgMode = applyBgMode
 
 // Glass Style
 const applyGlassStyle = (style) => {
-  document.body.classList.remove('glass-liquid')
-  if (style === 'liquid') {
-    document.body.classList.add('glass-liquid')
-  }
-  localStorage.setItem('glass_style', style)
+  document.body.classList.add('glass-liquid')
+  localStorage.setItem('glass_style', 'liquid')
 }
 window.applyGlassStyle = applyGlassStyle
 
@@ -153,8 +150,7 @@ function onBeforeEnter(el) {
   gsap.set(el, { 
     opacity: 0, 
     scale: 0.96, 
-    y: 15,
-    filter: 'blur(10px)'
+    y: 15
   })
 }
 
@@ -163,7 +159,6 @@ function onEnter(el, done) {
     opacity: 1,
     scale: 1,
     y: 0,
-    filter: 'blur(0px)',
     duration: 0.8,
     ease: 'expo.out',
     onComplete: () => {
@@ -178,7 +173,6 @@ function onLeave(el, done) {
     opacity: 0,
     scale: 1.02,
     y: -10,
-    filter: 'blur(5px)',
     duration: 0.4,
     ease: 'power2.inOut',
     onComplete: done
@@ -214,8 +208,7 @@ function onToastLeave(el, done) {
 onMounted(async () => {
   await loadBalance()
   await loadBackground()
-  const savedGlassStyle = localStorage.getItem('glass_style') || 'default'
-  applyGlassStyle(savedGlassStyle)
+  applyGlassStyle('liquid')
   document.addEventListener('keydown', handleKeydown)
 
   // Animate sidebar entrance with iOS-style fluid slide

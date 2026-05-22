@@ -87,8 +87,7 @@ function onItemBeforeEnter(el) {
   gsap.set(el, {
     opacity: 0,
     y: 30,
-    scale: 0.94,
-    filter: 'blur(10px)'
+    scale: 0.94
   })
 }
 
@@ -98,7 +97,6 @@ function onItemEnter(el, done) {
     opacity: 1,
     y: 0,
     scale: 1,
-    filter: 'blur(0px)',
     duration: 0.8,
     delay: delay,
     ease: 'expo.out',
@@ -113,7 +111,6 @@ function onItemLeave(el, done) {
   gsap.to(el, {
     opacity: 0,
     scale: 0.9,
-    filter: 'blur(10px)',
     duration: 0.4,
     ease: 'power2.in',
     onComplete: done
