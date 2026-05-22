@@ -23,7 +23,8 @@
     <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
     <div class="plan-list">
       <div ref="planListRef">
-        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :data-id="p.id" :style="{ animationDelay: (idx * 0.04) + 's' }">
+        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-outer">
+          <div class="plan-card" :class="{ completed: p.completed }" :data-id="p.id">
           <div class="priority-ring">
             <svg width="54" height="54" viewBox="0 0 54 54">
               <circle class="ring-bg" cx="27" cy="27" r="24"/>
@@ -65,6 +66,7 @@
               <button class="btn btn-glass btn-sm" @click="editPlan(p)">编辑</button>
               <button class="btn btn-danger btn-sm" @click="deletePlan(p.id)">删除</button>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -144,14 +146,13 @@ function animateCards() {
     if (!planListRef.value) return
     const cards = planListRef.value.querySelectorAll('.plan-card')
     if (!cards.length) return
-    gsap.set(cards, { clearProps: 'transform' })
+    gsap.set(cards, { clearProps: 'clipPath' })
     cardTween = gsap.from(cards, {
-      y: 16,
+      clipPath: 'inset(0 0 100% 0 round 16px)',
       duration: 0.4,
       stagger: 0.04,
       ease: 'power3.out',
-      force3D: true,
-      onComplete: () => gsap.set(cards, { clearProps: 'transform' })
+      onComplete: () => gsap.set(cards, { clearProps: 'clipPath' })
     })
   })
 }

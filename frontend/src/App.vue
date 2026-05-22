@@ -150,15 +150,15 @@ const handleKeydown = (e) => { if (e.key === 'Escape') document.querySelectorAll
 
 // GSAP Transition hooks
 function onBeforeEnter(el) {
-  gsap.set(el, { y: 20 })
+  gsap.set(el, { y: 20, clipPath: 'inset(0 0 100% 0)' })
 }
 
 function onEnter(el, done) {
   gsap.to(el, {
     y: 0,
+    clipPath: 'inset(0 0 0% 0)',
     duration: 0.4,
     ease: 'power3.out',
-    force3D: true,
     onComplete: done
   })
 }

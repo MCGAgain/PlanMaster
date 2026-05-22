@@ -23,7 +23,8 @@
     <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
     <div class="plan-list">
       <div ref="planListRef">
-        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card" :class="{ completed: p.completed }" :style="{ animationDelay: (idx * 0.04) + 's' }">
+        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-outer">
+          <div class="plan-card" :class="{ completed: p.completed }">
           <div class="priority-ring">
             <svg width="54" height="54" viewBox="0 0 54 54"><circle class="ring-bg" cx="27" cy="27" r="24"/><circle class="ring-fill" cx="27" cy="27" r="24" :stroke="priColor(p.priority) || 'rgba(168,163,191,0.4)'" :stroke-dasharray="2*Math.PI*24" :stroke-dashoffset="2*Math.PI*24*(1-getProgress(p)/100)"/></svg>
             <div class="priority-circle" :class="{ 'priority-none': !p.priority || p.priority <= 0 }" :style="p.priority > 0 ? `background: radial-gradient(circle, ${priColorLight(p.priority)} 0%, ${priColor(p.priority)} 100%)` : ''">{{ p.priority > 0 ? p.priority : '-' }}</div>
@@ -41,6 +42,7 @@
             <div class="plan-progress"><div class="plan-progress-track"><div class="plan-progress-bar" :style="{ width: getProgress(p)+'%' }"></div><input type="range" class="plan-progress-input" min="0" max="100" step="5" :value="getProgress(p)" @input="previewProgress($event)" @change="updateProgress(p.id, $event.target.value)"></div><span class="plan-progress-text">{{ getProgress(p) }}%</span></div>
             <div class="plan-card-actions"><button v-if="!p.completed" class="btn btn-success btn-sm" @click="completePlan(p.id)">&#10003; 完成</button><button class="btn btn-glass btn-sm" @click="editPlan(p)">编辑</button><button class="btn btn-danger btn-sm" @click="deletePlan(p.id)">删除</button></div>
           </div>
+          </div>
         </div>
       </div>
       <div v-if="!filteredPlans.length" class="empty-state">暂无计划，点击右上角添加</div>
@@ -56,7 +58,7 @@ import api from '@/api'
 const { matchPinyin } = usePinyin()
 const planType = 'weekly'
 const plans = ref([]); const searchKeyword = ref(''); const categoryProgress = ref(0); const signatures = ref([]); const sigIndex = ref(0); const currentSignature = ref(''); const showModal = ref(false); const editingPlanId = ref(null); const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 }); const timers = ref({}); const activeFocusSession = ref(null); const planListRef = ref(null); let planSaving = false; let cardTween = null
-function animateCards() { if (cardTween) cardTween.kill(); nextTick(() => { if (!planListRef.value) return; const cards = planListRef.value.querySelectorAll('.plan-card'); if (!cards.length) return; gsap.set(cards, { clearProps: 'transform' }); cardTween = gsap.from(cards, { y: 16, duration: 0.4, stagger: 0.04, ease: 'power3.out', force3D: true, onComplete: () => gsap.set(cards, { clearProps: 'transform' }) }) }) }
+function animateCards() { if (cardTween) cardTween.kill(); nextTick(() => { if (!planListRef.value) return; const cards = planListRef.value.querySelectorAll('.plan-card'); if (!cards.length) return; gsap.set(cards, { clearProps: 'clipPath' }); cardTween = gsap.from(cards, { clipPath: 'inset(0 0 100% 0 round 16px)', duration: 0.4, stagger: 0.04, ease: 'power3.out', onComplete: () => gsap.set(cards, { clearProps: 'clipPath' }) }) }) }
 const planDateLabel = computed(() => { const d = new Date(); return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()] })
 const filteredPlans = computed(() => { if (!searchKeyword.value) return plans.value; return plans.value.filter(p => matchPinyin(p.title, searchKeyword.value) || matchPinyin(p.description || '', searchKeyword.value)) })
 function priColor(p) { if (!p || p <= 0) return null; p = Math.min(100, Math.max(1, p)); return `hsl(${120 - (p / 100) * 120}, 72%, 52%)` }

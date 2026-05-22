@@ -607,6 +607,16 @@ body.bg-image {
 
 /* ---- Plan Cards ---- */
 .plan-list { display: flex; flex-direction: column; gap: 14px; }
+.plan-card-outer {
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  -webkit-transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.plan-card-outer:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(100,80,200,.14);
+}
 .plan-card {
   background: rgba(255,255,255,.55);
   background: var(--glass-bg);
@@ -615,20 +625,13 @@ body.bg-image {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 20px 22px;
-  box-shadow: var(--glass-shadow);
-  -webkit-transition: transform 0.2s ease, box-shadow 0.2s ease;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  will-change: transform, box-shadow;
   transform: translateZ(0);
   display: flex;
   gap: 16px;
   align-items: flex-start;
+  overflow: hidden;
 }
 
-.plan-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 48px rgba(100,80,200,.14);
-}
 
 .plan-card.completed {
   opacity: 0.55;
