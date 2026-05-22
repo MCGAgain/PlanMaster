@@ -1545,6 +1545,10 @@ async function pollUpdateStatus() {
             }
             if (d.status === 'restarting') {
                 pLabel.textContent = d.message || '正在重启安装...';
+                // Tell Electron to quit so the installer can replace and relaunch
+                if (window.electronAPI && window.electronAPI.quitAndRestart) {
+                    setTimeout(() => window.electronAPI.quitAndRestart(), 1500);
+                }
                 return;
             }
             if (d.status === 'idle') {
@@ -1565,6 +1569,10 @@ async function pollUpdateStatus() {
             if (failCount > 5) {
                 clearInterval(poll);
                 if (pLabel) pLabel.textContent = '应用即将重启...';
+                // Flask likely exited, tell Electron to quit for update
+                if (window.electronAPI && window.electronAPI.quitAndRestart) {
+                    setTimeout(() => window.electronAPI.quitAndRestart(), 1000);
+                }
             }
         }
     }, 1000);

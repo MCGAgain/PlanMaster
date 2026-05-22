@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // System
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
+  // Update - quit for restart
+  quitAndRestart: () => ipcRenderer.invoke('quit-and-restart'),
+
   // Platform info
   platform: process.platform,
   isMac: process.platform === 'darwin',

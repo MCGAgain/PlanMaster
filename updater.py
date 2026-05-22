@@ -278,6 +278,19 @@ def _generate_install_script(app_path, archive_path, archive_format):
         '  WAIT=$((WAIT + 1))\n'
         'done\n'
         'sleep 1\n'
+        '\n'
+        '# 等待 Electron 进程退出\n'
+        'log "等待 Electron 进程退出..."\n'
+        'ELECTRON_WAIT=0\n'
+        'while pgrep -f "PlanMaster.*Electron" >/dev/null 2>&1 && [ "$ELECTRON_WAIT" -lt 10 ]; do\n'
+        '  sleep 0.5\n'
+        '  ELECTRON_WAIT=$((ELECTRON_WAIT + 1))\n'
+        'done\n'
+        'if pgrep -f "PlanMaster.*Electron" >/dev/null 2>&1; then\n'
+        '  log "强制终止 Electron 进程..."\n'
+        '  pkill -f "PlanMaster.*Electron" 2>/dev/null || true\n'
+        '  sleep 1\n'
+        'fi\n'
     )
 
     if archive_format == 'dmg':

@@ -186,6 +186,12 @@ function startFlask() {
       console.log('Flask stdout:', stdoutData)
       console.log('Flask stderr:', stderrData)
       flaskProcess = null
+      // If Flask exits unexpectedly (e.g. during update), quit Electron
+      // so the update installer can replace the app and relaunch
+      if (code === 0 || code === null) {
+        console.log('Flask exited, quitting Electron for update...')
+        app.quit()
+      }
     })
 
     // Wait for Flask to be ready
@@ -326,4 +332,13 @@ ipcMain.handle('get-platform', () => {
 
 ipcMain.handle('is-electron', () => {
   return true
+})
+
+ipcMain.handle('quit-and-restart', () => {
+  console.log('Quit and restart requested by frontend')
+  if (flaskProcess) {
+    flaskProcess.kill()
+    flaskProcess = null
+  }
+  app.quit()
 })
