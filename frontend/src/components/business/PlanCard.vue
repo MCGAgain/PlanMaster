@@ -1,11 +1,29 @@
 <template>
   <div
+    ref="cardRef"
     class="plan-card"
-    :class="{ completed: plan.completed }"
+    :class="[
+      { completed: plan.completed || mode === 'recycle' },
+      `mode-${mode}`,
+      { selected: selected }
+    ]"
     :data-id="plan.id"
+    @mousedown="onPress"
+    @mouseup="onRelease"
+    @mouseleave="onRelease"
   >
+    <!-- 复选框 (仅在 recycle 模式下显示) -->
+    <div v-if="mode === 'recycle'" class="card-checkbox-wrap" @click.stop>
+      <input 
+        type="checkbox" 
+        :checked="selected" 
+        @change="$emit('select', plan.id)"
+        class="card-checkbox"
+      >
+    </div>
+
     <!-- 优先级圆形徽章 -->
-    <div class="priority-ring">
+    <div v-if="mode !== 'recycle'" class="priority-ring">
       <svg width="54" height="54" viewBox="0 0 54 54">
         <circle class="ring-bg" cx="27" cy="27" r="24" />
         <circle
@@ -32,37 +50,45 @@
       <div class="plan-card-title">
         {{ plan.title }}
         <span v-if="dateLabel" class="plan-date-label">{{ dateLabel }}</span>
+        <span v-if="plan.due_date" class="plan-date-label due">{{ plan.due_date }}</span>
       </div>
 
       <!-- 元信息 -->
       <div class="plan-card-meta">
         <span
+          v-if="plan.plan_type"
           class="plan-type-tag"
           :style="{ background: typeColor }"
         >
           {{ typeLabel }}
         </span>
 
+        <!-- 截止日期剩余天数 -->
+        <span v-if="dueDaysText" class="plan-badge" :class="dueBadgeClass">
+          {{ dueDaysText }}
+        </span>
+
         <!-- 建议时间 -->
-        <span v-if="plan.suggested_time" class="plan-badge badge-time">
+        <span v-if="plan.suggested_time && mode !== 'recycle'" class="plan-badge badge-time">
           &#128336; {{ plan.suggested_time }}
         </span>
 
-        <!-- 倒计时器按钮 -->
+        <!-- 计时器按钮 -->
         <button
-          v-if="plan.suggested_time"
-          class="btn timer-btn"
-          :class="{ counting: isTimerRunning }"
-          @click="$emit('toggleTimer', plan)"
+          v-if="plan.suggested_time && mode !== 'recycle'"
+          class="btn timer-btn btn-sm"
+          :class="{ counting: timerRemaining !== null }"
+          @click.stop="$emit('toggleTimer', plan.id, plan.suggested_time)"
         >
-          {{ timerText }}
+          {{ timerRemaining !== null ? fmtCountdown(timerRemaining) : '开始' }}
         </button>
 
         <!-- 专注按钮 -->
         <button
+          v-if="plan.plan_type !== 'important' && mode !== 'recycle'"
           class="btn focus-btn btn-sm"
           :class="{ focusing: isFocusing }"
-          @click="$emit('toggleFocus', plan)"
+          @click.stop="$emit('toggleFocus', plan)"
         >
           {{ isFocusing ? '&#9632; 停止' : '&#9654; 专注' }}
         </button>
@@ -78,13 +104,18 @@
         {{ plan.description }}
       </div>
 
+      <!-- 完成时间 (针对回收站模式) -->
+      <div v-if="mode === 'recycle' && plan.completed_at" class="recycle-info">
+        完成于 {{ fmtLocalTime(plan.completed_at) }}
+      </div>
+
       <!-- AI理由 -->
       <div v-if="plan.ai_reason" class="plan-card-reason">
         AI: {{ plan.ai_reason }}
       </div>
 
-      <!-- 进度条 -->
-      <div class="plan-progress">
+      <!-- 进度条 (非 Recycle 模式) -->
+      <div v-if="mode !== 'recycle'" class="plan-progress">
         <div class="plan-progress-track">
           <div class="plan-progress-bar" :style="{ width: `${currentProgress}%` }" />
           <input
@@ -103,48 +134,42 @@
 
       <!-- 操作按钮 -->
       <div class="plan-card-actions">
-        <button
-          v-if="!plan.completed"
-          class="btn btn-success btn-sm"
-          @click="$emit('complete', plan)"
-        >
-          &#10003; 完成
-        </button>
-        <button class="btn btn-glass btn-sm" @click="$emit('edit', plan)">
-          编辑
-        </button>
-        <button class="btn btn-danger btn-sm" @click="$emit('delete', plan)">
-          删除
-        </button>
+        <template v-if="mode === 'recycle'">
+          <button class="btn btn-glass btn-sm" @click.stop="$emit('restore', plan)">恢复</button>
+          <button class="btn btn-danger btn-sm" @click.stop="$emit('deletePermanent', plan)">永久删除</button>
+        </template>
+        <template v-else>
+          <button
+            v-if="!plan.completed"
+            class="btn btn-success btn-sm"
+            @click.stop="$emit('complete', plan)"
+          >
+            &#10003; 完成
+          </button>
+          <button class="btn btn-glass btn-sm" @click.stop="$emit('edit', plan)">编辑</button>
+          <button class="btn btn-danger btn-sm" @click.stop="$emit('delete', plan)">删除</button>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import gsap from 'gsap'
 
 const props = defineProps({
-  plan: {
-    type: Object,
-    required: true
-  },
-  isFocusing: {
-    type: Boolean,
-    default: false
-  },
-  focusElapsed: {
-    type: Number,
-    default: 0
-  },
-  timerRemaining: {
-    type: Number,
-    default: null
-  }
+  plan: { type: Object, required: true },
+  isFocusing: { type: Boolean, default: false },
+  timerRemaining: { type: Number, default: null },
+  mode: { type: String, default: 'default' }, // 'default' | 'recycle'
+  selected: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['complete', 'edit', 'delete', 'toggleTimer', 'toggleFocus', 'updateProgress'])
+const emit = defineEmits([
+  'complete', 'edit', 'delete', 'toggleTimer', 'toggleFocus', 
+  'updateProgress', 'restore', 'deletePermanent', 'select'
+])
 
 const PLAN_TYPE_LABELS = {
   important: '重要事项',
@@ -163,9 +188,7 @@ const PLAN_TYPE_COLORS = {
 }
 
 const circumference = 2 * Math.PI * 24
-
 const hasPriority = computed(() => props.plan.priority > 0)
-
 const currentProgress = ref(props.plan.progress || 0)
 
 watch(() => props.plan.progress, (newVal) => {
@@ -187,23 +210,37 @@ const priColorLight = (p) => {
 }
 
 const ringColor = computed(() => priColor(props.plan.priority) || 'rgba(168,163,191,0.4)')
-
-const ringOffset = computed(() => {
-  const prog = currentProgress.value
-  return circumference - (prog / 100) * circumference
-})
+const ringOffset = computed(() => circumference - (currentProgress.value / 100) * circumference)
 
 const circleBg = computed(() => {
   if (!hasPriority.value) return {}
   const color = priColor(props.plan.priority)
   const colorLight = priColorLight(props.plan.priority)
-  return {
-    background: `radial-gradient(circle, ${colorLight} 0%, ${color} 100%)`
-  }
+  return { background: `radial-gradient(circle, ${colorLight} 0%, ${color} 100%)` }
 })
 
 const typeLabel = computed(() => PLAN_TYPE_LABELS[props.plan.plan_type] || props.plan.plan_type)
 const typeColor = computed(() => PLAN_TYPE_COLORS[props.plan.plan_type] || '#7c6ef0')
+
+const dueDaysText = computed(() => {
+  if (!props.plan.due_date) return null
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const due = new Date(props.plan.due_date + 'T00:00:00')
+  const diff = Math.ceil((due - today) / 86400000)
+  if (diff < 0) return '已过期'
+  if (diff === 0) return '今日到期'
+  return `还剩 ${diff} 天`
+})
+
+const dueBadgeClass = computed(() => {
+  if (!props.plan.due_date) return ''
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const due = new Date(props.plan.due_date + 'T00:00:00')
+  const diff = Math.ceil((due - today) / 86400000)
+  if (diff <= 0) return 'badge-due-danger'
+  if (diff <= 3) return 'badge-due-warning'
+  return 'badge-due-info'
+})
 
 const dateLabel = computed(() => {
   const d = new Date()
@@ -216,22 +253,18 @@ const dateLabel = computed(() => {
   return ''
 })
 
-const isTimerRunning = computed(() => props.timerRemaining !== null)
+const fmtLocalTime = (ts) => {
+  return ts ? new Date(ts).toLocaleString('zh-CN', { 
+    year: 'numeric', month: '2-digit', day: '2-digit', 
+    hour: '2-digit', minute: '2-digit' 
+  }) : ''
+}
 
-const timerText = computed(() => {
-  if (props.timerRemaining !== null) {
-    const m = Math.floor(props.timerRemaining / 60)
-    const sec = Math.floor(props.timerRemaining % 60)
-    return m + ':' + String(sec).padStart(2, '0')
-  }
-  return '开始'
-})
-
-const fmtHMS = (totalSec) => {
-  const h = Math.floor(totalSec / 3600)
-  const m = Math.floor((totalSec % 3600) / 60)
-  const s = totalSec % 60
-  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
+const fmtCountdown = (s) => {
+  if (s === null || s === undefined) return ''
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${String(sec).padStart(2, '0')}`
 }
 
 const onProgressInput = (e) => {
@@ -239,48 +272,57 @@ const onProgressInput = (e) => {
 }
 
 const onProgressChange = (e) => {
-  const val = parseInt(e.target.value)
-  emit('updateProgress', props.plan.id, val)
+  emit('updateProgress', props.plan.id, parseInt(e.target.value))
 }
 
-// GSAP hover effects
+/**
+ * iOS-Style Animations & Interactions
+ */
 const cardRef = ref(null)
 
-onMounted(() => {
-  // Find the card element
-  const card = document.querySelector(`[data-id="${props.plan.id}"]`)
-  if (!card) return
-
-  cardRef.value = card
-
-  // Ensure backdrop-filter blur is applied from frame 1 (not animated)
-  card.style.backdropFilter = 'blur(20px)'
-  card.style.webkitBackdropFilter = 'blur(20px)'
-
-  // Entrance animation
-  gsap.from(card, {
-    opacity: 0,
-    y: 20,
-    scale: 0.95,
+const onPress = () => {
+  gsap.to(cardRef.value, {
+    scale: 0.97,
     duration: 0.4,
-    ease: 'power2.out'
+    ease: 'expo.out'
   })
+}
 
-  // Hover effects
-  card.addEventListener('mouseenter', () => {
-    gsap.to(card, {
-      y: -3,
-      boxShadow: '0 16px 48px rgba(100,80,200,.14)',
-      duration: 0.2,
+const onRelease = () => {
+  gsap.to(cardRef.value, {
+    scale: 1,
+    duration: 0.6,
+    ease: 'elastic.out(1, 0.7)'
+  })
+}
+
+onMounted(() => {
+  if (!cardRef.value) return
+
+  // 1. Entrance animation (iOS-style staggered fade and slide)
+  gsap.fromTo(cardRef.value, 
+    { opacity: 0, y: 30, scale: 0.9, filter: 'blur(10px)' }, 
+    { 
+      opacity: 1, y: 0, scale: 1, filter: 'blur(0px)',
+      duration: 1.2, ease: 'expo.out', clearProps: 'filter'
+    }
+  )
+
+  // 2. Hover logic
+  cardRef.value.addEventListener('mouseenter', () => {
+    gsap.to(cardRef.value, {
+      y: -5,
+      boxShadow: '0 20px 40px rgba(100, 80, 200, 0.15)',
+      duration: 0.4,
       ease: 'power2.out'
     })
   })
 
-  card.addEventListener('mouseleave', () => {
-    gsap.to(card, {
+  cardRef.value.addEventListener('mouseleave', () => {
+    gsap.to(cardRef.value, {
       y: 0,
-      boxShadow: '0 8px 32px rgba(100,80,200,.08)',
-      duration: 0.2,
+      boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
+      duration: 0.4,
       ease: 'power2.out'
     })
   })
@@ -289,30 +331,64 @@ onMounted(() => {
 
 <style scoped>
 .plan-card {
+  position: relative;
   display: flex;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  gap: 1.25rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
   border-radius: var(--radius);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  transition: transform var(--transition-normal) var(--ease-default), box-shadow var(--transition-normal) var(--ease-default);
+  box-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+  cursor: pointer;
+  z-index: 1;
   will-change: transform, box-shadow;
 }
 
+.plan-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: inherit;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
 .plan-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(100, 80, 200, 0.12);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(100, 80, 200, 0.15);
 }
 
-.plan-card.completed {
-  opacity: 0.7;
+.plan-card.selected::before {
+  border-color: var(--primary);
+  background: rgba(124, 110, 240, 0.1);
 }
 
-.plan-card.completed .plan-card-title {
-  text-decoration: line-through;
+.plan-card.completed { opacity: 0.6; }
+.plan-card.completed .plan-card-title { text-decoration: line-through; color: var(--text-muted); }
+
+/* Recycle Mode Styles */
+.card-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.5rem;
+}
+
+.card-checkbox {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.recycle-info {
+  font-size: 0.8rem;
   color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
 }
 
 /* 优先级圆形徽章 */
@@ -329,15 +405,15 @@ onMounted(() => {
 
 .ring-bg {
   fill: none;
-  stroke: rgba(168, 163, 191, 0.2);
-  stroke-width: 3;
+  stroke: rgba(168, 163, 191, 0.15);
+  stroke-width: 3.5;
 }
 
 .ring-fill {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 3.5;
   stroke-linecap: round;
-  transition: stroke-dashoffset 0.3s ease;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .priority-circle {
@@ -345,8 +421,8 @@ onMounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 36px;
-  height: 54px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -354,14 +430,14 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 700;
   color: white;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .priority-circle.priority-none {
-  background: rgba(168, 163, 191, 0.3);
+  background: rgba(168, 163, 191, 0.2);
   color: var(--text-muted);
+  box-shadow: none;
 }
 
 /* 计划卡片内容 */
@@ -371,84 +447,99 @@ onMounted(() => {
 }
 
 .plan-card-title {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.15rem;
+  font-weight: 700;
   color: var(--text);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .plan-date-label {
   font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.6rem;
   background: var(--primary-light);
   color: var(--primary);
-  border-radius: 4px;
-  font-weight: 500;
+  border-radius: 6px;
+  font-weight: 600;
 }
+
+.plan-date-label.due {
+  background: rgba(168, 163, 191, 0.1);
+  color: var(--text-soft);
+  border: 1px solid rgba(168, 163, 191, 0.2);
+}
+
+.badge-due-danger { background: rgba(248, 113, 113, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+.badge-due-warning { background: rgba(251, 191, 36, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+.badge-due-info { background: rgba(124, 110, 240, 0.15); color: var(--primary); border: 1px solid var(--primary); }
 
 .plan-card-meta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .plan-type-tag {
   font-size: 0.7rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
   color: white;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .plan-badge {
   font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 500;
 }
 
 .badge-time {
-  background: rgba(124, 110, 240, 0.1);
+  background: rgba(124, 110, 240, 0.08);
   color: var(--primary);
 }
 
 .badge-value {
-  background: rgba(52, 211, 153, 0.1);
+  background: rgba(52, 211, 153, 0.08);
   color: var(--success);
 }
 
 .plan-card-desc {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--text-soft);
-  margin-bottom: 0.75rem;
-  line-height: 1.5;
+  margin-bottom: 1rem;
+  line-height: 1.6;
 }
 
 .plan-card-reason {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
-  margin-bottom: 0.75rem;
-  font-style: italic;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(168, 163, 191, 0.05);
+  border-left: 3px solid var(--text-muted);
+  border-radius: 0 6px 6px 0;
 }
 
 /* 进度条 */
 .plan-progress {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .plan-progress-track {
   flex: 1;
-  height: 8px;
-  background: rgba(124, 110, 240, 0.1);
-  border-radius: 4px;
+  height: 10px;
+  background: rgba(124, 110, 240, 0.06);
+  border-radius: 5px;
   overflow: hidden;
   position: relative;
 }
@@ -456,8 +547,8 @@ onMounted(() => {
 .plan-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--primary), #a78bfa);
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: 5px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .plan-progress-input {
@@ -468,62 +559,57 @@ onMounted(() => {
   height: 100%;
   opacity: 0;
   cursor: pointer;
-  margin: 0;
 }
 
 .plan-progress-text {
-  font-size: 0.8rem;
-  color: var(--text-soft);
-  min-width: 35px;
-  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 45px;
 }
 
 /* 操作按钮 */
 .plan-card-actions {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.plan-card:hover .plan-card-actions {
+  opacity: 1;
 }
 
 .btn {
-  padding: 0.4rem 0.8rem;
+  padding: 0.5rem 1rem;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 10px;
   font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-sm {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
+.btn:active {
+  transform: scale(0.92);
 }
 
 .btn-success {
-  background: rgba(52, 211, 153, 0.15);
-  color: var(--success);
-  border: 1px solid var(--success);
-}
-
-.btn-success:hover {
   background: var(--success);
   color: white;
+  box-shadow: 0 4px 12px rgba(52, 211, 153, 0.2);
 }
 
 .btn-glass {
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text);
   border: 1px solid var(--glass-border);
 }
 
-.btn-glass:hover {
-  background: var(--glass-border);
-}
-
 .btn-danger {
-  background: rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.1);
   color: var(--danger);
-  border: 1px solid var(--danger);
+  border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
 .btn-danger:hover {
@@ -532,42 +618,40 @@ onMounted(() => {
 }
 
 .timer-btn {
-  background: var(--primary-light);
-  color: var(--primary);
-  border: 1px solid var(--primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.timer-btn:hover {
-  background: var(--primary);
-  color: white;
+  background: rgba(168, 163, 191, 0.1);
+  color: var(--text-soft);
+  border: 1px solid rgba(168, 163, 191, 0.2);
 }
 
 .timer-btn.counting {
-  background: var(--primary);
+  background: var(--warning);
   color: white;
-  animation: pulse 2s infinite;
+  border-color: var(--warning);
+  animation: timer-pulse 2s infinite;
+}
+
+@keyframes timer-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
 }
 
 .focus-btn {
-  background: rgba(124, 110, 240, 0.1);
+  background: var(--primary-light);
   color: var(--primary);
-  border: 1px solid rgba(124, 110, 240, 0.3);
-}
-
-.focus-btn:hover {
-  background: var(--primary);
-  color: white;
+  border: 1px solid var(--primary);
 }
 
 .focus-btn.focusing {
   background: var(--danger);
   color: white;
   border-color: var(--danger);
+  animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); }
+  70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(248, 113, 113, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
 }
 </style>

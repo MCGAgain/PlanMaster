@@ -359,7 +359,7 @@ body.bg-image {
 /* ---- Sidebar ---- */
 .sidebar {
   width: 260px;
-  background: rgba(255,255,255,.65);
+  height: 100vh; /* 确保侧边栏占满全屏高度 */
   background: var(--sidebar-glass);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
@@ -368,8 +368,9 @@ body.bg-image {
   flex-direction: column;
   flex-shrink: 0;
   overflow: hidden;
-  will-change: backdrop-filter;
-  transform: translateZ(0);
+  will-change: transform, backdrop-filter;
+  z-index: 100; /* 确保侧边栏在顶层 */
+  position: relative;
 }
 
 .sidebar-header {
@@ -486,16 +487,48 @@ body.bg-image {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  margin: 4px 10px;
+  gap: 12px;
+  padding: 10px 16px;
+  margin: 4px 12px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
   color: var(--text-soft);
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
-  border-left: 3px solid transparent;
-  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
   position: relative;
+}
+
+.nav-item:hover {
+  background: rgba(124, 110, 240, 0.08);
+  color: var(--primary);
+  transform: translateX(4px);
+}
+
+.nav-item:active {
+  transform: scale(0.96) translateX(4px);
+}
+
+.nav-item.active {
+  background: var(--primary);
+  color: white !important;
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.nav-icon {
+  font-size: 18px;
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-item.active .nav-icon {
+  color: white !important;
 }
 
 .nav-item::before {
@@ -511,27 +544,7 @@ body.bg-image {
   opacity: 1;
 }
 
-.nav-item.active {
-  border-left-color: var(--primary);
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.nav-item.active::before {
-  opacity: 1;
-}
-
-.nav-group-items .nav-item {
-  padding-left: 20px;
-  margin-left: 24px;
-  margin-right: 10px;
-}
-
-.nav-icon {
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
-}
+/* Navigation items handled above in the new iOS-style block */
 
 /* ---- Content ---- */
 .content {
@@ -607,16 +620,6 @@ body.bg-image {
 
 /* ---- Plan Cards ---- */
 .plan-list { display: flex; flex-direction: column; gap: 14px; }
-.plan-card-outer {
-  border-radius: var(--radius);
-  box-shadow: var(--glass-shadow);
-  -webkit-transition: transform 0.2s ease, box-shadow 0.2s ease;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.plan-card-outer:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 16px 48px rgba(100,80,200,.14);
-}
 .plan-card {
   background: rgba(255,255,255,.55);
   background: var(--glass-bg);

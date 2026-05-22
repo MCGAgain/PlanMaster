@@ -7,70 +7,60 @@
         <button class="btn btn-gradient" @click="aiSortPlans">&#9889; AI智能排序</button>
       </div>
     </div>
+    
     <div class="search-wrap">
-      <input type="text" class="search-input" placeholder="搜索计划... (支持拼音)" v-model="searchKeyword" @input="filterPlans">
+      <input 
+        type="text" 
+        class="search-input" 
+        placeholder="搜索计划... (支持拼音)" 
+        v-model="searchKeyword" 
+        @input="filterPlans"
+      >
       <span class="search-clear" v-show="searchKeyword" @click="clearSearch">&times;</span>
     </div>
+
     <div class="category-progress">
       <div class="category-progress-info">
-        <span class="category-progress-label">完成进度</span>
+        <span class="category-progress-label">今日完成进度</span>
         <span class="category-progress-text">{{ categoryProgress }}%</span>
       </div>
       <div class="category-progress-track">
         <div class="category-progress-bar" :style="{ width: categoryProgress + '%' }"></div>
       </div>
     </div>
+
     <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
+
     <div class="plan-list">
-      <div ref="planListRef">
-        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-outer">
-          <div class="plan-card" :class="{ completed: p.completed }" :data-id="p.id">
-          <div class="priority-ring">
-            <svg width="54" height="54" viewBox="0 0 54 54">
-              <circle class="ring-bg" cx="27" cy="27" r="24"/>
-              <circle class="ring-fill" cx="27" cy="27" r="24"
-                :stroke="priColor(p.priority) || 'rgba(168,163,191,0.4)'"
-                :stroke-dasharray="2 * Math.PI * 24"
-                :stroke-dashoffset="2 * Math.PI * 24 * (1 - getProgress(p) / 100)"/>
-            </svg>
-            <div class="priority-circle" :class="{ 'priority-none': !p.priority || p.priority <= 0 }"
-              :style="p.priority > 0 ? `background: radial-gradient(circle, ${priColorLight(p.priority)} 0%, ${priColor(p.priority)} 100%)` : ''">
-              {{ p.priority > 0 ? p.priority : '-' }}
-            </div>
-          </div>
-          <div class="plan-card-body">
-            <div class="plan-card-title">{{ p.title }}<span v-if="planDateLabel" class="plan-date-label">{{ planDateLabel }}</span></div>
-            <div class="plan-card-meta">
-              <span class="plan-type-tag" :style="{ background: '#7c6ef0' }">今日待办</span>
-              <template v-if="p.suggested_time">
-                <span class="plan-badge badge-time">&#128336; {{ p.suggested_time }}</span>
-                <button class="btn timer-btn" :class="{ counting: timers[p.id] }" @click="toggleTimer(p.id, p.suggested_time)">{{ timers[p.id] ? fmtCountdown(timers[p.id].remaining) : '开始' }}</button>
-              </template>
-              <button class="btn focus-btn btn-sm" :class="{ focusing: activeFocusSession && activeFocusSession.plan_id === p.id }" @click="toggleFocus(p.id)">
-                {{ activeFocusSession && activeFocusSession.plan_id === p.id ? '&#9632; 停止' : '&#9654; 专注' }}
-              </button>
-              <span v-if="p.virtual_value > 0" class="plan-badge badge-value">{{ p.virtual_value }} 价值</span>
-            </div>
-            <div v-if="p.description" class="plan-card-desc">{{ p.description }}</div>
-            <div v-if="p.ai_reason" class="plan-card-reason">AI: {{ p.ai_reason }}</div>
-            <div class="plan-progress">
-              <div class="plan-progress-track">
-                <div class="plan-progress-bar" :style="{ width: getProgress(p) + '%' }"></div>
-                <input type="range" class="plan-progress-input" min="0" max="100" step="5" :value="getProgress(p)"
-                  @input="previewProgress($event)" @change="updateProgress(p.id, $event.target.value)">
-              </div>
-              <span class="plan-progress-text">{{ getProgress(p) }}%</span>
-            </div>
-            <div class="plan-card-actions">
-              <button v-if="!p.completed" class="btn btn-success btn-sm" @click="completePlan(p.id)">&#10003; 完成</button>
-              <button class="btn btn-glass btn-sm" @click="editPlan(p)">编辑</button>
-              <button class="btn btn-danger btn-sm" @click="deletePlan(p.id)">删除</button>
-            </div>
-          </div>
-          </div>
+      <TransitionGroup 
+        name="list" 
+        tag="div" 
+        class="plan-list-inner"
+        @before-enter="onItemBeforeEnter"
+        @enter="onItemEnter"
+        @leave="onItemLeave"
+      >
+        <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-wrapper" :data-index="idx">
+          <PlanCard
+            :plan="p"
+            :is-focusing="activeFocusSession && activeFocusSession.plan_id === p.id"
+            :timer-remaining="timers[p.id] ? timers[p.id].remaining : null"
+            @complete="completePlan"
+            @edit="editPlan"
+            @delete="deletePlan"
+            @toggleTimer="toggleTimer"
+            @toggleFocus="toggleFocus"
+            @updateProgress="updateProgress"
+          />
         </div>
-      </div>
-      <div v-if="!filteredPlans.length" class="empty-state">暂无计划，点击右上角添加</div>
+      </TransitionGroup>
+      
+      <Transition name="fade">
+        <div v-if="!filteredPlans.length" class="empty-state">
+          <div class="empty-icon">&#128301;</div>
+          <p>今日暂无计划，点击右上角开始新的一天</p>
+        </div>
+      </Transition>
     </div>
 
     <!-- Add/Edit Plan Modal -->
@@ -104,7 +94,7 @@
             <label>完成进度: {{ form.progress }}%</label>
             <input type="range" class="progress-range-input" v-model="form.progress" min="0" max="100" step="5">
           </div>
-          <small class="form-hint">优先级和价值留空时，配置AI后会自动评估；未配置AI则默认为0</small>
+          <small class="form-hint">优先级和价值留空时，配置AI后会自动评估</small>
         </div>
         <div class="modal-footer">
           <button class="btn btn-glass" @click="closeModal">取消</button>
@@ -120,12 +110,12 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
 import gsap from 'gsap'
 import api from '@/api'
+import PlanCard from '@/components/business/PlanCard.vue'
 
 const { matchPinyin } = usePinyin()
 
 const planType = 'today'
 const plans = ref([])
-const allPlans = ref([])
 const searchKeyword = ref('')
 const categoryProgress = ref(0)
 const signatures = ref([])
@@ -136,84 +126,77 @@ const editingPlanId = ref(null)
 const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 })
 const timers = ref({})
 const activeFocusSession = ref(null)
-const planListRef = ref(null)
-let planSaving = false
-let cardTween = null
 
-function animateCards() {
-  if (cardTween) cardTween.kill()
-  nextTick(() => {
-    if (!planListRef.value) return
-    const cards = planListRef.value.querySelectorAll('.plan-card')
-    if (!cards.length) return
-    gsap.set(cards, { clearProps: 'clipPath' })
-    cardTween = gsap.from(cards, {
-      clipPath: 'inset(0 0 100% 0 round 16px)',
-      duration: 0.5,
-      stagger: 0.06,
-      ease: 'power2.out',
-      onComplete: () => gsap.set(cards, { clearProps: 'clipPath' })
-    })
+/**
+ * GSAP Transition Group Hooks (iOS-style)
+ */
+function onItemBeforeEnter(el) {
+  gsap.set(el, {
+    opacity: 0,
+    y: 30,
+    scale: 0.94,
+    filter: 'blur(10px)'
   })
 }
 
-const planDateLabel = computed(() => {
-  const d = new Date()
-  return (d.getMonth() + 1) + '月' + d.getDate() + '日'
-})
+function onItemEnter(el, done) {
+  const delay = el.dataset.index * 0.05
+  gsap.to(el, {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: 'blur(0px)',
+    duration: 0.8,
+    delay: delay,
+    ease: 'expo.out',
+    onComplete: done
+  })
+}
+
+function onItemLeave(el, done) {
+  gsap.to(el, {
+    opacity: 0,
+    scale: 0.9,
+    filter: 'blur(10px)',
+    duration: 0.4,
+    ease: 'power2.in',
+    onComplete: done
+  })
+}
+
+let planSaving = false
 
 const filteredPlans = computed(() => {
   if (!searchKeyword.value) return plans.value
-  return plans.value.filter(p => matchPinyin(p.title, searchKeyword.value) || matchPinyin(p.description || '', searchKeyword.value))
+  return plans.value.filter(p => 
+    matchPinyin(p.title, searchKeyword.value) || 
+    matchPinyin(p.description || '', searchKeyword.value)
+  )
 })
 
 const filterPlans = () => {}
 const clearSearch = () => { searchKeyword.value = '' }
 
-function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML }
-function priColor(p) { if (!p || p <= 0) return null; p = Math.min(100, Math.max(1, p)); return `hsl(${120 - (p / 100) * 120}, 72%, 52%)` }
-function priColorLight(p) { if (!p || p <= 0) return null; p = Math.min(100, Math.max(1, p)); return `hsl(${120 - (p / 100) * 120}, 72%, 92%)` }
-
-function getProgress(p) {
-  if (timers.value[p.id]) return Math.min(99, Math.round((1 - timers.value[p.id].remaining / timers.value[p.id].total) * 100))
-  return Math.min(100, Math.max(0, p.progress || 0))
-}
-
-function fmtCountdown(s) { const m = Math.floor(s / 60), sec = Math.floor(s % 60); return m + ':' + String(sec).padStart(2, '0') }
-function parseSuggestedTime(str) { if (!str) return 0; const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/); if (!m) return 0; const v = parseFloat(m[1]); return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : m[2] === '小时' ? v * 3600 : m[2] === '天' ? v * 86400 : v * 604800 }
-
-function previewProgress(e) {
-  const track = e.target.closest('.plan-progress-track')
-  const bar = track.querySelector('.plan-progress-bar')
-  const text = e.target.closest('.plan-progress').querySelector('.plan-progress-text')
-  bar.style.width = e.target.value + '%'
-  text.textContent = e.target.value + '%'
-}
-
-const showNextSignature = () => {
-  if (!signatures.value.length) { currentSignature.value = ''; return }
-  currentSignature.value = signatures.value[sigIndex.value % signatures.value.length]
-  sigIndex.value++
-}
-
 const loadPlans = async () => {
   try {
     const [active, progress] = await Promise.all([
       api.getPlans(planType),
-      api.getPlanProgress(planType).catch(() => ({ completed: 0, total: 0, percentage: 0 }))
+      api.getPlanProgress(planType).catch(() => ({ percentage: 0 }))
     ])
     plans.value = active
-    allPlans.value = active
     categoryProgress.value = progress.percentage || 0
-    animateCards()
-  } catch (e) { window.toast('加载失败: ' + e.message, true) }
+  } catch (e) { 
+    window.toast('加载失败: ' + e.message, true) 
+  }
 }
 
 const loadSignatures = async () => {
   try {
     const rows = await api.getSignatures()
     signatures.value = rows.map(r => r.content).filter(c => c.trim())
-    showNextSignature()
+    if (signatures.value.length) {
+      currentSignature.value = signatures.value[0]
+    }
   } catch (e) {}
 }
 
@@ -225,7 +208,13 @@ const showAddPlanModal = () => {
 
 const editPlan = (p) => {
   editingPlanId.value = p.id
-  form.value = { title: p.title, description: p.description || '', priority: p.priority || '', virtual_value: p.virtual_value || '', progress: p.progress || 0 }
+  form.value = { 
+    title: p.title, 
+    description: p.description || '', 
+    priority: p.priority || '', 
+    virtual_value: p.virtual_value || '', 
+    progress: p.progress || 0 
+  }
   showModal.value = true
 }
 
@@ -237,74 +226,100 @@ const savePlan = async () => {
   if (!title) { window.toast('请输入标题', true); return }
   planSaving = true
   try {
-    const body = { title, description: form.value.description.trim(), progress: parseInt(form.value.progress) || 0 }
+    const body = { 
+      title, 
+      description: form.value.description.trim(), 
+      progress: parseInt(form.value.progress) || 0 
+    }
     if (form.value.priority !== '') body.priority = parseInt(form.value.priority)
     if (form.value.virtual_value !== '') body.virtual_value = parseFloat(form.value.virtual_value)
+    
     if (editingPlanId.value) {
       await api.updatePlan(editingPlanId.value, body)
       window.toast('已更新')
     } else {
       body.plan_type = planType
-      const newPlan = await api.createPlan(body)
+      await api.createPlan(body)
       window.toast('已创建')
-      if (!form.value.priority && !form.value.virtual_value && newPlan && newPlan.id) {
-        let polls = 0
-        const poll = setInterval(async () => {
-          try {
-            const pl = await api.getPlans(planType)
-            const found = pl.find(x => x.id === newPlan.id)
-            if (found && found.priority > 0) { clearInterval(poll); loadPlans() }
-          } catch (_) {}
-          if (++polls >= 15) clearInterval(poll)
-        }, 1000)
-      }
     }
     closeModal()
     await loadPlans()
-    showNextSignature()
-  } catch (e) { window.toast('保存失败: ' + e.message, true) }
-  finally { planSaving = false }
+  } catch (e) { 
+    window.toast('保存失败: ' + e.message, true) 
+  } finally { 
+    planSaving = false 
+  }
 }
 
-const deletePlan = async (id) => {
+const deletePlan = async (p) => {
   if (!confirm('确定删除此计划？')) return
+  const id = p.id
   if (timers.value[id]) stopTimer(id)
   if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
-  try { await api.deletePlan(id); window.toast('计划已删除'); await loadPlans() }
-  catch (e) { window.toast('删除失败: ' + e.message, true) }
+  try { 
+    await api.deletePlan(id)
+    window.toast('计划已删除')
+    await loadPlans() 
+  } catch (e) { 
+    window.toast('删除失败: ' + e.message, true) 
+  }
 }
 
-const completePlan = async (id) => {
+const completePlan = async (p) => {
+  const id = p.id
   if (timers.value[id]) stopTimer(id)
   if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
-  try { await api.completePlan(id); window.toast('计划已完成，虚拟价值已入账！'); await loadPlans(); window.loadBalance && window.loadBalance() }
-  catch (e) { window.toast('操作失败: ' + e.message, true) }
+  try { 
+    await api.completePlan(id)
+    window.toast('计划已完成！')
+    await loadPlans()
+    window.loadBalance && window.loadBalance()
+  } catch (e) { 
+    window.toast('操作失败: ' + e.message, true) 
+  }
 }
 
 const updateProgress = async (id, val) => {
   const v = parseInt(val)
   if (v >= 100) {
-    if (timers.value[id]) stopTimer(id)
-    if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
-    try { await api.completePlan(id); window.toast('计划已完成，虚拟价值已入账！'); await loadPlans(); window.loadBalance && window.loadBalance() }
-    catch (e) { window.toast('更新失败: ' + e.message, true) }
+    const p = plans.value.find(x => x.id === id)
+    if (p) completePlan(p)
     return
   }
-  try { await api.updatePlan(id, { progress: v }); categoryProgress.value = (await api.getPlanProgress(planType)).percentage || 0 }
-  catch (e) { window.toast('更新失败: ' + e.message, true) }
+  try { 
+    await api.updatePlan(id, { progress: v })
+    const progress = await api.getPlanProgress(planType)
+    categoryProgress.value = progress.percentage || 0
+  } catch (e) { 
+    window.toast('更新失败: ' + e.message, true) 
+  }
 }
 
 const aiSortPlans = async () => {
-  try { const r = await api.sortPlans(planType); window.toast('AI排序完成，已更新 ' + r.length + ' 条计划'); await loadPlans() }
-  catch (e) { window.toast('AI排序失败: ' + e.message, true) }
+  try { 
+    const r = await api.sortPlans(planType)
+    window.toast('AI排序完成')
+    await loadPlans() 
+  } catch (e) { 
+    window.toast('AI排序失败: ' + e.message, true) 
+  }
 }
 
-// Timer
+// Timer Logic
 const toggleTimer = (id, timeStr) => {
   id = parseInt(id)
   if (timers.value[id]) { stopTimer(id); return }
   const sec = parseSuggestedTime(timeStr)
   if (sec > 0) startTimer(id, sec)
+}
+
+function parseSuggestedTime(str) { 
+  if (!str) return 0
+  const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/)
+  if (!m) return 0
+  const v = parseFloat(m[1])
+  const unitMap = { '秒': 1, '分钟': 60, '小时': 3600, '天': 86400, '周': 604800 }
+  return v * (unitMap[m[2]] || 1)
 }
 
 const startTimer = (id, totalSec) => {
@@ -313,27 +328,34 @@ const startTimer = (id, totalSec) => {
   timers.value[id].interval = setInterval(() => {
     const elapsed = Math.floor((Date.now() - timers.value[id].startAt) / 1000)
     timers.value[id].remaining = Math.max(0, timers.value[id].total - elapsed)
-    if (timers.value[id].remaining <= 0) { clearInterval(timers.value[id].interval); delete timers.value[id] }
+    if (timers.value[id].remaining <= 0) { 
+      stopTimer(id)
+      window.toast('计时结束！')
+    }
   }, 1000)
 }
 
 const stopTimer = (id) => {
-  if (!timers.value[id]) return
-  clearInterval(timers.value[id].interval)
-  delete timers.value[id]
+  if (timers.value[id]) {
+    clearInterval(timers.value[id].interval)
+    delete timers.value[id]
+  }
 }
 
-// Focus
-const toggleFocus = async (planId) => {
+// Focus Logic
+const toggleFocus = async (p) => {
+  const planId = p.id
   if (activeFocusSession.value && activeFocusSession.value.plan_id === planId) {
     await stopFocus()
   } else {
     if (activeFocusSession.value) await stopFocus()
     try {
       const session = await api.createSession({ plan_id: planId, start_time: new Date().toISOString() })
-      activeFocusSession.value = { id: session.id, plan_id: planId, start_time: new Date(session.start_time) }
+      activeFocusSession.value = { id: session.id, plan_id: planId, start_time: new Date() }
       window.toast('专注已开始')
-    } catch (e) { window.toast('启动失败: ' + e.message, true) }
+    } catch (e) { 
+      window.toast('启动失败: ' + e.message, true) 
+    }
   }
 }
 
@@ -342,7 +364,9 @@ const stopFocus = async () => {
   try {
     await api.endSession(activeFocusSession.value.id, { end_time: new Date().toISOString() })
     window.toast('专注已结束')
-  } catch (e) { window.toast('结束失败: ' + e.message, true) }
+  } catch (e) { 
+    window.toast('结束失败: ' + e.message, true) 
+  }
   activeFocusSession.value = null
   await loadPlans()
 }
@@ -354,9 +378,7 @@ const restoreFocusSession = async () => {
     if (!unfinished) return
     const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000
     if (elapsed > 14400) { await api.endSession(unfinished.id, { end_time: new Date().toISOString() }); return }
-    if (unfinished.plan_id) {
-      activeFocusSession.value = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() }
-    }
+    if (unfinished.plan_id) activeFocusSession.value = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() }
   } catch (e) {}
 }
 
@@ -367,6 +389,112 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  Object.values(timers.value).forEach(t => { if (t.interval) clearInterval(t.interval) })
+  Object.values(timers.value).forEach(t => clearInterval(t.interval))
 })
 </script>
+
+<style scoped>
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-bottom: 2rem;
+}
+
+.plan-card-wrapper {
+  will-change: transform, opacity;
+}
+
+.category-progress {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+}
+
+.category-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.category-progress-label {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.category-progress-text {
+  font-weight: 800;
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.category-progress-track {
+  height: 12px;
+  background: rgba(124, 110, 240, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.category-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 6px;
+  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.list-move {
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.list-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
+.signature-bar {
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  font-style: italic;
+  color: var(--text-soft);
+  background: rgba(124, 110, 240, 0.04);
+  border-radius: 8px;
+  border-left: 4px solid var(--primary);
+  font-size: 0.9rem;
+  display: none;
+}
+
+.signature-bar.show {
+  display: block;
+  animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

@@ -81,6 +81,11 @@ const handleClick = (e) => {
   opacity: 1;
 }
 
+.glass-button:active:not(.disabled) {
+  transform: scale(0.96);
+  transition: transform 0.1s ease;
+}
+
 /* Sizes */
 .glass-button.small {
   padding: 0.5rem 1rem;

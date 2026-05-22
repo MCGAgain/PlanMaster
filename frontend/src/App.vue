@@ -150,15 +150,23 @@ const handleKeydown = (e) => { if (e.key === 'Escape') document.querySelectorAll
 
 // GSAP Transition hooks
 function onBeforeEnter(el) {
-  gsap.set(el, { y: 20, clipPath: 'inset(0 0 100% 0 round 0px)' })
+  gsap.set(el, { 
+    opacity: 0, 
+    scale: 0.96, 
+    y: 15,
+    filter: 'blur(10px)'
+  })
 }
 
 function onEnter(el, done) {
   gsap.to(el, {
+    opacity: 1,
+    scale: 1,
     y: 0,
-    clipPath: 'inset(0 0 0% 0 round 0px)',
-    duration: 0.4,
-    ease: 'power3.out',
+    filter: 'blur(0px)',
+    duration: 0.8,
+    ease: 'expo.out',
+    clearProps: 'filter,transform',
     onComplete: done
   })
 }
@@ -166,30 +174,35 @@ function onEnter(el, done) {
 function onLeave(el, done) {
   gsap.to(el, {
     opacity: 0,
+    scale: 1.02,
     y: -10,
-    duration: 0.2,
-    ease: 'power2.in',
+    filter: 'blur(5px)',
+    duration: 0.4,
+    ease: 'power2.inOut',
     onComplete: done
   })
 }
 
 // Toast transitions
 function onToastEnter(el, done) {
-  gsap.from(el, {
-    opacity: 0,
-    y: 50,
-    x: '-50%',
-    duration: 0.4,
-    ease: 'back.out(1.7)',
-    onComplete: done
-  })
+  gsap.fromTo(el, 
+    { opacity: 0, y: 30, scale: 0.9 },
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.6,
+      ease: 'elastic.out(1, 0.8)',
+      onComplete: done
+    }
+  )
 }
 
 function onToastLeave(el, done) {
   gsap.to(el, {
     opacity: 0,
-    y: 50,
-    x: '-50%',
+    scale: 0.9,
+    y: 20,
     duration: 0.3,
     ease: 'power2.in',
     onComplete: done
@@ -203,14 +216,33 @@ onMounted(async () => {
   applyGlassStyle(savedGlassStyle)
   document.addEventListener('keydown', handleKeydown)
 
-  // Animate sidebar entrance with GSAP
+  // Animate sidebar entrance with iOS-style fluid slide
   if (sidebarRef.value) {
-    gsap.from(sidebarRef.value, {
-      x: -40,
+    // Force initial visibility just in case
+    sidebarRef.value.style.visibility = 'visible'
+    sidebarRef.value.style.opacity = '1'
+
+    const tl = gsap.timeline({ defaults: { ease: 'expo.out' } })
+    
+    // 1. Sidebar container slide & fade
+    tl.from(sidebarRef.value, {
+      x: -100,
       opacity: 0,
-      duration: 0.6,
-      ease: 'power3.out'
+      duration: 1.4,
+      clearProps: 'x,opacity'
     })
+    
+    // 2. Staggered entrance for top-level menu items
+    const navItems = sidebarRef.value.querySelectorAll('.nav-menu > li')
+    if (navItems.length) {
+      tl.from(navItems, {
+        x: -30,
+        opacity: 0,
+        duration: 1.0,
+        stagger: 0.08,
+        clearProps: 'all'
+      }, '-=1.0')
+    }
   }
 })
 
