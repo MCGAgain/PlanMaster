@@ -301,10 +301,11 @@ const onRelease = () => {
 
 const onHoverEnter = () => {
   gsap.to(cardRef.value, {
-    y: -5,
+    y: -6,
+    scale: 1.02,
     boxShadow: '0 20px 40px rgba(100, 80, 200, 0.15)',
-    duration: 0.4,
-    ease: 'power2.out'
+    duration: 0.5,
+    ease: 'expo.out'
   })
 }
 
@@ -312,8 +313,9 @@ const onHoverLeave = () => {
   gsap.to(cardRef.value, {
     y: 0,
     scale: 1,
-    duration: 0.4,
-    ease: 'power2.out',
+    boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
+    duration: 0.6,
+    ease: 'elastic.out(1, 0.8)',
     onComplete: () => {
       gsap.set(cardRef.value, { clearProps: 'all' })
     }
