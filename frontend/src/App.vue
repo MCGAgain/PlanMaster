@@ -149,18 +149,16 @@ const loadBackground = async () => {
 const handleKeydown = (e) => { if (e.key === 'Escape') document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show')) }
 
 // GSAP Transition hooks
-// Uses clip-path instead of opacity to avoid WebKit not rendering
-// backdrop-filter on elements with zero opacity.
 function onBeforeEnter(el) {
-  gsap.set(el, { y: 20, clipPath: 'inset(0 0 100% 0 round 16px)' })
+  gsap.set(el, { y: 20 })
 }
 
 function onEnter(el, done) {
   gsap.to(el, {
     y: 0,
-    clipPath: 'inset(0 round 16px)',
     duration: 0.4,
     ease: 'power3.out',
+    force3D: true,
     onComplete: done
   })
 }
