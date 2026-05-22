@@ -144,15 +144,14 @@ function animateCards() {
     if (!planListRef.value) return
     const cards = planListRef.value.querySelectorAll('.plan-card')
     if (!cards.length) return
-    gsap.set(cards, { clearProps: 'all' })
+    gsap.set(cards, { clearProps: 'transform' })
     cardTween = gsap.from(cards, {
-      opacity: 0,
       y: 16,
       duration: 0.4,
       stagger: 0.04,
       ease: 'power3.out',
       force3D: true,
-      onComplete: () => gsap.set(cards, { clearProps: 'transform,opacity' })
+      onComplete: () => gsap.set(cards, { clearProps: 'transform' })
     })
   })
 }
