@@ -293,7 +293,9 @@ const onRelease = () => {
     scale: 1,
     duration: 0.6,
     ease: 'elastic.out(1, 0.7)',
-    clearProps: 'transform'
+    onComplete: () => {
+      gsap.set(cardRef.value, { clearProps: 'transform' })
+    }
   })
 }
 
@@ -310,10 +312,11 @@ const onHoverLeave = () => {
   gsap.to(cardRef.value, {
     y: 0,
     scale: 1,
-    boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
     duration: 0.4,
     ease: 'power2.out',
-    clearProps: 'transform'
+    onComplete: () => {
+      gsap.set(cardRef.value, { clearProps: 'all' })
+    }
   })
 }
 

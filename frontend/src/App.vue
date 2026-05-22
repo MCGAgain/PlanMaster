@@ -166,8 +166,10 @@ function onEnter(el, done) {
     filter: 'blur(0px)',
     duration: 0.8,
     ease: 'expo.out',
-    clearProps: 'filter,transform',
-    onComplete: done
+    onComplete: () => {
+      gsap.set(el, { clearProps: 'all' })
+      done()
+    }
   })
 }
 
