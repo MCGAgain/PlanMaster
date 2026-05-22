@@ -147,7 +147,7 @@ function animateCards() {
     gsap.set(cards, { clearProps: 'clipPath,willChange' })
     cardTween = gsap.from(cards, {
       y: 16,
-      clipPath: 'inset(100% 0 0 0)',
+      clipPath: 'inset(0 0 100% 0 round 16px)',
       duration: 0.4,
       stagger: 0.04,
       ease: 'power3.out',

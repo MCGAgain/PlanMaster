@@ -152,13 +152,13 @@ const handleKeydown = (e) => { if (e.key === 'Escape') document.querySelectorAll
 // Uses clip-path instead of opacity to avoid WebKit not rendering
 // backdrop-filter on elements with zero opacity.
 function onBeforeEnter(el) {
-  gsap.set(el, { y: 20, clipPath: 'inset(100% 0 0 0)' })
+  gsap.set(el, { y: 20, clipPath: 'inset(0 0 100% 0 round 16px)' })
 }
 
 function onEnter(el, done) {
   gsap.to(el, {
     y: 0,
-    clipPath: 'inset(0% 0 0 0)',
+    clipPath: 'inset(0 round 16px)',
     duration: 0.4,
     ease: 'power3.out',
     onComplete: done

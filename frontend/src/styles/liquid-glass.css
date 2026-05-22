@@ -366,6 +366,16 @@ body.glass-liquid.theme-dark .form-group select:focus {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* ---- Empty State - Liquid ---- */
+body.glass-liquid .empty-state {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
+  border: 1px solid var(--glass-border);
+  border-style: dashed;
+  box-shadow: var(--glass-shadow);
+}
+
 /* ---- Bg mode buttons - Liquid ---- */
 body.glass-liquid .bg-mode-btn {
   position: relative;
