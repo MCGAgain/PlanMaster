@@ -625,13 +625,11 @@ body.bg-image {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 20px 22px;
-  transform: translateZ(0);
   display: flex;
   gap: 16px;
   align-items: flex-start;
   overflow: hidden;
 }
-
 
 .plan-card.completed {
   opacity: 0.55;
