@@ -147,8 +147,6 @@ body.glass-liquid .balance-card::before {
 body.glass-liquid .plan-card {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.8);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   overflow: hidden;

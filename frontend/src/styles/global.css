@@ -621,10 +621,7 @@ body.bg-image {
 /* ---- Plan Cards ---- */
 .plan-list { display: flex; flex-direction: column; gap: 14px; }
 .plan-card {
-  background: rgba(255,255,255,.55);
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.25);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   padding: 20px 22px;

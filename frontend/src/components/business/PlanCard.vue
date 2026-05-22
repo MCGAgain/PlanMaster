@@ -336,6 +336,8 @@ onMounted(() => {
   gap: 1.25rem;
   padding: 1.5rem;
   margin-bottom: 1rem;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
@@ -349,11 +351,7 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
   border-radius: inherit;
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .plan-card:hover {
