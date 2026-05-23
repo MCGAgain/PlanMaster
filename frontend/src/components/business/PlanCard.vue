@@ -361,10 +361,6 @@ onUnmounted(() => {
   border-radius: inherit;
 }
 
-.plan-card:hover {
-  box-shadow: 0 20px 40px rgba(100, 80, 200, 0.15);
-}
-
 .plan-card.selected::before {
   border-color: var(--primary);
   background: rgba(124, 110, 240, 0.1);

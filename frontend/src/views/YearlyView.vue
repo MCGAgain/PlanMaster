@@ -51,7 +51,7 @@
   </div>
 </template>
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
 import { useUiStore } from '@/stores/ui'
 import gsap from 'gsap'

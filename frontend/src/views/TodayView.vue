@@ -44,7 +44,7 @@
           <PlanCard
             :plan="p"
             :is-focusing="ui.activeFocusSession && ui.activeFocusSession.plan_id === p.id"
-            :timer-remaining="ui.activeTimers[p.id] ? ui.activeTimers[p.id].remaining : null"
+            :timer-remaining="ui.activeTimers[p.id]?.remaining ?? null"
             @complete="completePlan"
             @edit="editPlan"
             @delete="deletePlan"
@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
 import { useUiStore } from '@/stores/ui'
 import gsap from 'gsap'

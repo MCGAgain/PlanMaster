@@ -26,10 +26,10 @@ export const useUiStore = defineStore('ui', {
         const elapsed = Math.floor((Date.now() - t.startAt) / 1000)
         t.remaining = Math.max(0, t.total - elapsed)
         t.progress = Math.min(100, Math.round((elapsed / t.total) * 100))
-        if (onTick) onTick(id, t.progress)
+        try { if (onTick) onTick(id, t.progress) } catch (_) {}
         if (t.remaining <= 0) {
           this.stopTimer(id)
-          if (onEnd) onEnd(id)
+          try { if (onEnd) onEnd(id) } catch (_) {}
         }
       }, 1000)
     },
@@ -73,10 +73,10 @@ export const useUiStore = defineStore('ui', {
           const el = Math.floor((Date.now() - timer.startAt) / 1000)
           timer.remaining = Math.max(0, timer.total - el)
           timer.progress = Math.min(100, Math.round((el / timer.total) * 100))
-          if (onTick) onTick(timerId, timer.progress)
+          try { if (onTick) onTick(timerId, timer.progress) } catch (_) {}
           if (timer.remaining <= 0) {
             this.stopTimer(timerId)
-            if (onEnd) onEnd(timerId)
+            try { if (onEnd) onEnd(timerId) } catch (_) {}
           }
         }, 1000)
       }

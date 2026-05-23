@@ -29,7 +29,7 @@ if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
     except Exception:
         pass
 
-CURRENT_VERSION = '2.3.4'
+CURRENT_VERSION = '2.3.5'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -740,9 +740,11 @@ def _fetch_release_info():
 
 
 def _get_remote_version():
-    """获取远程版本号"""
+    """获取远程版本号（优先使用 GitHub Release tag，raw 文件作 fallback）"""
     info = _fetch_release_info()
-    return info['version'] if info else None
+    if not info:
+        return None
+    return info.get('api_version') or info.get('version')
 
 def _write_progress(msg):
     try:
