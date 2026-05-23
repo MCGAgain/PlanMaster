@@ -376,6 +376,7 @@ body.bg-image {
 .sidebar-header {
   padding: 28px 24px 20px;
   border-bottom: 1px solid rgba(255,255,255,.2);
+  -webkit-app-region: drag;
 }
 
 .sidebar-header h1 {
@@ -398,8 +399,8 @@ body.bg-image {
   padding: 18px;
   background: rgba(200,190,240,.3);
   background: linear-gradient(135deg, rgba(124,110,240,.15), rgba(167,139,250,.1));
-  
-  
+  -webkit-app-region: no-drag;
+
   border: 1px solid rgba(124,110,240,.2);
   border-radius: var(--radius);
   display: flex;
@@ -436,6 +437,7 @@ body.bg-image {
   padding: 8px 0;
   flex: 1;
   overflow-y: auto;
+  -webkit-app-region: no-drag;
 }
 
 .nav-group {

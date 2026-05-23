@@ -29,7 +29,7 @@ if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
     except Exception:
         pass
 
-CURRENT_VERSION = '2.3.5'
+CURRENT_VERSION = '2.3.6'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""

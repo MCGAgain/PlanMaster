@@ -160,11 +160,8 @@ function onEnter(el, done) {
     scale: 1,
     y: 0,
     duration: 0.5,
-    ease: 'expo.out',
-    onComplete: () => {
-      gsap.set(el, { clearProps: 'transform' })
-      done()
-    }
+    ease: 'power3.out',
+    onComplete: done
   })
 }
 

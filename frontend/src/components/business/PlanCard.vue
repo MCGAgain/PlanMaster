@@ -69,13 +69,13 @@
         </span>
 
         <!-- 建议时间 -->
-        <span v-if="plan.suggested_time && mode !== 'recycle'" class="plan-badge badge-time">
+        <span v-if="plan.suggested_time && mode !== 'recycle' && plan.plan_type !== 'important'" class="plan-badge badge-time">
           &#128336; {{ plan.suggested_time }}
         </span>
 
         <!-- 计时器按钮 -->
         <button
-          v-if="plan.suggested_time && mode !== 'recycle'"
+          v-if="plan.suggested_time && mode !== 'recycle' && plan.plan_type !== 'important'"
           class="btn timer-btn btn-sm"
           :class="{ counting: timerRemaining !== null }"
           @click.stop="$emit('toggleTimer', plan.id, plan.suggested_time)"
@@ -94,7 +94,7 @@
         </button>
 
         <!-- 虚拟价值 -->
-        <span v-if="plan.virtual_value > 0" class="plan-badge badge-value">
+        <span v-if="plan.virtual_value > 0 && plan.plan_type !== 'important'" class="plan-badge badge-value">
           {{ plan.virtual_value }} 价值
         </span>
       </div>
@@ -114,8 +114,8 @@
         AI: {{ plan.ai_reason }}
       </div>
 
-      <!-- 进度条 (非 Recycle 模式) -->
-      <div v-if="mode !== 'recycle'" class="plan-progress">
+      <!-- 进度条 (非 Recycle 和 Important 模式) -->
+      <div v-if="mode !== 'recycle' && plan.plan_type !== 'important'" class="plan-progress">
         <div class="plan-progress-track">
           <div class="plan-progress-bar" :style="{ width: `${currentProgress}%` }" />
           <input
@@ -140,7 +140,7 @@
         </template>
         <template v-else>
           <button
-            v-if="!plan.completed"
+            v-if="!plan.completed && plan.plan_type !== 'important'"
             class="btn btn-success btn-sm"
             @click.stop="$emit('complete', plan)"
           >

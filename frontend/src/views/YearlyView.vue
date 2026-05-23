@@ -83,7 +83,6 @@ function onItemEnter(el, done) {
     delay: delay,
     ease: 'power3.out',
     onComplete: () => {
-      gsap.set(el, { clearProps: 'transform' })
       done()
     }
   })
