@@ -323,7 +323,9 @@ const onHoverLeave = () => {
 }
 
 onMounted(() => {
-  // Entrance animation handled by parent TransitionGroup
+  if (!cardRef.value) return
+  cardRef.value.addEventListener('mouseenter', onHoverEnter)
+  cardRef.value.addEventListener('mouseleave', onHoverLeave)
 })
 </script>
 
@@ -354,7 +356,6 @@ onMounted(() => {
 }
 
 .plan-card:hover {
-  transform: translateY(-4px) scale(1.01);
   box-shadow: 0 20px 40px rgba(100, 80, 200, 0.15);
 }
 

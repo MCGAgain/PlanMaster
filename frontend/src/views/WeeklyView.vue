@@ -33,8 +33,8 @@
         <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-wrapper" :data-index="idx">
           <PlanCard
             :plan="p"
-            :is-focusing="activeFocusSession?.plan_id === p.id"
-            :timer-remaining="timers[p.id]?.remaining ?? null"
+            :is-focusing="ui.activeFocusSession?.plan_id === p.id"
+            :timer-remaining="ui.activeTimers[p.id]?.remaining ?? null"
             @complete="completePlan"
             @edit="editPlan"
             @delete="deletePlan"
@@ -58,12 +58,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
+import { useUiStore } from '@/stores/ui'
 import gsap from 'gsap'
 import api from '@/api'
 import PlanCard from '@/components/business/PlanCard.vue'
 const { matchPinyin } = usePinyin()
+const ui = useUiStore()
 const planType = 'weekly'
-const plans = ref([]); const searchKeyword = ref(''); const categoryProgress = ref(0); const signatures = ref([]); const sigIndex = ref(0); const currentSignature = ref(''); const showModal = ref(false); const editingPlanId = ref(null); const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 }); const timers = ref({}); const activeFocusSession = ref(null); let planSaving = false;
+const plans = ref([]); const searchKeyword = ref(''); const categoryProgress = ref(0); const signatures = ref([]); const currentSignature = ref(''); const showModal = ref(false); const editingPlanId = ref(null); const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 }); let planSaving = false;
 
 /**
  * GSAP Transition Group Hooks (iOS-style)
@@ -84,7 +86,7 @@ function onItemEnter(el, done) {
     scale: 1,
     duration: 0.8,
     delay: delay,
-    ease: 'expo.out',
+    ease: 'power3.out',
     onComplete: () => {
       gsap.set(el, { clearProps: 'all' })
       done()
@@ -104,25 +106,24 @@ function onItemLeave(el, done) {
 
 const filteredPlans = computed(() => { if (!searchKeyword.value) return plans.value; return plans.value.filter(p => matchPinyin(p.title, searchKeyword.value) || matchPinyin(p.description || '', searchKeyword.value)) })
 function parseSuggestedTime(str) { if (!str) return 0; const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/); if (!m) return 0; const v = parseFloat(m[1]); return m[2] === '秒' ? v : m[2] === '分钟' ? v * 60 : m[2] === '小时' ? v * 3600 : m[2] === '天' ? v * 86400 : v * 604800 }
-const showNextSignature = () => { if (!signatures.value.length) { currentSignature.value = ''; return }; currentSignature.value = signatures.value[sigIndex.value % signatures.value.length]; sigIndex.value++ }
+const showNextSignature = () => { if (!signatures.value.length) { currentSignature.value = ''; return }; currentSignature.value = signatures.value[ui.sigIndex % signatures.value.length]; ui.sigIndex++ }
 const loadPlans = async () => { try { const [active, progress] = await Promise.all([api.getPlans(planType), api.getPlanProgress(planType).catch(() => ({ percentage: 0 }))]); plans.value = active; categoryProgress.value = progress.percentage || 0; } catch (e) { window.toast('加载失败: ' + e.message, true) } }
 const loadSignatures = async () => { try { const rows = await api.getSignatures(); signatures.value = rows.map(r => r.content).filter(c => c.trim()); showNextSignature() } catch (e) {} }
 const showAddPlanModal = () => { editingPlanId.value = null; form.value = { title: '', description: '', priority: '', virtual_value: '', progress: 0 }; showModal.value = true }
 const editPlan = (p) => { editingPlanId.value = p.id; form.value = { title: p.title, description: p.description || '', priority: p.priority || '', virtual_value: p.virtual_value || '', progress: p.progress || 0 }; showModal.value = true }
 const closeModal = () => { showModal.value = false }
 const savePlan = async () => { if (planSaving) return; const title = form.value.title.trim(); if (!title) { window.toast('请输入标题', true); return }; planSaving = true; try { const body = { title, description: form.value.description.trim(), progress: parseInt(form.value.progress) || 0 }; if (form.value.priority !== '') body.priority = parseInt(form.value.priority); if (form.value.virtual_value !== '') body.virtual_value = parseFloat(form.value.virtual_value); if (editingPlanId.value) { await api.updatePlan(editingPlanId.value, body); window.toast('已更新') } else { body.plan_type = planType; const newPlan = await api.createPlan(body); window.toast('已创建'); if (!form.value.priority && !form.value.virtual_value && newPlan && newPlan.id) { let polls = 0; const poll = setInterval(async () => { try { const pl = await api.getPlans(planType); const found = pl.find(x => x.id === newPlan.id); if (found && found.priority > 0) { clearInterval(poll); loadPlans() } } catch (_) {} if (++polls >= 15) clearInterval(poll) }, 1000) } }; closeModal(); await loadPlans(); showNextSignature() } catch (e) { window.toast('保存失败: ' + e.message, true) } finally { planSaving = false } }
-const deletePlan = async (p) => { const id = p.id; if (!confirm('确定删除此计划？')) return; if (timers.value[id]) stopTimer(id); if (activeFocusSession.value?.plan_id === id) await stopFocus(); try { await api.deletePlan(id); window.toast('计划已删除'); await loadPlans() } catch (e) { window.toast('删除失败: ' + e.message, true) } }
-const completePlan = async (p) => { const id = p.id; if (timers.value[id]) stopTimer(id); if (activeFocusSession.value?.plan_id === id) await stopFocus(); try { await api.completePlan(id); window.toast('计划已完成，虚拟价值已入账！'); await loadPlans(); window.loadBalance && window.loadBalance() } catch (e) { window.toast('操作失败: ' + e.message, true) } }
-const updateProgress = async (id, val) => { const v = parseInt(val); if (v >= 100) { if (timers.value[id]) stopTimer(id); if (activeFocusSession.value?.plan_id === id) await stopFocus(); try { await api.completePlan(id); window.toast('计划已完成！'); await loadPlans(); window.loadBalance && window.loadBalance() } catch (e) { window.toast('更新失败: ' + e.message, true) }; return }; try { await api.updatePlan(id, { progress: v }); categoryProgress.value = (await api.getPlanProgress(planType)).percentage || 0 } catch (e) { window.toast('更新失败: ' + e.message, true) } }
+const onTimerTick = async (id, progress) => { const plan = plans.value.find(p => p.id === id); if (plan) plan.progress = progress }
+const onTimerEnd = async (id) => { window.toast('计时结束！'); try { await api.updatePlan(id, { progress: 100 }); await loadPlans() } catch (e) {} }
+const deletePlan = async (p) => { const id = p.id; if (!confirm('确定删除此计划？')) return; if (ui.activeTimers[id]) ui.stopTimer(id); if (ui.activeFocusSession?.plan_id === id) await stopFocus(); try { await api.deletePlan(id); window.toast('计划已删除'); await loadPlans() } catch (e) { window.toast('删除失败: ' + e.message, true) } }
+const completePlan = async (p) => { const id = p.id; if (ui.activeTimers[id]) ui.stopTimer(id); if (ui.activeFocusSession?.plan_id === id) await stopFocus(); try { await api.completePlan(id); window.toast('计划已完成，虚拟价值已入账！'); await loadPlans(); window.loadBalance && window.loadBalance() } catch (e) { window.toast('操作失败: ' + e.message, true) } }
+const updateProgress = async (id, val) => { const v = parseInt(val); if (v >= 100) { if (ui.activeTimers[id]) ui.stopTimer(id); if (ui.activeFocusSession?.plan_id === id) await stopFocus(); try { await api.completePlan(id); window.toast('计划已完成！'); await loadPlans(); window.loadBalance && window.loadBalance() } catch (e) { window.toast('更新失败: ' + e.message, true) }; return }; try { await api.updatePlan(id, { progress: v }); categoryProgress.value = (await api.getPlanProgress(planType)).percentage || 0 } catch (e) { window.toast('更新失败: ' + e.message, true) } }
 const aiSortPlans = async () => { try { const r = await api.sortPlans(planType); window.toast('AI排序完成，已更新 ' + r.length + ' 条计划'); await loadPlans() } catch (e) { window.toast('AI排序失败: ' + e.message, true) } }
-const toggleTimer = (id, timeStr) => { id = parseInt(id); if (timers.value[id]) { stopTimer(id); return }; const sec = parseSuggestedTime(timeStr); if (sec > 0) startTimer(id, sec) }
-const startTimer = (id, totalSec) => { if (timers.value[id]?.interval) return; timers.value[id] = { remaining: totalSec, total: totalSec, startAt: Date.now(), interval: null }; timers.value[id].interval = setInterval(() => { const elapsed = Math.floor((Date.now() - timers.value[id].startAt) / 1000); timers.value[id].remaining = Math.max(0, timers.value[id].total - elapsed); if (timers.value[id].remaining <= 0) { clearInterval(timers.value[id].interval); delete timers.value[id] } }, 1000) }
-const stopTimer = (id) => { if (!timers.value[id]) return; clearInterval(timers.value[id].interval); delete timers.value[id] }
-const toggleFocus = async (p) => { const planId = p.id; if (activeFocusSession.value?.plan_id === planId) { await stopFocus() } else { if (activeFocusSession.value) await stopFocus(); try { const session = await api.createSession({ plan_id: planId, start_time: new Date().toISOString() }); activeFocusSession.value = { id: session.id, plan_id: planId, start_time: new Date() }; window.toast('专注已开始') } catch (e) { window.toast('启动失败: ' + e.message, true) } } }
-const stopFocus = async () => { if (!activeFocusSession.value) return; try { await api.endSession(activeFocusSession.value.id, { end_time: new Date().toISOString() }); window.toast('专注已结束') } catch (e) { window.toast('结束失败: ' + e.message, true) }; activeFocusSession.value = null; await loadPlans() }
-const restoreFocusSession = async () => { try { const sessions = await api.getSessions(); const unfinished = sessions.find(s => !s.end_time); if (!unfinished) return; const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000; if (elapsed > 14400) { await api.endSession(unfinished.id, { end_time: new Date().toISOString() }); return }; if (unfinished.plan_id) activeFocusSession.value = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() } } catch (e) {} }
-onMounted(async () => { await loadPlans(); await loadSignatures(); await restoreFocusSession() })
-onUnmounted(() => { Object.values(timers.value).forEach(t => { if (t.interval) clearInterval(t.interval) }) })
+const toggleTimer = (id, timeStr) => { id = parseInt(id); if (ui.activeTimers[id]) { ui.stopTimer(id); return }; const sec = parseSuggestedTime(timeStr); if (sec > 0) { api.updatePlan(id, { progress: 0 }).catch(() => {}); const plan = plans.value.find(p => p.id === id); if (plan) plan.progress = 0; ui.startTimer(id, sec, onTimerTick, onTimerEnd) } }
+const toggleFocus = async (p) => { const planId = p.id; if (ui.activeFocusSession?.plan_id === planId) { await stopFocus() } else { if (ui.activeFocusSession) await stopFocus(); try { const session = await api.createSession({ plan_id: planId, start_time: new Date().toISOString() }); ui.activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date() }; window.toast('专注已开始') } catch (e) { window.toast('启动失败: ' + e.message, true) } } }
+const stopFocus = async () => { if (!ui.activeFocusSession) return; try { await api.endSession(ui.activeFocusSession.id, { end_time: new Date().toISOString() }); window.toast('专注已结束') } catch (e) { window.toast('结束失败: ' + e.message, true) }; ui.activeFocusSession = null; await loadPlans() }
+const restoreFocusSession = async () => { try { const sessions = await api.getSessions(); const unfinished = sessions.find(s => !s.end_time); if (!unfinished) return; const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000; if (elapsed > 14400) { await api.endSession(unfinished.id, { end_time: new Date().toISOString() }); return }; if (unfinished.plan_id) ui.activeFocusSession = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() } } catch (e) {} }
+onMounted(async () => { ui.restoreTimers(onTimerTick, onTimerEnd); await loadPlans(); await loadSignatures(); await restoreFocusSession() })
 </script>
 
 <style scoped>

@@ -43,8 +43,8 @@
         <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-wrapper" :data-index="idx">
           <PlanCard
             :plan="p"
-            :is-focusing="activeFocusSession && activeFocusSession.plan_id === p.id"
-            :timer-remaining="timers[p.id] ? timers[p.id].remaining : null"
+            :is-focusing="ui.activeFocusSession && ui.activeFocusSession.plan_id === p.id"
+            :timer-remaining="ui.activeTimers[p.id] ? ui.activeTimers[p.id].remaining : null"
             @complete="completePlan"
             @edit="editPlan"
             @delete="deletePlan"
@@ -108,24 +108,23 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
+import { useUiStore } from '@/stores/ui'
 import gsap from 'gsap'
 import api from '@/api'
 import PlanCard from '@/components/business/PlanCard.vue'
 
 const { matchPinyin } = usePinyin()
+const ui = useUiStore()
 
 const planType = 'today'
 const plans = ref([])
 const searchKeyword = ref('')
 const categoryProgress = ref(0)
 const signatures = ref([])
-const sigIndex = ref(0)
 const currentSignature = ref('')
 const showModal = ref(false)
 const editingPlanId = ref(null)
 const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 })
-const timers = ref({})
-const activeFocusSession = ref(null)
 
 /**
  * GSAP Transition Group Hooks (iOS-style)
@@ -146,7 +145,7 @@ function onItemEnter(el, done) {
     scale: 1,
     duration: 0.8,
     delay: delay,
-    ease: 'expo.out',
+    ease: 'power3.out',
     onComplete: () => {
       gsap.set(el, { clearProps: 'all' })
       done()
@@ -190,13 +189,17 @@ const loadPlans = async () => {
   }
 }
 
+const showNextSignature = () => {
+  if (!signatures.value.length) { currentSignature.value = ''; return }
+  currentSignature.value = signatures.value[ui.sigIndex % signatures.value.length]
+  ui.sigIndex++
+}
+
 const loadSignatures = async () => {
   try {
     const rows = await api.getSignatures()
     signatures.value = rows.map(r => r.content).filter(c => c.trim())
-    if (signatures.value.length) {
-      currentSignature.value = signatures.value[0]
-    }
+    showNextSignature()
   } catch (e) {}
 }
 
@@ -254,9 +257,9 @@ const savePlan = async () => {
 const deletePlan = async (p) => {
   if (!confirm('确定删除此计划？')) return
   const id = p.id
-  if (timers.value[id]) stopTimer(id)
-  if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
-  try { 
+  if (ui.activeTimers[id]) ui.stopTimer(id)
+  if (ui.activeFocusSession && ui.activeFocusSession.plan_id === id) await stopFocus()
+  try {
     await api.deletePlan(id)
     window.toast('计划已删除')
     await loadPlans() 
@@ -267,9 +270,9 @@ const deletePlan = async (p) => {
 
 const completePlan = async (p) => {
   const id = p.id
-  if (timers.value[id]) stopTimer(id)
-  if (activeFocusSession.value && activeFocusSession.value.plan_id === id) await stopFocus()
-  try { 
+  if (ui.activeTimers[id]) ui.stopTimer(id)
+  if (ui.activeFocusSession && ui.activeFocusSession.plan_id === id) await stopFocus()
+  try {
     await api.completePlan(id)
     window.toast('计划已完成！')
     await loadPlans()
@@ -306,14 +309,34 @@ const aiSortPlans = async () => {
 }
 
 // Timer Logic
-const toggleTimer = (id, timeStr) => {
-  id = parseInt(id)
-  if (timers.value[id]) { stopTimer(id); return }
-  const sec = parseSuggestedTime(timeStr)
-  if (sec > 0) startTimer(id, sec)
+const onTimerTick = async (id, progress) => {
+  // Update plan progress in backend as timer runs
+  const plan = plans.value.find(p => p.id === id)
+  if (plan) plan.progress = progress
 }
 
-function parseSuggestedTime(str) { 
+const onTimerEnd = async (id) => {
+  window.toast('计时结束！')
+  try {
+    await api.updatePlan(id, { progress: 100 })
+    await loadPlans()
+  } catch (e) {}
+}
+
+const toggleTimer = (id, timeStr) => {
+  id = parseInt(id)
+  if (ui.activeTimers[id]) { ui.stopTimer(id); return }
+  const sec = parseSuggestedTime(timeStr)
+  if (sec > 0) {
+    // Reset progress to 0 when timer starts
+    api.updatePlan(id, { progress: 0 }).catch(() => {})
+    const plan = plans.value.find(p => p.id === id)
+    if (plan) plan.progress = 0
+    ui.startTimer(id, sec, onTimerTick, onTimerEnd)
+  }
+}
+
+function parseSuggestedTime(str) {
   if (!str) return 0
   const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/)
   if (!m) return 0
@@ -322,36 +345,16 @@ function parseSuggestedTime(str) {
   return v * (unitMap[m[2]] || 1)
 }
 
-const startTimer = (id, totalSec) => {
-  if (timers.value[id]?.interval) return
-  timers.value[id] = { remaining: totalSec, total: totalSec, startAt: Date.now(), interval: null }
-  timers.value[id].interval = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - timers.value[id].startAt) / 1000)
-    timers.value[id].remaining = Math.max(0, timers.value[id].total - elapsed)
-    if (timers.value[id].remaining <= 0) { 
-      stopTimer(id)
-      window.toast('计时结束！')
-    }
-  }, 1000)
-}
-
-const stopTimer = (id) => {
-  if (timers.value[id]) {
-    clearInterval(timers.value[id].interval)
-    delete timers.value[id]
-  }
-}
-
 // Focus Logic
 const toggleFocus = async (p) => {
   const planId = p.id
-  if (activeFocusSession.value && activeFocusSession.value.plan_id === planId) {
+  if (ui.activeFocusSession && ui.activeFocusSession.plan_id === planId) {
     await stopFocus()
   } else {
-    if (activeFocusSession.value) await stopFocus()
+    if (ui.activeFocusSession) await stopFocus()
     try {
       const session = await api.createSession({ plan_id: planId, start_time: new Date().toISOString() })
-      activeFocusSession.value = { id: session.id, plan_id: planId, start_time: new Date() }
+      ui.activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date() }
       window.toast('专注已开始')
     } catch (e) { 
       window.toast('启动失败: ' + e.message, true) 
@@ -360,14 +363,14 @@ const toggleFocus = async (p) => {
 }
 
 const stopFocus = async () => {
-  if (!activeFocusSession.value) return
+  if (!ui.activeFocusSession) return
   try {
-    await api.endSession(activeFocusSession.value.id, { end_time: new Date().toISOString() })
+    await api.endSession(ui.activeFocusSession.id, { end_time: new Date().toISOString() })
     window.toast('专注已结束')
   } catch (e) { 
     window.toast('结束失败: ' + e.message, true) 
   }
-  activeFocusSession.value = null
+  ui.activeFocusSession = null
   await loadPlans()
 }
 
@@ -378,18 +381,15 @@ const restoreFocusSession = async () => {
     if (!unfinished) return
     const elapsed = (Date.now() - new Date(unfinished.start_time).getTime()) / 1000
     if (elapsed > 14400) { await api.endSession(unfinished.id, { end_time: new Date().toISOString() }); return }
-    if (unfinished.plan_id) activeFocusSession.value = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() }
+    if (unfinished.plan_id) ui.activeFocusSession = { id: unfinished.id, plan_id: unfinished.plan_id, start_time: new Date() }
   } catch (e) {}
 }
 
 onMounted(async () => {
+  ui.restoreTimers(onTimerTick, onTimerEnd)
   await loadPlans()
   await loadSignatures()
   await restoreFocusSession()
-})
-
-onUnmounted(() => {
-  Object.values(timers.value).forEach(t => clearInterval(t.interval))
 })
 </script>
 
