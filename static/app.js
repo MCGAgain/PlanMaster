@@ -536,6 +536,7 @@ function renderImportantItems(items, allItems) {
             </div>
         </div>`;
     }).join('');
+    animateCards();
 }
 
 function showAddImportantModal() {
@@ -830,6 +831,7 @@ function renderPlans(plans) {
             </div>
         </div>`;
     }).join('');
+    animateCards();
 }
 
 function previewProgress(input) {
@@ -1031,6 +1033,7 @@ function renderRecycleBin(plans, allPlans) {
             </div>
         </div>`;
     }).join('');
+    animateCards();
 }
 
 function getSelectedRecycleIds() {
@@ -1111,6 +1114,7 @@ function renderWishes(wishes, bal) {
                 <button class="btn btn-danger btn-sm" onclick="deleteWish(${w.id})">删除</button></div>
         </div>`;
     }).join('');
+    animateCards();
 }
 
 function editWishFromBtn(btn) {
@@ -1210,6 +1214,7 @@ function renderTransactions(txs) {
     c.innerHTML = txs.map(tx => `
         <div class="tx-card"><div class="tx-info"><span class="tx-note">${esc(tx.note || tx.source)}</span><span class="tx-time">${fmtTime(tx.created_at)}</span></div>
         <span class="tx-amount ${tx.amount >= 0 ? 'positive' : 'negative'}">${tx.amount >= 0 ? '+' : ''}${tx.amount.toFixed(1)}</span></div>`).join('');
+    animateCards();
 }
 
 // ---- API Balance ----
@@ -1643,6 +1648,7 @@ function renderCheckins(items) {
             </div>
         </div>`;
     }).join('');
+    animateCards();
 }
 
 function showAddCheckinModal() {
@@ -1929,4 +1935,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 function fmtTime(ts) { return ts ? new Date(ts).toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''; }
 
-document.addEventListener('DOMContentLoaded', async () => { await restoreFocusSession(); loadBalance(); loadPlans(); loadSignatures(); loadBackground(); });
+function animateCards() {
+    const cards = document.querySelectorAll('.plan-card, .wish-card, .tx-card, .nav-item');
+    cards.forEach((card, i) => {
+        if (card.dataset.animated) return;
+        card.dataset.animated = '1';
+        card.style.animationDelay = (i * 0.04) + 's';
+        card.classList.add('card-in');
+        card.addEventListener('animationend', () => {
+            card.style.opacity = '';
+            card.style.translate = '';
+            card.style.scale = '';
+            card.style.animation = '';
+            card.classList.remove('card-in');
+        }, { once: true });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => { animateCards(); await restoreFocusSession(); loadBalance(); loadPlans(); loadSignatures(); loadBackground(); });

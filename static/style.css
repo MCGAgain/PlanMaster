@@ -231,9 +231,9 @@ body.bg-image { background-size: cover; background-position: center; background-
 .nav-group-header.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group-items { list-style: none; overflow: hidden; max-height: 0; transition: max-height .4s ease; }
 .nav-group-items.open { max-height: 200px; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 24px; cursor: pointer; font-size: 14px; color: var(--text-soft); transition: var(--transition); border-left: 3px solid transparent; position: relative; animation: navItemIn .4s ease both; }
-.nav-item:nth-child(1){animation-delay:.05s} .nav-item:nth-child(2){animation-delay:.1s} .nav-item:nth-child(3){animation-delay:.15s} .nav-item:nth-child(4){animation-delay:.2s} .nav-item:nth-child(5){animation-delay:.25s} .nav-item:nth-child(6){animation-delay:.3s} .nav-item:nth-child(7){animation-delay:.35s} .nav-item:nth-child(8){animation-delay:.4s} .nav-item:nth-child(9){animation-delay:.45s} .nav-item:nth-child(10){animation-delay:.5s} .nav-item:nth-child(11){animation-delay:.55s}
-@keyframes navItemIn { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 24px; cursor: pointer; font-size: 14px; color: var(--text-soft); transition: var(--transition); border-left: 3px solid transparent; position: relative; opacity: 0; translate: -12px 0; }
+.nav-item.card-in { animation: navItemIn .4s ease forwards; }
+@keyframes navItemIn { from{opacity:0;translate:-12px 0} to{opacity:1;translate:0 0} }
 .nav-item::before { content:''; position: absolute; inset: 0; background: linear-gradient(90deg,rgba(124,110,240,.1),transparent); opacity: 0; transition: opacity .3s; }
 .nav-item:hover::before { opacity: 1; }
 .nav-item.active { border-left-color: var(--primary); color: var(--primary); font-weight: 600; }
@@ -281,9 +281,9 @@ body.bg-image { background-size: cover; background-position: center; background-
 /* ---- Plan Cards ---- */
 .plan-list { display: flex; flex-direction: column; gap: 14px; }
 
-.plan-card { background: rgba(255, 255, 255, 0.25); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--glass-shadow); transition: var(--transition); animation: cardIn .4s ease both; display: flex; gap: 16px; align-items: flex-start; }
-.plan-card:nth-child(2){animation-delay:.05s} .plan-card:nth-child(3){animation-delay:.1s} .plan-card:nth-child(4){animation-delay:.15s}
-@keyframes cardIn { from{opacity:0;transform:translateY(12px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+.plan-card { background: rgba(255, 255, 255, 0.25); border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--glass-shadow); transition: var(--transition); opacity: 0; translate: 0 12px; scale: .98; display: flex; gap: 16px; align-items: flex-start; }
+.plan-card.card-in, .wish-card.card-in, .tx-card.card-in { animation: cardIn .4s ease forwards; }
+@keyframes cardIn { from{opacity:0;translate:0 12px;scale:.98} to{opacity:1;translate:0 0;scale:1} }
 .plan-card:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(100,80,200,.14); }
 .plan-card.completed { opacity: .55; }
 .plan-card.completed .plan-card-title { text-decoration: line-through; }
@@ -390,14 +390,14 @@ body.theme-dark .search-input:focus { background: rgba(0,0,0,.4); }
 
 /* ---- Wish & Tx Cards ---- */
 .wish-list,.tx-list { display: flex; flex-direction: column; gap: 12px; }
-.wish-card { background: var(--glass-bg);   border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--glass-shadow); display: flex; justify-content: space-between; align-items: center; transition: var(--transition); animation: cardIn .4s ease both;  }
+.wish-card { background: var(--glass-bg);   border: 1px solid var(--glass-border); border-radius: var(--radius); padding: 20px 24px; box-shadow: var(--glass-shadow); display: flex; justify-content: space-between; align-items: center; transition: var(--transition); opacity: 0; translate: 0 12px; scale: .98; }
 .wish-card:hover { transform: translateY(-2px); }
 .wish-card.redeemed { opacity: .45; background: rgba(52,211,153,.08); }
 .wish-info h4 { font-size: 16px; font-weight: 700; }
 .wish-info .wish-meta { color: var(--text-soft); font-size: 13px; margin-top: 4px; }
 .wish-actions { display: flex; gap: 8px; align-items: center; }
 .wish-cost { font-size: 22px; font-weight: 800; background: linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-right: 12px; }
-.tx-card { background: var(--glass-bg);   border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 16px 22px; box-shadow: var(--glass-shadow); display: flex; justify-content: space-between; align-items: center; transition: var(--transition); animation: cardIn .3s ease both;  }
+.tx-card { background: var(--glass-bg);   border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 16px 22px; box-shadow: var(--glass-shadow); display: flex; justify-content: space-between; align-items: center; transition: var(--transition); opacity: 0; translate: 0 12px; scale: .98; }
 .tx-card:hover { transform: translateX(4px); }
 .tx-info { display: flex; flex-direction: column; }
 .tx-note { font-size: 14px; font-weight: 600; }

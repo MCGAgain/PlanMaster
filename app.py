@@ -29,7 +29,7 @@ if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
     except Exception:
         pass
 
-CURRENT_VERSION = '2.3.3'
+CURRENT_VERSION = '2.3.4'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -129,10 +129,35 @@ def api_get_completed_plans():
     return jsonify(db.get_completed_plans())
 
 
-@app.route('/api/important', methods=['GET'])
+@app.route('/api/important', methods=['GET', 'POST'])
 def api_get_important():
+    if request.method == 'POST':
+        data = request.json
+        title = data.get('title', '').strip()
+        if not title:
+            return jsonify({'error': '标题不能为空'}), 400
+        description = data.get('description', '')
+        due_date = data.get('due_date') or None
+        plan = db.create_plan('important', title, description, due_date=due_date)
+        return jsonify(plan), 201
     db.cleanup_important()
     return jsonify(db.get_important_items())
+
+
+@app.route('/api/important/<int:plan_id>', methods=['PUT', 'POST', 'DELETE'])
+def api_important_item(plan_id):
+    if request.method == 'PUT':
+        data = request.json
+        title = data.get('title')
+        description = data.get('description')
+        due_date = data.get('due_date')
+        plan = db.update_plan(plan_id, title=title, description=description, due_date=due_date)
+        if not plan:
+            return jsonify({'error': '事项不存在'}), 404
+        return jsonify(plan)
+    else:
+        db.delete_plan(plan_id)
+        return jsonify({'ok': True})
 
 
 @app.route('/api/plans', methods=['POST'])

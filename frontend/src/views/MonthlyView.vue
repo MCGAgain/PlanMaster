@@ -79,11 +79,11 @@ function onItemEnter(el, done) {
     opacity: 1,
     y: 0,
     scale: 1,
-    duration: 0.8,
+    duration: 0.5,
     delay: delay,
     ease: 'power3.out',
     onComplete: () => {
-      gsap.set(el, { clearProps: 'all' })
+      gsap.set(el, { clearProps: 'transform' })
       done()
     }
   })

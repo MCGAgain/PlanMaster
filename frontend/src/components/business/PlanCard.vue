@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 
 const props = defineProps({
@@ -291,8 +291,8 @@ const onPress = () => {
 const onRelease = () => {
   gsap.to(cardRef.value, {
     scale: 1,
-    duration: 0.6,
-    ease: 'elastic.out(1, 0.7)',
+    duration: 0.35,
+    ease: 'power3.out',
     onComplete: () => {
       gsap.set(cardRef.value, { clearProps: 'transform' })
     }
@@ -314,10 +314,10 @@ const onHoverLeave = () => {
     y: 0,
     scale: 1,
     boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
-    duration: 0.6,
-    ease: 'elastic.out(1, 0.8)',
+    duration: 0.4,
+    ease: 'power3.out',
     onComplete: () => {
-      gsap.set(cardRef.value, { clearProps: 'all' })
+      gsap.set(cardRef.value, { clearProps: 'transform,boxShadow' })
     }
   })
 }
@@ -326,6 +326,12 @@ onMounted(() => {
   if (!cardRef.value) return
   cardRef.value.addEventListener('mouseenter', onHoverEnter)
   cardRef.value.addEventListener('mouseleave', onHoverLeave)
+})
+
+onUnmounted(() => {
+  if (!cardRef.value) return
+  cardRef.value.removeEventListener('mouseenter', onHoverEnter)
+  cardRef.value.removeEventListener('mouseleave', onHoverLeave)
 })
 </script>
 
