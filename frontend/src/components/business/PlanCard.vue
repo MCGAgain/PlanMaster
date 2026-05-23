@@ -348,9 +348,7 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
   cursor: pointer;
   z-index: 1;
-  will-change: transform, box-shadow;
-  /* Removed transform transition to prevent conflict with GSAP */
-  transition: box-shadow 0.4s ease, opacity 0.4s ease;
+  transition: box-shadow 0.4s ease;
 }
 
 .plan-card::before {

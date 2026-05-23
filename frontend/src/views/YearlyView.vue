@@ -79,11 +79,11 @@ function onItemEnter(el, done) {
     opacity: 1,
     y: 0,
     scale: 1,
-    duration: 0.5,
+    duration: 0.7,
     delay: delay,
-    ease: 'power3.out',
+    ease: 'power2.out',
     onComplete: () => {
-      done()
+      requestAnimationFrame(done)
     }
   })
 }
@@ -129,7 +129,7 @@ onMounted(async () => { ui.restoreTimers(onTimerTick, onTimerEnd); await loadPla
 }
 
 .plan-card-wrapper {
-  will-change: transform, opacity;
+  
 }
 
 /* Transitions */
