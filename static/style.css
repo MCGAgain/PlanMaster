@@ -231,7 +231,9 @@ body.bg-image { background-size: cover; background-position: center; background-
 .nav-group-header.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group-items { list-style: none; overflow: hidden; max-height: 0; transition: max-height .4s ease; }
 .nav-group-items.open { max-height: 200px; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 24px; cursor: pointer; font-size: 14px; color: var(--text-soft); transition: var(--transition); border-left: 3px solid transparent; position: relative; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 24px; cursor: pointer; font-size: 14px; color: var(--text-soft); transition: var(--transition); border-left: 3px solid transparent; position: relative; animation: navItemIn .4s ease both; }
+.nav-item:nth-child(1){animation-delay:.05s} .nav-item:nth-child(2){animation-delay:.1s} .nav-item:nth-child(3){animation-delay:.15s} .nav-item:nth-child(4){animation-delay:.2s} .nav-item:nth-child(5){animation-delay:.25s} .nav-item:nth-child(6){animation-delay:.3s} .nav-item:nth-child(7){animation-delay:.35s} .nav-item:nth-child(8){animation-delay:.4s} .nav-item:nth-child(9){animation-delay:.45s} .nav-item:nth-child(10){animation-delay:.5s} .nav-item:nth-child(11){animation-delay:.55s}
+@keyframes navItemIn { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
 .nav-item::before { content:''; position: absolute; inset: 0; background: linear-gradient(90deg,rgba(124,110,240,.1),transparent); opacity: 0; transition: opacity .3s; }
 .nav-item:hover::before { opacity: 1; }
 .nav-item.active { border-left-color: var(--primary); color: var(--primary); font-weight: 600; }
@@ -548,8 +550,9 @@ body.theme-dark .search-input:focus { background: rgba(0,0,0,.4); }
 .apibalance-unsupported-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
 .apibalance-url-example { display: inline-block; background: rgba(124,110,240,.1); color: var(--primary); padding: 8px 20px; border-radius: var(--radius-sm); font-family: monospace; font-size: 14px; font-weight: 600; border: 1px solid rgba(124,110,240,.2); }
 .apibalance-section-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.3); background: linear-gradient(135deg,var(--text),var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.apibalance-hero { cursor: pointer; transition: var(--transition); }
+.apibalance-hero { cursor: pointer; transition: var(--transition); user-select: none; }
 .apibalance-hero:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(100,80,200,.15); }
+.apibalance-hero:active { transform: translateY(0) scale(.98); }
 .apibalance-hero-amount { display: flex; align-items: baseline; justify-content: center; gap: 6px; margin-bottom: 20px; }
 .apibalance-hero-sign { font-size: 28px; font-weight: 700; color: var(--text-soft); }
 .apibalance-hero-val { font-size: 52px; font-weight: 800; background: linear-gradient(135deg,var(--primary),#a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -1px; line-height: 1; }
@@ -558,7 +561,8 @@ body.theme-dark .search-input:focus { background: rgba(0,0,0,.4); }
 .apibalance-bar-track { height: 10px; background: rgba(124,110,240,.1); border-radius: 5px; overflow: hidden; margin-bottom: 16px; }
 .apibalance-bar-fill { height: 100%; border-radius: 5px; transition: width .6s cubic-bezier(.4,0,.2,1); }
 .apibalance-hero-footer { display: flex; justify-content: space-between; align-items: center; }
-.apibalance-refresh-hint { font-size: 12px; color: var(--text-muted); opacity: .6; }
+.apibalance-refresh-hint { font-size: 12px; color: var(--text-muted); opacity: .8; transition: opacity .3s; }
+.apibalance-hero:hover .apibalance-refresh-hint { opacity: 1; color: var(--primary); }
 .apibalance-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
 .apibalance-status-ok { background: rgba(52,211,153,.15); color: #065f46; border: 1px solid rgba(52,211,153,.3); }
 .apibalance-status-warn { background: rgba(251,191,36,.15); color: #92400e; border: 1px solid rgba(251,191,36,.3); }

@@ -551,6 +551,7 @@ function showAddImportantModal() {
     document.getElementById('planDueDateInput').value = '';
     document.getElementById('planPriorityInput').closest('.form-row').style.display = 'none';
     document.getElementById('planProgressInput').closest('.form-group').style.display = 'none';
+    document.getElementById('planModal').querySelector('.form-hint').style.display = 'none';
     document.getElementById('planModal').classList.add('show');
     setTimeout(() => document.getElementById('planTitleInput').focus(), 100);
 }
@@ -570,6 +571,7 @@ async function editImportant(id) {
     document.getElementById('planDueDateInput').value = item.due_date || '';
     document.getElementById('planPriorityInput').closest('.form-row').style.display = 'none';
     document.getElementById('planProgressInput').closest('.form-group').style.display = 'none';
+    document.getElementById('planModal').querySelector('.form-hint').style.display = 'none';
     document.getElementById('planModal').classList.add('show');
 }
 
@@ -882,6 +884,7 @@ function showAddPlanModal() {
     document.getElementById('dueDateGroup').style.display = 'none';
     document.getElementById('planPriorityInput').closest('.form-row').style.display = '';
     document.getElementById('planProgressInput').closest('.form-group').style.display = '';
+    document.getElementById('planModal').querySelector('.form-hint').style.display = '';
     document.getElementById('planModal').classList.add('show');
     setTimeout(() => document.getElementById('planTitleInput').focus(), 100);
 }
@@ -902,6 +905,7 @@ async function editPlan(id) {
         document.getElementById('dueDateGroup').style.display = 'none';
         document.getElementById('planPriorityInput').closest('.form-row').style.display = '';
         document.getElementById('planProgressInput').closest('.form-group').style.display = '';
+        document.getElementById('planModal').querySelector('.form-hint').style.display = '';
         document.getElementById('planModal').classList.add('show');
     } catch (e) { toast('加载失败: ' + e.message, true); }
 }
@@ -1256,7 +1260,7 @@ async function loadApiBalance() {
                 </div>
                 <div class="apibalance-hero-footer">
                     <span class="apibalance-status apibalance-status-${statusType}">${statusText}</span>
-                    <span class="apibalance-refresh-hint">&#128260; 点击刷新</span>
+                    <span class="apibalance-refresh-hint">&#128260; 点击卡片刷新</span>
                 </div>
             </div>
             <div class="apibalance-info-grid">
