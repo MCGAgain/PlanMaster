@@ -1,20 +1,19 @@
-# PlanMaster v2.0.3 - 计划管理与心愿兑换系统
+# PlanMaster v2.4.0 - 计划管理与心愿兑换系统
 
 ## 项目概述
 
-PlanMaster 是一个基于 Flask + SQLite 的本地桌面应用（支持 macOS 和 Windows），用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。打包后通过 pywebview 提供原生窗口，支持应用内一键检查更新、专注模式、打卡、统计数据等功能。
-
-**v2.0.0 重大更新**: 前端从原生 HTML/CSS/JS 重构为 Vue 3 + Vite + Pinia + Vue Router，采用组件化架构，提升代码可维护性和动画流畅度。
+PlanMaster 是一个基于 Flask + SQLite + Electron 的本地桌面应用（支持 macOS 和 Windows），用于管理日/周/月/年计划，通过接入 OpenAI 兼容 API 的大模型自动对计划进行优先级排序和虚拟价值评估。用户完成计划可获得虚拟价值，虚拟价值可用于兑换心愿物品。已完成计划进入回收站，可恢复或永久删除。支持应用内一键检查更新、专注模式、打卡、统计数据、自定义背景等功能。
 
 ## 技术栈
 
 - **后端**: Python 3.13 + Flask 3.x
 - **数据库**: SQLite3 (WAL 模式)
 - **前端**: Vue 3 + Vite + Pinia + Vue Router (组件化单页应用)
+- **桌面端**: Electron (原生窗口 + 自动更新)
 - **AI**: 通过 OpenAI 兼容 `/v1/chat/completions` 和 `/v1/models` 接口调用任意 LLM
-- **打包**: PyInstaller + hdiutil (macOS DMG) / Inno Setup (Windows EXE)
+- **打包**: PyInstaller + Electron (macOS/Windows)
 - **CI/CD**: GitHub Actions 自动构建双平台安装包并发布 Release
-- **设计风格**: Glassmorphism (毛玻璃)，紫蓝色调渐变背景浮动光球，支持深色主题自适应
+- **设计风格**: Liquid Glass (液态玻璃)，紫蓝色调渐变背景浮动光球，支持深色主题和自定义背景
 
 ## 项目结构
 
@@ -24,50 +23,44 @@ PlanMaster/
 ├── database.py         # SQLite 数据库操作层 (CRUD + 迁移)
 ├── ai_service.py       # LLM API 调用封装 (排序/评估/模型列表/测试)
 ├── prompts.py          # Prompt 模板 (计划排序/单条评估/心愿评估)
-├── updater.py          # macOS 在线更新模块 (DMG 热替换)
-├── requirements.txt    # Python 依赖: flask, requests, pywebview
-├── start.sh            # 启动脚本 (激活 venv + 运行 app.py)
-├── build.sh            # 打包脚本 (前端构建 + PyInstaller + DMG)
-├── build_setup.iss     # Windows Inno Setup 安装包配置
-├── PlanMaster.spec     # PyInstaller 打包配置
-├── icon.icns           # macOS 应用图标
-├── icon.ico            # Windows 应用图标
-├── icon.jpg            # 应用图标 (JPEG)
-├── todo.db             # SQLite 数据库文件 (运行时自动创建)
-├── venv/               # Python 虚拟环境
+├── updater.py          # 在线更新模块
+├── requirements.txt    # Python 依赖: flask, requests
+├── package.json        # Electron 主入口配置
+├── electron/
+│   └── main.js         # Electron 主进程
 ├── .github/workflows/
 │   └── build.yml       # CI 自动构建 (Windows + macOS + Release)
 ├── frontend/           # Vue 3 前端项目
 │   ├── src/
 │   │   ├── components/ # Vue 组件 (layout/common/business)
-│   │   ├── views/      # 页面视图
+│   │   ├── views/      # 页面视图 (13个)
 │   │   ├── stores/     # Pinia 状态管理
 │   │   ├── api/        # API 调用层
-│   │   ├── composables/# 组合式函数
-│   │   └── styles/     # CSS 样式
+│   │   └── styles/     # CSS 样式 (全局/动画/液态玻璃)
 │   ├── package.json
 │   └── vite.config.js
-├── templates/
-│   └── index.html      # 旧版单页应用 (Vue 构建后的 fallback)
 └── static/
-    ├── dist/           # Vue 构建输出 (自动忽略)
-    ├── style.css       # 旧版 CSS (保留作为 fallback)
-    ├── app.js          # 旧版 JS (保留作为 fallback)
-    └── icon.jpg        # 浏览器 favicon
+    └── dist/           # Vue 构建输出 (Electron 加载)
 ```
 
 ## 启动方式
 
-**生产模式** (构建Vue后启动Flask):
+**Electron 桌面模式** (生产):
 ```bash
 cd PlanMaster
-./start.sh
-# 或手动:
+npm start
+# 或:
+npm run dev  # 开发模式 (开发工具 + 热更新)
+```
+
+**仅后端** (Flask API):
+```bash
+cd PlanMaster
 source venv/bin/activate
 python app.py
 ```
 
-服务启动在 `http://localhost:8080`，浏览器自动打开。
+服务启动在 `http://localhost:8080`。
 
 **前端开发模式** (热更新):
 ```bash
@@ -76,7 +69,7 @@ npm install
 npm run dev
 ```
 
-开发服务器启动在 `http://localhost:3000`，API请求代理到 `http://localhost:8080`。
+开发服务器启动在 `http://localhost:5173`，API请求代理到 `http://localhost:8080`。
 
 ## 数据库设计
 
@@ -339,22 +332,20 @@ npm run dev
 
 ## 前端设计
 
-### 架构概览 (v2.0.0)
+### 架构概览 (v2.4.0)
 
 前端采用 Vue 3 组件化架构:
 
 ```
 frontend/src/
 ├── components/
-│   ├── layout/      # Sidebar, Header, Content
-│   ├── common/      # GlassCard, GlassButton, GlassModal, GlassInput, GlassToast
-│   ├── business/    # PlanCard, WishCard, CheckinItem, FocusTimer, StatsChart
-│   └── forms/       # PlanForm, WishForm
+│   ├── layout/      # Header
+│   ├── common/      # GlassCard, GlassButton, GlassModal, GlassInput
+│   └── business/    # PlanCard, CheckinItem
 ├── views/           # 13个页面视图
-├── stores/          # Pinia状态管理 (plans, wishes, checkins, focus, transactions, settings)
-├── api/             # 统一API调用层
-├── composables/     # 组合式函数 (useTheme)
-└── styles/          # CSS变量、毛玻璃样式、动画、过渡
+├── stores/          # Pinia 状态管理
+├── api/             # 统一 API 调用层
+└── styles/          # CSS 变量、液态玻璃样式、动画
 ```
 
 ### 页面列表
@@ -375,14 +366,15 @@ frontend/src/
 
 ### CSS 设计系统
 
-**Glassmorphism (毛玻璃) 设计语言**:
-- 所有卡片使用 `background: rgba(255,255,255,0.45)` + `templates" --add-data "static;static" --hidden-import flask --hidden-import sqlite3 --hidden-import webview --hidden-import webview.platforms --hidden-import webview.platforms.winforms --exclude-module simplejson --noconfirm --clean app.py
-# 然后用 Inno Setup 编译 build_setup.iss
-```
+**Liquid Glass (液态玻璃) 设计语言**:
+- 所有卡片使用透明玻璃质感背景 + 精细边框
+- 紫蓝色调渐变背景 + 浮动光球动画
+- 支持深色主题自适应、自定义纯色背景、自定义图片背景
+- 动画使用 GSAP 驱动，统一分层架构 (外层阴影 + 内层玻璃)
 
 运行模式区别:
 - **开发模式** (`python app.py`): 自动打开浏览器
-- **打包版**: pywebview 原生窗口 (macOS: `.app`, Windows: `.exe`)
+- **Electron 模式** (`npm start`): 原生桌面窗口
 
 ## 应用内更新
 
@@ -405,6 +397,21 @@ frontend/src/
 
 ## 版本历史
 
+- v2.4.0: **全面重构动画效果** - 统一升级全局动画缓动曲线与过渡效果；背景设置新增自定义颜色调色盘
+- v2.3.7: 修复动画缓动曲线，移除 API 刷新提示
+- v2.3.6: 修复重要事项清理、动画弹出效果、窗口拖拽
+- v2.3.5: 代码审查修复，更新逻辑纠正
+- v2.3.4: 重建前端 dist，修复 Electron 加载前端资源问题
+- v2.3.1: macOS arm64 单架构构建
+- v2.3.0: 改进卡片悬停动画
+- v2.2.3: 修复计划管理页面计时器按钮、页面切换模糊闪烁
+- v2.2.2: 更新 LiquidGlass 组件
+- v2.2.1: 新增 LiquidGlass 组件 (CSS 驱动 backdrop-filter)
+- v2.2.0: 新增 Liquid Glass 主题和设置选择器
+- v2.1.3: 修复更新后自动重启和液态玻璃效果
+- v2.1.2: 修复卡片模糊、刷新图标、小数位数、统计图表刷新
+- v2.1.1: Electron 模式后端启动修复
+- v2.1.0: **Electron 桌面化** - 从 pywebview 迁移到 Electron，支持原生窗口、自动更新
 - v2.0.0: **前端重构** - 从原生 HTML/CSS/JS 迁移到 Vue 3 + Vite + Pinia + Vue Router；组件化架构提升可维护性；优化动画流畅度；统一API调用层；Pinia状态管理
 - v1.6.2: 修复任务倒计时停止后按钮图标未立即刷新的问题；修复删除/完成任务时专注计时器未正确终止的问题
 - v1.6.1: 修复旧版已兑换心愿无法删除的问题，数据库迁移时自动清理旧 redeemed 心愿，已兑换心愿也显示删除按钮
@@ -448,6 +455,7 @@ frontend/src/
 
 ## 环境要求
 
+- Node.js 18+
 - Python 3.10+
 - macOS / Windows
 - 网络连接 (AI 功能需要)
