@@ -1,66 +1,128 @@
 <template>
-  <div class="page active">
+  <div class="page active focus-page">
     <div class="page-header">
       <h2>专注模式</h2>
     </div>
-    <div v-if="focusState === 'setup'" class="focus-setup glass-card">
-      <div class="form-group">
-        <label>任务名称</label>
-        <input type="text" v-model="focusTask" placeholder="输入你要专注的任务，如：高数作业">
-      </div>
-      <div class="focus-mode-select">
-        <button class="focus-mode-btn" :class="{ active: focusMode === 'unlimited' }" @click="selectFocusMode('unlimited')">不限时</button>
-        <button class="focus-mode-btn" :class="{ active: focusMode === 'countdown' }" @click="selectFocusMode('countdown')">倒计时</button>
-      </div>
-      <div v-show="focusMode === 'countdown'" class="focus-duration-input">
-        <label>时长</label>
-        <div class="duration-row">
-          <input type="number" v-model="focusHours" min="0" max="12" value="0" placeholder="0">
-          <span>小时</span>
-          <input type="number" v-model="focusMinutes" min="0" max="59" value="30" placeholder="30">
-          <span>分钟</span>
+    
+    <div class="focus-container">
+      <Transition name="focus-fade" mode="out-in">
+        <GlassCard v-if="focusState === 'setup'" key="setup" class="focus-setup">
+          <div class="form-group">
+            <label>任务名称</label>
+            <input 
+              type="text" 
+              v-model="focusTask" 
+              placeholder="输入你要专注的任务，如：高数作业"
+              class="focus-input"
+            >
+          </div>
+          <div class="focus-mode-select">
+            <button 
+              class="focus-mode-btn" 
+              :class="{ active: focusMode === 'unlimited' }" 
+              @click="selectFocusMode('unlimited')"
+              @mousedown="onSmallPress($event)"
+              @mouseup="onSmallRelease($event)"
+              @mouseleave="onSmallRelease($event)"
+            >
+              不限时
+            </button>
+            <button 
+              class="focus-mode-btn" 
+              :class="{ active: focusMode === 'countdown' }" 
+              @click="selectFocusMode('countdown')"
+              @mousedown="onSmallPress($event)"
+              @mouseup="onSmallRelease($event)"
+              @mouseleave="onSmallRelease($event)"
+            >
+              倒计时
+            </button>
+          </div>
+          <div v-show="focusMode === 'countdown'" class="focus-duration-input">
+            <label>时长</label>
+            <div class="duration-row">
+              <input type="number" v-model="focusHours" min="0" max="12" placeholder="0">
+              <span>小时</span>
+              <input type="number" v-model="focusMinutes" min="0" max="59" placeholder="30">
+              <span>分钟</span>
+            </div>
+          </div>
+          <button 
+            class="btn btn-gradient focus-start-btn" 
+            @click="startFocusTimer"
+            @mousedown="onPress($event)"
+            @mouseup="onRelease($event)"
+            @mouseleave="onRelease($event)"
+          >
+            &#9654; 开始专注
+          </button>
+        </GlassCard>
+
+        <div v-else-if="focusState === 'running'" key="running" class="focus-timer-area">
+          <div class="focus-task-label">{{ focusCurrentTask }}</div>
+          <div class="focus-timer-ring">
+            <svg viewBox="0 0 280 280">
+              <defs>
+                <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:#7c6ef0"/>
+                  <stop offset="100%" style="stop-color:#a78bfa"/>
+                </linearGradient>
+              </defs>
+              <circle class="focus-ring-bg" cx="140" cy="140" r="120"/>
+              <circle class="focus-ring-fill" ref="focusRingFill" cx="140" cy="140" r="120"/>
+            </svg>
+            <div class="focus-timer-display">{{ focusTimerDisplay }}</div>
+          </div>
+          <div class="focus-timer-info">
+            <span>{{ focusModeLabel }}</span>
+          </div>
+          <div class="focus-actions">
+            <button 
+              class="btn btn-danger focus-stop-btn" 
+              @click="stopFocusTimer"
+              @mousedown="onPress($event)"
+              @mouseup="onRelease($event)"
+              @mouseleave="onRelease($event)"
+            >
+              &#9632; 结束专注
+            </button>
+            <button 
+              class="btn btn-glass focus-cancel-btn" 
+              @click="cancelFocusTimer"
+              @mousedown="onPress($event)"
+              @mouseup="onRelease($event)"
+              @mouseleave="onRelease($event)"
+            >
+              取消
+            </button>
+          </div>
         </div>
-      </div>
-      <button class="btn btn-gradient focus-start-btn" @click="startFocusTimer">&#9654; 开始专注</button>
-    </div>
 
-    <div v-if="focusState === 'running'" class="focus-timer-area">
-      <div class="focus-task-label">{{ focusCurrentTask }}</div>
-      <div class="focus-timer-ring">
-        <svg viewBox="0 0 280 280">
-          <defs>
-            <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#7c6ef0"/>
-              <stop offset="100%" style="stop-color:#a78bfa"/>
-            </linearGradient>
-          </defs>
-          <circle class="focus-ring-bg" cx="140" cy="140" r="120"/>
-          <circle class="focus-ring-fill" ref="focusRingFill" cx="140" cy="140" r="120"/>
-        </svg>
-        <div class="focus-timer-display">{{ focusTimerDisplay }}</div>
-      </div>
-      <div class="focus-timer-info">
-        <span>{{ focusModeLabel }}</span>
-      </div>
-      <div class="focus-actions">
-        <button class="btn btn-danger focus-stop-btn" @click="stopFocusTimer">&#9632; 结束专注</button>
-        <button class="btn btn-glass focus-cancel-btn" @click="cancelFocusTimer">取消</button>
-      </div>
-    </div>
-
-    <div v-if="focusState === 'complete'" class="focus-complete">
-      <div class="focus-complete-icon">&#10003;</div>
-      <div class="focus-complete-title">{{ focusCompleteTitle }}</div>
-      <div class="focus-complete-duration">{{ focusCompleteDuration }}</div>
-      <div class="focus-complete-category">任务: {{ focusCurrentTask }}</div>
-      <button class="btn btn-gradient" @click="resetFocusPage">继续专注</button>
+        <GlassCard v-else-if="focusState === 'complete'" key="complete" class="focus-complete-card">
+          <div class="focus-complete-icon">&#10003;</div>
+          <div class="focus-complete-title">{{ focusCompleteTitle }}</div>
+          <div class="focus-complete-duration">{{ focusCompleteDuration }}</div>
+          <div class="focus-complete-category">任务: {{ focusCurrentTask }}</div>
+          <button 
+            class="btn btn-gradient" 
+            @click="resetFocusPage"
+            @mousedown="onPress($event)"
+            @mouseup="onRelease($event)"
+            @mouseleave="onRelease($event)"
+          >
+            继续专注
+          </button>
+        </GlassCard>
+      </Transition>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import gsap from 'gsap'
 import api from '@/api'
+import GlassCard from '@/components/common/GlassCard.vue'
 
 const FOCUS_RING_CIRCUMFERENCE = 2 * Math.PI * 120
 
@@ -86,7 +148,27 @@ function fmtHMS(totalSec) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0')
 }
 
-function selectFocusMode(mode) { focusMode.value = mode }
+function selectFocusMode(mode) { 
+  gsap.fromTo('.focus-duration-input', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3 })
+  focusMode.value = mode 
+}
+
+// Interactive Animations
+const onPress = (e) => {
+  gsap.to(e.currentTarget, { scale: 0.96, duration: 0.2, ease: 'power2.out' })
+}
+
+const onRelease = (e) => {
+  gsap.to(e.currentTarget, { scale: 1, duration: 0.4, ease: 'elastic.out(1.2, 0.6)' })
+}
+
+const onSmallPress = (e) => {
+  gsap.to(e.currentTarget, { scale: 0.92, duration: 0.2, ease: 'power2.out' })
+}
+
+const onSmallRelease = (e) => {
+  gsap.to(e.currentTarget, { scale: 1, duration: 0.3, ease: 'power2.out' })
+}
 
 function updateFocusTimerRing() {
   if (!focusRingFill.value) return
@@ -182,3 +264,177 @@ const restoreFocusSession = async () => {
 onMounted(() => { restoreFocusSession() })
 onUnmounted(() => { if (focusTimerInterval) clearInterval(focusTimerInterval) })
 </script>
+
+<style scoped>
+.focus-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.focus-setup {
+  width: 100%;
+  max-width: 500px;
+}
+
+.focus-complete-card {
+  text-align: center;
+  padding: 40px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.focus-mode-select {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.focus-mode-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.focus-mode-btn:hover {
+  background: var(--primary-light);
+}
+
+.focus-mode-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.focus-duration-input {
+  margin-bottom: 20px;
+}
+
+.duration-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.duration-row input {
+  width: 80px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.2);
+  text-align: center;
+  color: var(--text);
+}
+
+.focus-start-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+}
+
+.focus-timer-area {
+  text-align: center;
+}
+
+.focus-task-label {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 30px;
+}
+
+.focus-timer-ring {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  margin: 0 auto 30px;
+}
+
+.focus-ring-bg {
+  fill: none;
+  stroke: rgba(124, 110, 240, 0.05);
+  stroke-width: 12;
+}
+
+.focus-ring-fill {
+  fill: none;
+  stroke: url(#focusGradient);
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.focus-timer-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 48px;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--text);
+}
+
+.focus-timer-info {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-bottom: 40px;
+}
+
+.focus-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.focus-complete-icon {
+  font-size: 64px;
+  color: var(--success);
+  margin-bottom: 20px;
+}
+
+.focus-complete-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.focus-complete-duration {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.focus-complete-category {
+  font-size: 14px;
+  color: var(--text-soft);
+  margin-bottom: 30px;
+}
+/* Focus Transitions */
+.focus-fade-enter-active,
+.focus-fade-leave-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.focus-fade-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+
+.focus-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(1.02);
+}
+</style>

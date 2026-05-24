@@ -1,12 +1,17 @@
 <!-- frontend/src/components/common/GlassCard.vue -->
 <template>
   <div
+    ref="cardRef"
     class="glass-card"
     :class="{
       hoverable,
       [`variant-${variant}`]: variant
     }"
-    @click="hoverable && $emit('click', $event)"
+    @click="handleClick"
+    @mousedown="handleMouseDown"
+    @mouseup="handleMouseUp"
+    @mouseleave="handleMouseLeave"
+    @mousemove="handleMouseMove"
   >
     <div v-if="$slots.header" class="glass-card-header">
       <slot name="header" />
@@ -21,7 +26,10 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref } from 'vue'
+import gsap from 'gsap'
+
+const props = defineProps({
   hoverable: {
     type: Boolean,
     default: false
@@ -33,7 +41,51 @@ defineProps({
   }
 })
 
-defineEmits(['click'])
+const emit = defineEmits(['click'])
+const cardRef = ref(null)
+
+const handleMouseMove = (e) => {
+  if (!cardRef.value) return
+  const rect = cardRef.value.getBoundingClientRect()
+  const x = ((e.clientX - rect.left) / rect.width) * 100
+  const y = ((e.clientY - rect.top) / rect.height) * 100
+  cardRef.value.style.setProperty('--mouse-x', `${x}%`)
+  cardRef.value.style.setProperty('--mouse-y', `${y}%`)
+}
+
+const handleMouseDown = () => {
+  if (!props.hoverable) return
+  gsap.to(cardRef.value, {
+    scale: 0.98,
+    duration: 0.1,
+    ease: 'power2.out'
+  })
+}
+
+const handleMouseUp = () => {
+  if (!props.hoverable) return
+  gsap.to(cardRef.value, {
+    scale: 1.01,
+    duration: 0.3,
+    ease: 'back.out(1.7)'
+  })
+}
+
+const handleMouseLeave = () => {
+  if (!props.hoverable) return
+  gsap.to(cardRef.value, {
+    scale: 1,
+    y: 0,
+    duration: 0.3,
+    ease: 'power2.out'
+  })
+}
+
+const handleClick = (e) => {
+  if (props.hoverable) {
+    emit('click', e)
+  }
+}
 </script>
 
 <style scoped>
@@ -43,10 +95,44 @@ defineEmits(['click'])
   border-radius: var(--radius);
   box-shadow: var(--glass-shadow);
   
-  
   padding: 1.5rem;
-  transition: all var(--transition-normal) var(--ease-default);
-  
+  transition: transform var(--transition-normal) var(--ease-default), 
+              box-shadow var(--transition-normal) var(--ease-default),
+              background var(--transition-normal) var(--ease-default);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+    rgba(255, 255, 255, 0.15) 0%, 
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-card:hover::before {
+  opacity: 1;
+}
+
+body.theme-dark .glass-card::before {
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+    rgba(255, 255, 255, 0.08) 0%, 
+    transparent 60%
+  );
+}
+
+.glass-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .glass-card.hoverable {
@@ -54,8 +140,13 @@ defineEmits(['click'])
 }
 
 .glass-card.hoverable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(100, 80, 200, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(100, 80, 200, 0.15);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+body.theme-dark .glass-card.hoverable:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .glass-card.variant-primary {

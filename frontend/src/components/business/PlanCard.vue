@@ -10,13 +10,16 @@
     :data-id="plan.id"
     @mousedown="onPress"
     @mouseup="onRelease"
-    @mouseleave="onRelease"
+    @mouseleave="onHoverLeave"
+    @mouseenter="onHoverEnter"
+    @mousemove="handleMouseMove"
   >
     <!-- 复选框 (仅在 recycle 模式下显示) -->
-    <div v-if="mode === 'recycle'" class="card-checkbox-wrap" @click.stop>
+    <div v-if="mode === 'recycle'" class="card-checkbox-wrap" @mousedown.stop @mouseup.stop>
       <input 
         type="checkbox" 
         :checked="selected" 
+        @click.stop
         @change="$emit('select', plan.id)"
         class="card-checkbox"
       >
@@ -280,32 +283,39 @@ const onProgressChange = (e) => {
  */
 const cardRef = ref(null)
 
+const handleMouseMove = (e) => {
+  if (!cardRef.value) return
+  const rect = cardRef.value.getBoundingClientRect()
+  const x = ((e.clientX - rect.left) / rect.width) * 100
+  const y = ((e.clientY - rect.top) / rect.height) * 100
+  cardRef.value.style.setProperty('--mouse-x', `${x}%`)
+  cardRef.value.style.setProperty('--mouse-y', `${y}%`)
+}
+
 const onPress = () => {
   gsap.to(cardRef.value, {
-    scale: 0.97,
-    duration: 0.4,
-    ease: 'expo.out'
+    scale: 0.95,
+    duration: 0.2,
+    ease: 'power2.out'
   })
 }
 
 const onRelease = () => {
+  const isHovered = cardRef.value?.matches(':hover')
   gsap.to(cardRef.value, {
-    scale: 1,
-    duration: 0.35,
-    ease: 'power3.out',
-    onComplete: () => {
-      gsap.set(cardRef.value, { clearProps: 'transform' })
-    }
+    scale: isHovered ? 1.02 : 1,
+    duration: 0.4,
+    ease: 'elastic.out(1.2, 0.6)'
   })
 }
 
 const onHoverEnter = () => {
   gsap.to(cardRef.value, {
-    y: -6,
+    y: -8,
     scale: 1.02,
-    boxShadow: '0 20px 40px rgba(100, 80, 200, 0.15)',
-    duration: 0.5,
-    ease: 'expo.out'
+    boxShadow: '0 24px 60px rgba(100, 80, 200, 0.2)',
+    duration: 0.4,
+    ease: 'power2.out'
   })
 }
 
@@ -315,24 +325,9 @@ const onHoverLeave = () => {
     scale: 1,
     boxShadow: '0 8px 32px rgba(100, 80, 200, 0.08)',
     duration: 0.4,
-    ease: 'power3.out',
-    onComplete: () => {
-      gsap.set(cardRef.value, { clearProps: 'transform,boxShadow' })
-    }
+    ease: 'power2.out'
   })
 }
-
-onMounted(() => {
-  if (!cardRef.value) return
-  cardRef.value.addEventListener('mouseenter', onHoverEnter)
-  cardRef.value.addEventListener('mouseleave', onHoverLeave)
-})
-
-onUnmounted(() => {
-  if (!cardRef.value) return
-  cardRef.value.removeEventListener('mouseenter', onHoverEnter)
-  cardRef.value.removeEventListener('mouseleave', onHoverLeave)
-})
 </script>
 
 <style scoped>
@@ -348,20 +343,16 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
   cursor: pointer;
   z-index: 1;
-  transition: box-shadow 0.4s ease;
+  transition: box-shadow 0.4s ease, background 0.4s ease;
+  user-select: none;
 }
 
-.plan-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
+.plan-card:hover {
+  background: rgba(255, 255, 255, 0.6);
 }
 
-.plan-card.selected::before {
-  border-color: var(--primary);
-  background: rgba(124, 110, 240, 0.1);
+body.theme-dark .plan-card:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .plan-card.completed { opacity: 0.6; }
@@ -570,12 +561,14 @@ onUnmounted(() => {
 .plan-card-actions {
   display: flex;
   gap: 0.75rem;
-  opacity: 0.4;
-  transition: opacity 0.3s ease;
+  opacity: 0.2;
+  transform: translateY(5px);
+  transition: all 0.4s var(--ease-default);
 }
 
 .plan-card:hover .plan-card-actions {
   opacity: 1;
+  transform: translateY(0);
 }
 
 .btn {
@@ -585,11 +578,18 @@ onUnmounted(() => {
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s var(--ease-default);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
 }
 
 .btn:active {
-  transform: scale(0.92);
+  transform: scale(0.92) translateY(0);
 }
 
 .btn-success {
@@ -599,13 +599,13 @@ onUnmounted(() => {
 }
 
 .btn-glass {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: var(--text);
   border: 1px solid var(--glass-border);
 }
 
 .btn-danger {
-  background: rgba(248, 113, 113, 0.1);
+  background: rgba(248, 113, 113, 0.15);
   color: var(--danger);
   border: 1px solid rgba(248, 113, 113, 0.3);
 }
@@ -649,7 +649,8 @@ onUnmounted(() => {
 
 @keyframes pulse {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4); }
-  70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(248, 113, 113, 0); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(248, 113, 113, 0); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
 }
 </style>
+

@@ -1,11 +1,11 @@
 <template>
-  <div class="page active">
+  <div class="page active settings-page">
     <div class="page-header">
       <h2>AI设置</h2>
     </div>
     <div class="settings-form">
-      <div class="glass-card">
-        <h3>大模型API配置</h3>
+      <GlassCard class="settings-card">
+        <template #header><h3>大模型API配置</h3></template>
         <div class="form-group"><label>Base URL</label><input type="text" v-model="form.base_url" placeholder="https://api.openai.com/v1"><small>OpenAI兼容接口地址</small></div>
         <div class="form-group"><label>API Key</label><input type="password" v-model="form.api_key" placeholder="sk-..."></div>
         <div class="form-group">
@@ -23,10 +23,10 @@
           <button class="btn btn-gradient" @click="testAiConnection">测试连接</button>
         </div>
         <div class="test-result" :class="testResultClass" v-if="testResultText">{{ testResultText }}</div>
-      </div>
+      </GlassCard>
 
-      <div class="glass-card">
-        <h3>虚拟价值范围</h3>
+      <GlassCard class="settings-card">
+        <template #header><h3>虚拟价值范围</h3></template>
         <div class="range-grid">
           <div class="range-item"><h4>今日待办</h4><div class="range-inputs"><label>最小 <input type="number" v-model="form.today_min" min="0" step="1"></label><label>最大 <input type="number" v-model="form.today_max" min="0" step="1"></label></div></div>
           <div class="range-item"><h4>周计划</h4><div class="range-inputs"><label>最小 <input type="number" v-model="form.weekly_min" min="0" step="1"></label><label>最大 <input type="number" v-model="form.weekly_max" min="0" step="1"></label></div></div>
@@ -34,33 +34,27 @@
           <div class="range-item"><h4>年计划</h4><div class="range-inputs"><label>最小 <input type="number" v-model="form.yearly_min" min="0" step="1"></label><label>最大 <input type="number" v-model="form.yearly_max" min="0" step="1"></label></div></div>
         </div>
         <div class="form-actions"><button class="btn btn-glass" @click="saveValueRanges">保存范围</button></div>
-      </div>
+      </GlassCard>
 
-      <div class="glass-card">
-        <h3>打卡价值设置</h3>
+      <GlassCard class="settings-card">
+        <template #header><h3>打卡价值设置</h3></template>
         <p class="form-hint" style="margin-top:0;margin-bottom:12px;">打卡价值 = sqrt(连续天数) × 每日增量，上限为最大价值。断签后扣除上次打卡所得价值。</p>
         <div class="range-grid">
           <div class="range-item"><h4>每日增量</h4><div class="range-inputs"><label>增量 <input type="number" v-model="form.checkin_daily_inc" min="0" step="0.5"></label></div></div>
           <div class="range-item"><h4>最大价值</h4><div class="range-inputs"><label>上限 <input type="number" v-model="form.checkin_max_val" min="0" step="1"></label></div></div>
         </div>
         <div class="form-actions"><button class="btn btn-glass" @click="saveCheckinSettings">保存</button></div>
-      </div>
+      </GlassCard>
 
-      <div class="glass-card">
-        <h3>数据管理</h3>
-        <p class="form-hint" style="margin-top:0;margin-bottom:16px;">清零后所有虚拟价值归零，操作不可撤销（会生成一笔等额负数流水）</p>
-        <div class="form-actions"><button class="btn btn-danger" @click="resetBalance">&#9888; 清零虚拟价值</button></div>
-      </div>
-
-      <div class="glass-card">
-        <h3>个性签名</h3>
+      <GlassCard class="settings-card">
+        <template #header><h3>个性签名</h3></template>
         <p class="form-hint" style="margin-top:0;margin-bottom:12px;">可输入多条，切换页面时轮换显示。留空的行会被忽略。</p>
         <div class="form-group"><textarea v-model="form.signatures" rows="4" placeholder="每行一条签名，如：&#10;今天也要加油！&#10;保持专注，减少焦虑&#10;每天进步一点点"></textarea></div>
         <div class="form-actions"><button class="btn btn-glass" @click="saveSignatures">保存签名</button></div>
-      </div>
+      </GlassCard>
 
-      <div class="glass-card">
-        <h3>背景设置</h3>
+      <GlassCard class="settings-card">
+        <template #header><h3>背景设置</h3></template>
         <p class="form-hint" style="margin-top:0;margin-bottom:16px;">选择应用背景样式，支持纯色和自定义图片。</p>
         <div class="bg-mode-btns">
           <button class="btn btn-glass bg-mode-btn" :class="{ active: bgMode === 'orb' }" @click="switchBgMode('orb')">动态渐变</button>
@@ -70,6 +64,23 @@
         <div v-show="bgMode === 'solid'" style="margin-top:16px;">
           <div class="bg-color-grid">
             <div v-for="c in bgColors" :key="c" class="bg-color-swatch" :class="{ active: bgColor === c }" :style="{ background: c }" @click="pickBgColor(c)"></div>
+          </div>
+          <div class="bg-custom-color">
+            <label>自定义颜色</label>
+            <div class="bg-custom-color-row">
+              <div class="color-picker-wrapper">
+                <input 
+                  type="color" 
+                  :value="bgColor" 
+                  @input="pickBgColor($event.target.value)"
+                  class="premium-color-picker"
+                >
+                <div class="color-picker-visual" :style="{ background: bgColor }"></div>
+              </div>
+              <div class="color-hex-badge">
+                <span class="color-hex-val">{{ bgColor }}</span>
+              </div>
+            </div>
           </div>
           <div class="form-actions" style="margin-top:12px;"><button class="btn btn-gradient" @click="saveBgSettings">保存</button></div>
         </div>
@@ -87,10 +98,10 @@
             <button class="btn btn-gradient" @click="saveBgSettings">保存</button>
           </div>
         </div>
-      </div>
+      </GlassCard>
 
-      <div class="glass-card">
-        <h3>应用信息</h3>
+      <GlassCard class="settings-card">
+        <template #header><h3>应用信息</h3></template>
         <div class="app-info"><span class="app-version">Todo v{{ appVersion }}</span></div>
         <div class="form-actions" style="margin-top:12px;">
           <button class="btn btn-glass" @click="checkUpdate" :disabled="checkingUpdate">{{ checkingUpdate ? '检查中...' : '检查更新' }}</button>
@@ -105,7 +116,13 @@
             <div :style="{ height: '100%', width: updateProgressPct + '%', background: 'linear-gradient(90deg,var(--primary),#a78bfa)', borderRadius: '4px', transition: 'width .3s' }"></div>
           </div>
         </div>
-      </div>
+      </GlassCard>
+      
+      <GlassCard class="settings-card variant-danger">
+        <template #header><h3>危险区域</h3></template>
+        <p class="form-hint" style="margin-top:0;margin-bottom:16px;">清零后所有虚拟价值归零，操作不可撤销（会生成一笔等额负数流水）</p>
+        <div class="form-actions"><button class="btn btn-danger" @click="resetBalance">&#9888; 清零虚拟价值</button></div>
+      </GlassCard>
     </div>
   </div>
 </template>
@@ -113,6 +130,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/api'
+import GlassCard from '@/components/common/GlassCard.vue'
 
 const form = ref({ base_url: '', api_key: '', model_name: '', model_name_manual: '', extra_headers: '{}', today_min: 1, today_max: 10, weekly_min: 1, weekly_max: 10, monthly_min: 10, monthly_max: 20, yearly_min: 20, yearly_max: 100, checkin_daily_inc: 1, checkin_max_val: 30, signatures: '' })
 const models = ref([])
@@ -271,137 +289,139 @@ onMounted(() => { loadSettings() })
 </script>
 
 <style scoped>
-.glass-style-options {
+.settings-form {
   display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 40px;
+}
+
+.settings-card {
+  /* Inherits GlassCard interactive effects */
+}
+
+.model-select-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.model-dropdown {
+  flex: 1;
+}
+
+.bg-mode-btns {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bg-color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 12px;
+}
+
+.bg-color-swatch {
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.2s;
+}
+
+.bg-color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.bg-color-swatch.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px white inset;
+}
+
+.bg-custom-color {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.bg-custom-color label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-soft);
+  margin-bottom: 12px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bg-custom-color-row {
+  display: flex;
+  align-items: center;
   gap: 16px;
 }
 
-.glass-style-card {
-  flex: 1;
-  padding: 16px;
-  border-radius: var(--radius);
-  border: 2px solid transparent;
+.color-picker-wrapper {
+  position: relative;
+  width: 56px;
+  height: 56px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.08);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.glass-style-card:hover {
-  border-color: rgba(124, 110, 240, 0.3);
-  background: rgba(124, 110, 240, 0.05);
+.color-picker-wrapper:hover {
+  transform: scale(1.1) rotate(5deg);
 }
 
-.glass-style-card.active {
-  border-color: var(--primary);
-  background: rgba(124, 110, 240, 0.08);
+.color-picker-wrapper:active {
+  transform: scale(0.95);
 }
 
-.glass-style-preview {
-  height: 80px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.default-preview {
-  background: linear-gradient(135deg, #e8e4f0 0%, #d4cceb 100%);
-}
-
-.default-preview .preview-card {
-  width: 70%;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.45);
-  
-  
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(100, 80, 200, 0.08);
-}
-
-.liquid-preview {
-  background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #7c6ef0 100%);
-  position: relative;
-}
-
-.liquid-preview::before {
-  content: '';
+.premium-color-picker {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 2;
 }
 
-.liquid-preview .preview-card {
-  width: 70%;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.18);
-  
-  
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(100, 80, 200, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  position: relative;
-  overflow: hidden;
-}
-
-.liquid-preview .preview-card::before {
-  content: '';
+.color-picker-visual {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.08) 100%);
-  pointer-events: none;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 1;
+  transition: box-shadow 0.3s ease;
 }
 
-.glass-style-label {
-  display: block;
+.color-picker-wrapper:hover .color-picker-visual {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+.color-hex-badge {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 8px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--glass-shadow);
+}
+
+.color-hex-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.app-info {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-
-.glass-style-desc {
-  display: block;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-body.theme-dark .glass-style-card {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-body.theme-dark .glass-style-card:hover {
-  background: rgba(124, 110, 240, 0.08);
-}
-
-body.theme-dark .glass-style-card.active {
-  background: rgba(124, 110, 240, 0.12);
-}
-
-body.theme-dark .default-preview {
-  background: linear-gradient(135deg, #2d2655 0%, #1a1625 100%);
-}
-
-body.theme-dark .default-preview .preview-card {
-  background: rgba(0, 0, 0, 0.35);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-body.theme-dark .liquid-preview {
-  background: linear-gradient(135deg, #1a1625 0%, #2d2655 50%, #3c1642 100%);
-}
-
-body.theme-dark .liquid-preview .preview-card {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
-}
-
-@media (max-width: 600px) {
-  .glass-style-options {
-    flex-direction: column;
-  }
+  color: var(--text-soft);
 }
 </style>

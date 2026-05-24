@@ -4,6 +4,19 @@
       <h2>重要事项</h2>
       <div class="page-actions">
         <button class="btn btn-glass" @click="showAddImportantModal">+ 新增事项</button>
+        <button 
+          class="btn btn-gradient ai-sort-btn" 
+          :class="{ loading: aiSorting }"
+          @click="aiSortImportant"
+          :disabled="aiSorting"
+        >
+          <Transition name="fade-scale" mode="out-in">
+            <span v-if="!aiSorting" key="text">AI 智能排序</span>
+            <div v-else class="ai-loader-dots" key="loader">
+              <span></span><span></span><span></span>
+            </div>
+          </Transition>
+        </button>
       </div>
     </div>
     
@@ -17,14 +30,15 @@
       <span class="search-clear" v-show="searchKeyword" @click="searchKeyword = ''">&times;</span>
     </div>
 
+    <GlassCard v-if="currentSignature" class="status-card">
+      <div class="signature-content">{{ currentSignature }}</div>
+    </GlassCard>
+
     <div class="plan-list">
       <TransitionGroup 
         name="list" 
         tag="div" 
         class="plan-list-inner"
-        @before-enter="onItemBeforeEnter"
-        @enter="onItemEnter"
-        @leave="onItemLeave"
       >
         <div v-for="(p, idx) in filteredItems" :key="p.id" class="plan-card-wrapper" :data-index="idx">
           <PlanCard
@@ -36,92 +50,60 @@
       </TransitionGroup>
       
       <Transition name="fade">
-        <div v-if="!filteredItems.length" class="empty-state">
+        <div v-if="!loading && !filteredItems.length" class="empty-state">
           <div class="empty-icon">&#9888;</div>
           <p>{{ allItems.length ? '没有匹配的事项' : '暂无重要事项，点击右上角添加' }}</p>
         </div>
       </Transition>
     </div>
 
-    <div class="modal" :class="{ show: showModal }">
-      <div class="modal-overlay" @click="closeModal"></div>
-      <div class="modal-content glass-card">
-        <div class="modal-header">
-          <h3>{{ editingId ? '编辑重要事项' : '新增重要事项' }}</h3>
-          <span class="modal-close" @click="closeModal">&times;</span>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>计划标题</label>
-            <input type="text" v-model="form.title" placeholder="输入计划标题">
-          </div>
-          <div class="form-group">
-            <label>计划描述</label>
-            <textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea>
-          </div>
-          <div class="form-group">
-            <label>截止日期</label>
-            <input type="date" v-model="form.due_date">
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-glass" @click="closeModal">取消</button>
-          <button class="btn btn-gradient" @click="saveImportant">保存</button>
-        </div>
+    <!-- Add/Edit Important Modal -->
+    <GlassModal
+      v-model="showModal"
+      :title="editingId ? '编辑重要事项' : '新增重要事项'"
+      @close="closeModal"
+    >
+      <div class="form-group">
+        <label>计划标题</label>
+        <input type="text" v-model="form.title" placeholder="输入计划标题">
       </div>
-    </div>
+      <div class="form-group">
+        <label>计划描述</label>
+        <textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>截止日期</label>
+        <input type="date" v-model="form.due_date">
+      </div>
+
+      <template #footer>
+        <button class="btn btn-glass" @click="closeModal">取消</button>
+        <button class="btn btn-gradient" @click="saveImportant">保存</button>
+      </template>
+    </GlassModal>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
-import gsap from 'gsap'
+import { useUiStore } from '@/stores/ui'
 import api from '@/api'
 import PlanCard from '@/components/business/PlanCard.vue'
+import GlassModal from '@/components/common/GlassModal.vue'
 
 const { matchPinyin } = usePinyin()
+const ui = useUiStore()
+
 const allItems = ref([])
 const searchKeyword = ref('')
+const signatures = ref([])
+const currentSignature = ref('')
 const showModal = ref(false)
 const editingId = ref(null)
 const form = ref({ title: '', description: '', due_date: '' })
-
-/**
- * GSAP Transition Group Hooks (iOS-style)
- */
-function onItemBeforeEnter(el) {
-  gsap.set(el, {
-    opacity: 0,
-    y: 30,
-    scale: 0.94
-  })
-}
-
-function onItemEnter(el, done) {
-  const delay = el.dataset.index * 0.05
-  gsap.to(el, {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.7,
-    delay: delay,
-    ease: 'power2.out',
-    onComplete: () => {
-      requestAnimationFrame(done)
-    }
-  })
-}
-
-function onItemLeave(el, done) {
-  gsap.to(el, {
-    opacity: 0,
-    scale: 0.9,
-    duration: 0.4,
-    ease: 'power2.in',
-    onComplete: done
-  })
-}
+const aiSorting = ref(false)
+const loading = ref(true)
 
 const filteredItems = computed(() => {
   if (!searchKeyword.value) return allItems.value
@@ -131,12 +113,30 @@ const filteredItems = computed(() => {
   )
 })
 
-const loadImportantItems = async () => {
+const loadImportantItems = async (isInitial = false) => {
+  if (isInitial) loading.value = true
   try { 
-    allItems.value = await api.getImportantItems() 
+    const items = await api.getImportantItems()
+    allItems.value = items
   } catch (e) { 
     window.toast('加载失败: ' + e.message, true) 
+  } finally {
+    if (isInitial) loading.value = false
   }
+}
+
+const showNextSignature = () => {
+  if (!signatures.value.length) { currentSignature.value = ''; return }
+  currentSignature.value = signatures.value[ui.sigIndex % signatures.value.length]
+  ui.sigIndex++
+}
+
+const loadSignatures = async () => {
+  try {
+    const rows = await api.getSignatures()
+    signatures.value = rows.map(r => r.content).filter(c => c.trim())
+    showNextSignature()
+  } catch (e) {}
 }
 
 const showAddImportantModal = () => { 
@@ -178,13 +178,30 @@ const deleteImportant = async (p) => {
   try { 
     await api.deleteImportantItem(p.id)
     window.toast('已删除')
-    await loadImportantItems() 
+    allItems.value = allItems.value.filter(x => x.id !== p.id)
   } catch (e) { 
     window.toast('删除失败: ' + e.message, true) 
   }
 }
 
-onMounted(() => { loadImportantItems() })
+const aiSortImportant = async () => {
+  if (aiSorting.value) return
+  aiSorting.value = true
+  try {
+    const d = await api.sortPlans('important')
+    window.toast('AI 智能排序完成')
+    await loadImportantItems()
+  } catch (e) {
+    window.toast('排序失败: ' + e.message, true)
+  } finally {
+    aiSorting.value = false
+  }
+}
+
+onMounted(() => { 
+  loadImportantItems(true)
+  loadSignatures()
+})
 </script>
 
 <style scoped>
@@ -193,10 +210,6 @@ onMounted(() => { loadImportantItems() })
   flex-direction: column;
   gap: 1.25rem;
   padding-bottom: 2rem;
-}
-
-.plan-card-wrapper {
-  
 }
 
 .empty-state {
@@ -212,19 +225,32 @@ onMounted(() => { loadImportantItems() })
 }
 
 /* Transitions */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease, transform 0.5s ease;
+.list-enter-active {
+  transition: opacity 0.6s cubic-bezier(0.2, 1.2, 0.85, 1),
+              transform 0.6s cubic-bezier(0.2, 1.2, 0.85, 1);
 }
-.fade-enter-from, .fade-leave-to {
+.list-enter-from {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(24px) scale(0.96);
 }
 
 .list-move {
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.5s cubic-bezier(0.2, 1.2, 0.85, 1);
 }
 .list-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
   position: absolute;
   width: 100%;
+}
+.list-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

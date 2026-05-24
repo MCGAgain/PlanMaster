@@ -1,5 +1,5 @@
 <template>
-  <div class="page active">
+  <div class="page active recycle-page">
     <div class="page-header">
       <h2>回收站</h2>
       <div class="page-actions">
@@ -35,14 +35,13 @@
       </div>
     </div>
 
+    <div class="layout-spacer"></div>
+
     <div class="plan-list">
       <TransitionGroup 
         name="list" 
         tag="div" 
         class="plan-list-inner"
-        @before-enter="onItemBeforeEnter"
-        @enter="onItemEnter"
-        @leave="onItemLeave"
       >
         <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-wrapper" :data-index="idx">
           <PlanCard
@@ -67,54 +66,21 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
-import gsap from 'gsap'
+import { useUiStore } from '@/stores/ui'
 import api from '@/api'
 import PlanCard from '@/components/business/PlanCard.vue'
 
 const { matchPinyin } = usePinyin()
+const ui = useUiStore()
 
 const allPlans = ref([])
 const filterType = ref('all')
 const searchKeyword = ref('')
 const selectedIds = ref([])
-
-/**
- * GSAP Transition Group Hooks (iOS-style)
- */
-function onItemBeforeEnter(el) {
-  gsap.set(el, {
-    opacity: 0,
-    y: 30,
-    scale: 0.94
-  })
-}
-
-function onItemEnter(el, done) {
-  const delay = el.dataset.index * 0.05
-  gsap.to(el, {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.7,
-    delay: delay,
-    ease: 'power2.out',
-    onComplete: () => {
-      requestAnimationFrame(done)
-    }
-  })
-}
-
-function onItemLeave(el, done) {
-  gsap.to(el, {
-    opacity: 0,
-    scale: 0.9,
-    duration: 0.4,
-    ease: 'power2.in',
-    onComplete: done
-  })
-}
+const signatures = ref([])
+const currentSignature = ref('')
 
 const filterOptions = [
   { label: '全部', value: 'all' },
@@ -146,7 +112,7 @@ const toggleSelect = (id) => {
 
 const toggleSelectAll = () => {
   const allIds = filteredPlans.value.map(p => p.id)
-  if (selectedIds.value.length === allIds.length) selectedIds.value = []
+  if (selectedIds.value.length === allIds.length && allIds.length > 0) selectedIds.value = []
   else selectedIds.value = allIds
 }
 
@@ -206,7 +172,24 @@ const batchRestoreRecycle = async () => {
   }
 }
 
-onMounted(() => { loadRecycleBin() })
+const showNextSignature = () => {
+  if (!signatures.value.length) { currentSignature.value = ''; return }
+  currentSignature.value = signatures.value[ui.sigIndex % signatures.value.length]
+  ui.sigIndex++
+}
+
+const loadSignatures = async () => {
+  try {
+    const rows = await api.getSignatures()
+    signatures.value = rows.map(r => r.content).filter(c => c.trim())
+    showNextSignature()
+  } catch (e) {}
+}
+
+onMounted(() => { 
+  loadRecycleBin() 
+  loadSignatures()
+})
 </script>
 
 <style scoped>
@@ -215,10 +198,6 @@ onMounted(() => { loadRecycleBin() })
   flex-direction: column;
   gap: 1.25rem;
   padding-bottom: 2rem;
-}
-
-.plan-card-wrapper {
-  
 }
 
 .recycle-filter-bar {
@@ -242,6 +221,7 @@ onMounted(() => { loadRecycleBin() })
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   padding: 0.4rem 1rem;
+  transition: all 0.3s ease;
 }
 
 .recycle-filter-btn.active {
@@ -249,6 +229,11 @@ onMounted(() => { loadRecycleBin() })
   color: white;
   border-color: var(--primary);
   box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.recycle-filter-btn:hover:not(.active) {
+  background: var(--primary-light);
+  color: var(--primary);
 }
 
 .filter-count {
@@ -277,7 +262,8 @@ onMounted(() => { loadRecycleBin() })
 
 .recycle-search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
 .recycle-search-clear {
@@ -303,19 +289,32 @@ onMounted(() => { loadRecycleBin() })
 }
 
 /* Transitions */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease, transform 0.5s ease;
+.list-enter-active {
+  transition: opacity 0.6s cubic-bezier(0.2, 1.2, 0.85, 1),
+              transform 0.6s cubic-bezier(0.2, 1.2, 0.85, 1);
 }
-.fade-enter-from, .fade-leave-to {
+.list-enter-from {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(24px) scale(0.96);
 }
 
 .list-move {
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.5s cubic-bezier(0.2, 1.2, 0.85, 1);
 }
 .list-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
   position: absolute;
   width: 100%;
+}
+.list-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

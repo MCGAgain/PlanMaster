@@ -4,7 +4,19 @@
       <h2>今日待办</h2>
       <div class="page-actions">
         <button class="btn btn-glass" @click="showAddPlanModal">+ 新增计划</button>
-        <button class="btn btn-gradient" @click="aiSortPlans">&#9889; AI智能排序</button>
+        <button 
+          class="btn btn-gradient ai-sort-btn" 
+          :class="{ loading: aiSorting }"
+          @click="aiSortPlans"
+          :disabled="aiSorting"
+        >
+          <Transition name="fade-scale" mode="out-in">
+            <span v-if="!aiSorting" key="text">AI 智能排序</span>
+            <div v-else class="ai-loader-dots" key="loader">
+              <span></span><span></span><span></span>
+            </div>
+          </Transition>
+        </button>
       </div>
     </div>
     
@@ -13,38 +25,37 @@
         type="text" 
         class="search-input" 
         placeholder="搜索计划... (支持拼音)" 
-        v-model="searchKeyword" 
+        v-model="searchKeyword"
         @input="filterPlans"
       >
       <span class="search-clear" v-show="searchKeyword" @click="clearSearch">&times;</span>
     </div>
 
-    <div class="category-progress">
-      <div class="category-progress-info">
-        <span class="category-progress-label">今日完成进度</span>
-        <span class="category-progress-text">{{ categoryProgress }}%</span>
+    <GlassCard class="status-card">
+      <div class="category-progress-area">
+        <div class="category-progress-info">
+          <span class="category-progress-label">今日完成进度</span>
+          <span class="category-progress-text">{{ categoryProgress }}%</span>
+        </div>
+        <div class="category-progress-track">
+          <div class="category-progress-bar" :style="{ width: categoryProgress + '%' }"></div>
+        </div>
       </div>
-      <div class="category-progress-track">
-        <div class="category-progress-bar" :style="{ width: categoryProgress + '%' }"></div>
-      </div>
-    </div>
-
-    <div class="signature-bar" :class="{ show: currentSignature }">{{ currentSignature }}</div>
+      <div v-if="currentSignature" class="status-divider"></div>
+      <div v-if="currentSignature" class="signature-content">{{ currentSignature }}</div>
+    </GlassCard>
 
     <div class="plan-list">
       <TransitionGroup 
         name="list" 
         tag="div" 
         class="plan-list-inner"
-        @before-enter="onItemBeforeEnter"
-        @enter="onItemEnter"
-        @leave="onItemLeave"
       >
         <div v-for="(p, idx) in filteredPlans" :key="p.id" class="plan-card-wrapper" :data-index="idx">
           <PlanCard
             :plan="p"
-            :is-focusing="ui.activeFocusSession && ui.activeFocusSession.plan_id === p.id"
-            :timer-remaining="ui.activeTimers[p.id]?.remaining ?? null"
+            :isFocusing="ui.activeFocusSession && ui.activeFocusSession.plan_id === p.id"
+            :timerRemaining="ui.activeTimers[p.id] ? ui.activeTimers[p.id].remaining : null"
             @complete="completePlan"
             @edit="editPlan"
             @delete="deletePlan"
@@ -56,7 +67,7 @@
       </TransitionGroup>
       
       <Transition name="fade">
-        <div v-if="!filteredPlans.length" class="empty-state">
+        <div v-if="!loading && !filteredPlans.length" class="empty-state">
           <div class="empty-icon">&#128301;</div>
           <p>今日暂无计划，点击右上角开始新的一天</p>
         </div>
@@ -64,44 +75,40 @@
     </div>
 
     <!-- Add/Edit Plan Modal -->
-    <div class="modal" :class="{ show: showModal }">
-      <div class="modal-overlay" @click="closeModal"></div>
-      <div class="modal-content glass-card">
-        <div class="modal-header">
-          <h3>{{ editingPlanId ? '编辑计划' : '新增计划' }}</h3>
-          <span class="modal-close" @click="closeModal">&times;</span>
+    <GlassModal
+      v-model="showModal"
+      :title="editingPlanId ? '编辑计划' : '新增计划'"
+      @close="closeModal"
+    >
+      <div class="form-group">
+        <label>计划标题</label>
+        <input type="text" v-model="form.title" placeholder="输入计划标题">
+      </div>
+      <div class="form-group">
+        <label>计划描述</label>
+        <textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>优先级 (1-100)</label>
+          <input type="number" v-model="form.priority" min="1" max="100" step="1" placeholder="留空AI评估">
         </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>计划标题</label>
-            <input type="text" v-model="form.title" placeholder="输入计划标题">
-          </div>
-          <div class="form-group">
-            <label>计划描述</label>
-            <textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>优先级 (1-100)</label>
-              <input type="number" v-model="form.priority" min="1" max="100" step="1" placeholder="留空AI评估">
-            </div>
-            <div class="form-group">
-              <label>虚拟价值</label>
-              <input type="number" v-model="form.virtual_value" min="0" step="0.1" placeholder="留空AI评估">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>完成进度: {{ form.progress }}%</label>
-            <input type="range" class="progress-range-input" v-model="form.progress" min="0" max="100" step="5">
-          </div>
-          <small class="form-hint">优先级和价值留空时，配置AI后会自动评估</small>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-glass" @click="closeModal">取消</button>
-          <button class="btn btn-gradient" @click="savePlan">保存</button>
+        <div class="form-group">
+          <label>虚拟价值</label>
+          <input type="number" v-model="form.virtual_value" min="0" step="0.1" placeholder="留空AI评估">
         </div>
       </div>
-    </div>
+      <div class="form-group">
+        <label>完成进度: {{ form.progress }}%</label>
+        <input type="range" class="progress-range-input" v-model="form.progress" min="0" max="100" step="5">
+      </div>
+      <small class="form-hint">优先级和价值留空时，配置AI后会自动评估</small>
+
+      <template #footer>
+        <button class="btn btn-glass" @click="closeModal">取消</button>
+        <button class="btn btn-gradient" @click="savePlan">保存</button>
+      </template>
+    </GlassModal>
   </div>
 </template>
 
@@ -109,9 +116,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePinyin } from '@/composables/usePinyin'
 import { useUiStore } from '@/stores/ui'
-import gsap from 'gsap'
 import api from '@/api'
 import PlanCard from '@/components/business/PlanCard.vue'
+import GlassModal from '@/components/common/GlassModal.vue'
 
 const { matchPinyin } = usePinyin()
 const ui = useUiStore()
@@ -125,42 +132,8 @@ const currentSignature = ref('')
 const showModal = ref(false)
 const editingPlanId = ref(null)
 const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 })
-
-/**
- * GSAP Transition Group Hooks (iOS-style)
- */
-function onItemBeforeEnter(el) {
-  gsap.set(el, {
-    opacity: 0,
-    y: 30,
-    scale: 0.94
-  })
-}
-
-function onItemEnter(el, done) {
-  const delay = el.dataset.index * 0.05
-  gsap.to(el, {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    duration: 0.7,
-    delay: delay,
-    ease: 'power2.out',
-    onComplete: () => {
-      requestAnimationFrame(done)
-    }
-  })
-}
-
-function onItemLeave(el, done) {
-  gsap.to(el, {
-    opacity: 0,
-    scale: 0.9,
-    duration: 0.4,
-    ease: 'power2.in',
-    onComplete: done
-  })
-}
+const aiSorting = ref(false)
+const loading = ref(true)
 
 let planSaving = false
 
@@ -175,7 +148,8 @@ const filteredPlans = computed(() => {
 const filterPlans = () => {}
 const clearSearch = () => { searchKeyword.value = '' }
 
-const loadPlans = async () => {
+const loadPlans = async (isInitial = false) => {
+  if (isInitial) loading.value = true
   try {
     const [active, progress] = await Promise.all([
       api.getPlans(planType),
@@ -185,6 +159,8 @@ const loadPlans = async () => {
     categoryProgress.value = progress.percentage || 0
   } catch (e) { 
     window.toast('加载失败: ' + e.message, true) 
+  } finally {
+    if (isInitial) loading.value = false
   }
 }
 
@@ -246,6 +222,7 @@ const savePlan = async () => {
     }
     closeModal()
     await loadPlans()
+    showNextSignature()
   } catch (e) { 
     window.toast('保存失败: ' + e.message, true) 
   } finally { 
@@ -261,7 +238,7 @@ const deletePlan = async (p) => {
   try {
     await api.deletePlan(id)
     window.toast('计划已删除')
-    await loadPlans() 
+    plans.value = plans.value.filter(x => x.id !== id)
   } catch (e) { 
     window.toast('删除失败: ' + e.message, true) 
   }
@@ -298,18 +275,21 @@ const updateProgress = async (id, val) => {
 }
 
 const aiSortPlans = async () => {
+  if (aiSorting.value) return
+  aiSorting.value = true
   try { 
     const r = await api.sortPlans(planType)
     window.toast('AI排序完成')
     await loadPlans() 
   } catch (e) { 
     window.toast('AI排序失败: ' + e.message, true) 
+  } finally {
+    aiSorting.value = false
   }
 }
 
 // Timer Logic
 const onTimerTick = async (id, progress) => {
-  // Update plan progress in backend as timer runs
   const plan = plans.value.find(p => p.id === id)
   if (plan) plan.progress = progress
 }
@@ -327,7 +307,6 @@ const toggleTimer = (id, timeStr) => {
   if (ui.activeTimers[id]) { ui.stopTimer(id); return }
   const sec = parseSuggestedTime(timeStr)
   if (sec > 0) {
-    // Reset progress to 0 when timer starts
     api.updatePlan(id, { progress: 0 }).catch(() => {})
     const plan = plans.value.find(p => p.id === id)
     if (plan) plan.progress = 0
@@ -386,7 +365,7 @@ const restoreFocusSession = async () => {
 
 onMounted(async () => {
   ui.restoreTimers(onTimerTick, onTimerEnd)
-  await loadPlans()
+  await loadPlans(true)
   await loadSignatures()
   await restoreFocusSession()
 })
@@ -400,9 +379,6 @@ onMounted(async () => {
   padding-bottom: 2rem;
 }
 
-.plan-card-wrapper {
-}
-
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
@@ -415,91 +391,61 @@ onMounted(async () => {
   opacity: 0.5;
 }
 
-/* Transitions */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.list-move {
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.list-leave-active {
-  position: absolute;
-  width: 100%;
-}
-
-.ss-text {
-  font-weight: 800;
-  color: var(--primary);
-  font-size: 1.1rem;
-}
-
-.category-progress-track {
-  height: 12px;
-  background: rgba(124, 110, 240, 0.08);
-  border-radius: 6px;
+.ai-sort-btn {
+  position: relative;
+  width: 140px;
   overflow: hidden;
 }
 
-.category-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  border-radius: 6px;
-  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+.ai-loader-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: var(--text-muted);
+.ai-loader-dots span {
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  animation: dot-pulse 1.4s infinite ease-in-out both;
 }
 
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-  opacity: 0.5;
+.ai-loader-dots span:nth-child(1) { animation-delay: -0.32s; }
+.ai-loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
 }
 
 /* Transitions */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease, transform 0.5s ease;
+.list-enter-active {
+  transition: opacity 0.6s cubic-bezier(0.2, 1.2, 0.85, 1),
+              transform 0.6s cubic-bezier(0.2, 1.2, 0.85, 1);
 }
-.fade-enter-from, .fade-leave-to {
+.list-enter-from {
   opacity: 0;
-  transform: translateY(10px);
-}
-
-.list-move {
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(24px) scale(0.96);
 }
 .list-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
   position: absolute;
   width: 100%;
 }
-
-.signature-bar {
-  margin-bottom: 1.5rem;
-  padding: 0.75rem 1.25rem;
-  font-style: italic;
-  color: var(--text-soft);
-  background: rgba(124, 110, 240, 0.04);
-  border-radius: 8px;
-  border-left: 4px solid var(--primary);
-  font-size: 0.9rem;
-  display: none;
+.list-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
+}
+.list-move {
+  transition: transform 0.5s cubic-bezier(0.2, 1.2, 0.85, 1);
 }
 
-.signature-bar.show {
-  display: block;
-  animation: fadeIn 0.8s ease;
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
 }
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

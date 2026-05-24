@@ -12,13 +12,16 @@
   --success: #34d399;
   --warning: #fbbf24;
   --danger: #f87171;
-  --glass-bg: rgba(255, 255, 255, 0.45);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
-  --glass-blur: 20px;
+  
+  /* Ultimate Transparent Glass */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  --glass-blur: 28px;
+  
   --sidebar-width: 260px;
-  --sidebar-glass: rgba(255, 255, 255, 0.25);
-  --sidebar-border: rgba(255, 255, 255, 0.3);
+  --sidebar-glass: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.2);
   --bg: #f0eef8;
   --bg-gradient: linear-gradient(135deg, #f0eef8 0%, #e8e4f0 100%);
   --text: #2d2655;
@@ -32,14 +35,24 @@
 
 /* ---- Dark Theme ---- */
 body.theme-dark {
-  --glass-bg: rgba(0, 0, 0, 0.35);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --sidebar-glass: rgba(0, 0, 0, 0.3);
-  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(20, 20, 30, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  --sidebar-glass: rgba(15, 15, 25, 0.5);
+  --sidebar-border: rgba(255, 255, 255, 0.08);
   --text: #e8e4f0;
   --text-soft: #b8b0cc;
   --text-muted: #8a82a0;
+  --bg: #13111c;
+}
+
+/* Smooth Theme Transitions */
+body {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+* {
+  transition: border-color 0.3s ease;
 }
 
 body.theme-dark .balance-card {
@@ -170,9 +183,6 @@ body.theme-dark .category-progress-track {
   background: rgba(124,110,240,.15);
 }
 
-body.theme-dark .modal-overlay {
-  background: rgba(0,0,0,.4);
-}
 
 body.theme-dark .bg-color-swatch {
   border-color: rgba(255,255,255,.15);
@@ -369,7 +379,9 @@ body.bg-image {
   flex-shrink: 0;
   overflow: hidden;
   will-change: transform;
-  z-index: 100; /* 确保侧边栏在顶层 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  z-index: 100;
   position: relative;
 }
 
@@ -476,14 +488,12 @@ body.bg-image {
 .nav-group-items {
   list-style: none;
   overflow: hidden;
-  max-height: 0;
-  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 0;
   margin: 0;
 }
 
 .nav-group-items.open {
-  max-height: 200px;
+  /* Remove max-height from here as GSAP handles it on the wrapper */
 }
 
 .nav-item {
@@ -553,18 +563,58 @@ body.bg-image {
   flex: 1;
   overflow-y: auto;
   padding: 32px 40px;
-  -webkit-animation: fadeIn 0.4s ease;
-  animation: fadeIn 0.4s ease;
 }
 
 .page {
-  display: none;
-  -webkit-animation: pageIn 0.35s ease;
-  animation: pageIn 0.35s ease;
+  display: block; /* Components are rendered by router, no need to hide by default */
+  min-height: 100%;
 }
 
-.page.active {
-  display: block;
+/* Modal System */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 40px 20px;
+}
+
+.modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  position: relative;
+  width: 520px;
+  max-width: 100%;
+  max-height: calc(100vh - 100px);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+  margin: auto;
+  transform: scale(0.9) translateY(30px);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal.show .modal-content {
+  transform: scale(1) translateY(0);
+  opacity: 1;
 }
 
 .page-header {
@@ -583,29 +633,70 @@ body.bg-image {
   background-clip: text;
 }
 
-.page-actions {
+.settings-form,
+.stats-content {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 40px;
 }
 
-/* ---- Glass Card ---- */
-.glass-card {
-  background: rgba(255,255,255,.55);
+.glass-card,
+.plan-card,
+.wish-card {
   background: var(--glass-bg);
-  
-  
   border: 1px solid var(--glass-border);
   border-radius: var(--radius);
   box-shadow: var(--glass-shadow);
   padding: 24px;
-  -webkit-transition: transform 0.2s ease, box-shadow 0.2s ease;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  
-  transform: translateZ(0);
+  transition: transform 0.3s var(--ease-default), box-shadow 0.3s var(--ease-default), background 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before,
+.plan-card::before,
+.wish-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+    rgba(255, 255, 255, 0.15) 0%, 
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-card:hover::before,
+.plan-card:hover::before,
+.wish-card:hover::before {
+  opacity: 1;
+}
+
+body.theme-dark .glass-card::before,
+body.theme-dark .plan-card::before,
+body.theme-dark .wish-card::before {
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+    rgba(255, 255, 255, 0.08) 0%, 
+    transparent 60%
+  );
+}
+
+.glass-card > *,
+.plan-card > *,
+.wish-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .glass-card:hover {
-  box-shadow: 0 12px 40px rgba(100,80,200,.12);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 .glass-card h3 {
@@ -620,8 +711,162 @@ body.bg-image {
   background-clip: text;
 }
 
-/* ---- Plan Cards ---- */
-.plan-list { display: flex; flex-direction: column; gap: 14px; }
+/* ---- Unified Status Card ---- */
+.status-card {
+  margin-bottom: 56px !important;
+  padding: 28px 32px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transform: translateZ(0);
+}
+
+.category-progress-area {
+  width: 100%;
+}
+
+.category-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.category-progress-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+
+.category-progress-text {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--primary);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(124, 110, 240, 0.2);
+}
+
+.category-progress-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.category-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #7c6ef0, #a78bfa, #c4b5fd);
+  border-radius: 10px;
+  transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 15px rgba(124, 110, 240, 0.3);
+}
+
+.status-divider {
+  height: 1px;
+  background: var(--glass-border);
+  opacity: 0.3;
+  margin: 4px 0;
+}
+
+.signature-content {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signature-content::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 18px;
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+
+/* Vertical Spacer - Removed Physical Card and used clean space instead */
+.layout-spacer {
+  height: 56px;
+  width: 100%;
+}
+
+/* Global Electron Optimization */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass-card, .plan-card, .btn {
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform: translateZ(0);
+}
+
+/* AI Sort Button Style */
+.ai-sort-btn {
+  position: relative;
+  width: 140px; /* Fixed width to prevent jumping */
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ai-loader-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ai-loader-dots span {
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  animation: dot-pulse 1.4s infinite ease-in-out both;
+}
+
+.ai-loader-dots span:nth-child(1) { animation-delay: -0.32s; }
+.ai-loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Global Fade-Scale Transition */
+.fade-scale-enter-active, .fade-scale-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.fade-scale-enter-from {
+  opacity: 0;
+  transform: scale(0.8) translateY(5px);
+}
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(1.1) translateY(-5px);
+}
+
+.signature-bar.show {
+  display: block;
+  animation: fadeIn 0.8s ease;
+}
+
+.plan-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+}
 .plan-card {
   background: rgba(255, 255, 255, 0.25);
   border: 1px solid var(--glass-border);
@@ -991,72 +1236,7 @@ body.bg-image {
   animation: timerPulse 1s infinite;
 }
 
-/* ---- Category Progress ---- */
-.category-progress {
-  margin-bottom: 24px;
-  background: var(--glass-bg);
-  
-  
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  padding: 1.25rem;
-  box-shadow: var(--glass-shadow);
-  
-}
-
-.category-progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.category-progress-label {
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.category-progress-text {
-  font-size: 1.1rem;
-  font-weight: 800;
-  color: var(--primary);
-}
-
-.category-progress-track {
-  height: 12px;
-  background: rgba(124, 110, 240, 0.08);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.category-progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  border-radius: 6px;
-  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* ---- Signature Bar ---- */
-.signature-bar {
-  margin-bottom: 1.5rem;
-  padding: 0.75rem 1.25rem;
-  font-style: italic;
-  color: var(--text-soft);
-  background: rgba(124, 110, 240, 0.04);
-  border-radius: 8px;
-  border-left: 4px solid var(--primary);
-  font-size: 0.9rem;
-  display: none;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.signature-bar.show {
-  display: block;
-  opacity: 1;
-  animation: fadeIn 0.8s ease;
-}
+/* ---- Footer and Other ---- */
 
 /* ---- Empty State ---- */
 .empty-state {
@@ -1073,36 +1253,9 @@ body.bg-image {
 }
 
 /* ---- Modal ---- */
-.modal {
+/* Handled in Modal System section above to ensure centering and responsiveness */
+.modal-overlay-legacy {
   display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal.show {
-  display: flex;
-}
-
-.modal-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(45,38,85,.35);
-  
-  
-  -webkit-animation: overlayIn 0.2s ease;
-  animation: overlayIn 0.2s ease;
-  
-}
-
-.modal-content {
-  position: relative;
-  width: 520px;
-  max-width: 90vw;
-  -webkit-animation: modalIn 0.3s ease;
-  animation: modalIn 0.3s ease;
 }
 
 .modal-header {

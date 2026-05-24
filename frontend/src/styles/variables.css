@@ -14,15 +14,15 @@
   --danger: #f87171;
 
   /* Glass effect */
-  --glass-bg: rgba(255, 255, 255, 0.45);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-shadow: 0 8px 32px rgba(100, 80, 200, 0.08);
-  --glass-blur: 20px;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  --glass-blur: 28px;
 
   /* Sidebar */
   --sidebar-width: 240px;
-  --sidebar-glass: rgba(255, 255, 255, 0.25);
-  --sidebar-border: rgba(255, 255, 255, 0.3);
+  --sidebar-glass: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.2);
 
   /* Background */
   --bg: #f0eef8;

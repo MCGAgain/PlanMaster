@@ -1,6 +1,11 @@
 <!-- frontend/src/components/business/CheckinItem.vue -->
 <template>
-  <GlassCard class="checkin-item" :class="{ checked: checkin.checkedToday }">
+  <GlassCard 
+    class="checkin-item" 
+    :class="{ checked: checkin.checkedToday }"
+    :hoverable="true"
+    @click="handleToggle"
+  >
     <div class="checkin-main">
       <div class="checkin-info">
         <h3>{{ checkin.name }}</h3>
@@ -12,16 +17,17 @@
 
       <div class="checkin-action">
         <button
+          ref="checkBtn"
           class="checkin-button"
           :class="{ checked: checkin.checkedToday }"
-          @click="$emit('toggle', checkin)"
+          @click.stop="handleToggle"
         >
-          <span class="check-icon">{{ checkin.checkedToday ? '✓' : '' }}</span>
+          <span class="check-icon" v-if="checkin.checkedToday">✓</span>
         </button>
       </div>
     </div>
 
-    <div v-if="showActions" class="checkin-actions">
+    <div v-if="showActions" class="checkin-actions" @click.stop>
       <GlassButton
         variant="secondary"
         size="small"
@@ -41,10 +47,12 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import gsap from 'gsap'
 import GlassCard from '../common/GlassCard.vue'
 import GlassButton from '../common/GlassButton.vue'
 
-defineProps({
+const props = defineProps({
   checkin: {
     type: Object,
     required: true
@@ -55,17 +63,34 @@ defineProps({
   }
 })
 
-defineEmits(['toggle', 'edit', 'delete'])
+const emit = defineEmits(['toggle', 'edit', 'delete'])
+const checkBtn = ref(null)
+
+const handleToggle = () => {
+  const isChecking = !props.checkin.checkedToday
+  
+  if (isChecking && checkBtn.value) {
+    gsap.fromTo(checkBtn.value, 
+      { scale: 0.8 },
+      { scale: 1.2, duration: 0.2, ease: 'back.out(3)', onComplete: () => {
+        gsap.to(checkBtn.value, { scale: 1, duration: 0.2 })
+      }}
+    )
+  }
+  
+  emit('toggle', props.checkin)
+}
 </script>
 
 <style scoped>
 .checkin-item {
   margin-bottom: 0.75rem;
+  transition: border-color 0.4s ease, background 0.4s ease;
 }
 
 .checkin-item.checked {
   border-color: var(--success);
-  background: rgba(52, 211, 153, 0.05);
+  background: rgba(52, 211, 153, 0.08);
 }
 
 .checkin-main {
@@ -76,7 +101,8 @@ defineEmits(['toggle', 'edit', 'delete'])
 
 .checkin-info h3 {
   margin: 0 0 0.25rem;
-  font-size: 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -87,8 +113,9 @@ defineEmits(['toggle', 'edit', 'delete'])
 
 .streak,
 .total {
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  font-weight: 500;
 }
 
 .checkin-action {
@@ -106,21 +133,25 @@ defineEmits(['toggle', 'edit', 'delete'])
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast) var(--ease-default);
+  transition: all 0.3s var(--ease-default);
+  position: relative;
+  overflow: hidden;
 }
 
 .checkin-button:hover {
   border-color: var(--primary);
   background: var(--primary-light);
+  transform: scale(1.05);
 }
 
 .checkin-button.checked {
   border-color: var(--success);
   background: var(--success);
+  box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
 }
 
 .check-icon {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   color: white;
   font-weight: bold;
 }
@@ -133,3 +164,4 @@ defineEmits(['toggle', 'edit', 'delete'])
   border-top: 1px solid var(--glass-border);
 }
 </style>
+

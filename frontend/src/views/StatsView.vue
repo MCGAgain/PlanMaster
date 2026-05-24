@@ -1,64 +1,93 @@
 <template>
-  <div class="page active">
+  <div class="page active stats-page">
     <div class="page-header">
       <h2>统计数据</h2>
     </div>
-    <div class="stats-cumulative glass-card">
-      <div class="stats-section-header">
-        <h3 class="stats-section-title">统计数据 <span v-if="cumulative.first_date" style="font-size:13px;font-weight:500;color:var(--text-soft)">自 {{ cumulative.first_date }} 起</span></h3>
-        <button class="btn btn-glass btn-sm stats-clear-btn" @click="clearFocusSessions">清除专注时长</button>
-      </div>
-      <div class="stats-cumulative-grid">
-        <div class="stat-item"><span class="stat-value">{{ cumulative.count || 0 }}</span><span class="stat-label">次数</span></div>
-        <div class="stat-item"><span class="stat-value">{{ fmtDuration(cumulative.total_duration) }}</span><span class="stat-label">时长</span></div>
-        <div class="stat-item"><span class="stat-value">{{ fmtDuration(cumulative.daily_avg) }}</span><span class="stat-label">日均时长</span></div>
-      </div>
-    </div>
-    <div class="stats-daily glass-card">
-      <div class="stats-date-nav">
-        <button class="btn btn-glass btn-sm" @click="statsDatePrev">&#9664;</button>
-        <span class="stats-date-label">{{ statsDateLabel }}</span>
-        <button class="btn btn-glass btn-sm" @click="statsDateNext">&#9654;</button>
-      </div>
-      <div class="stats-daily-grid">
-        <div class="stat-item"><span class="stat-value">{{ daily.count || 0 }}</span><span class="stat-label">专注次数</span></div>
-        <div class="stat-item"><span class="stat-value">{{ fmtDuration(daily.duration) }}</span><span class="stat-label">专注时长</span></div>
-      </div>
-    </div>
-    <div class="stats-distribution glass-card">
-      <div class="stats-section-header">
-        <h3>专注时长分布</h3>
-        <span class="stats-date-badge">{{ statsDateLabel }}</span>
-      </div>
-      <div class="stats-period-tabs">
-        <button class="period-tab" :class="{ active: statsPeriod === 'day' }" @click="switchStatsPeriod('day')">日</button>
-        <button class="period-tab" :class="{ active: statsPeriod === 'week' }" @click="switchStatsPeriod('week')">周</button>
-        <button class="period-tab" :class="{ active: statsPeriod === 'month' }" @click="switchStatsPeriod('month')">月</button>
-      </div>
-      <div class="stats-chart-container">
-        <canvas ref="donutCanvas" width="280" height="280"></canvas>
-      </div>
-      <div class="stats-legend" v-html="donutLegendHtml"></div>
-    </div>
-    <div class="stats-monthly glass-card">
-      <div class="stats-section-header">
-        <h3>本月专注时段分布</h3>
-        <div class="stats-date-nav" style="margin:0">
-          <button class="btn btn-glass btn-sm" @click="statsMonthPrev">&#9664;</button>
-          <span>{{ statsMonthLabel }}</span>
-          <button class="btn btn-glass btn-sm" @click="statsMonthNext">&#9654;</button>
+    
+    <div class="stats-content">
+      <GlassCard class="stats-cumulative">
+        <div class="stats-section-header">
+          <h3 class="stats-section-title">总体概览 <span v-if="cumulative.first_date" class="date-since">自 {{ cumulative.first_date }} 起</span></h3>
+          <button class="btn btn-glass btn-sm stats-clear-btn" @click="clearFocusSessions">清除专注记录</button>
         </div>
-      </div>
-      <div class="stats-chart-container stats-bar-container">
-        <canvas ref="barCanvas" width="600" height="300"></canvas>
-      </div>
+        <div class="stats-cumulative-grid">
+          <div class="stat-item">
+            <span class="stat-value">{{ cumulative.count || 0 }}</span>
+            <span class="stat-label">专注次数</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ fmtDuration(cumulative.total_duration) }}</span>
+            <span class="stat-label">总时长</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ fmtDuration(cumulative.daily_avg) }}</span>
+            <span class="stat-label">日均时长</span>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard class="stats-daily">
+        <template #header>
+          <div class="stats-date-nav">
+            <button class="nav-btn" @click="statsDatePrev">&#9664;</button>
+            <span class="stats-date-label">{{ statsDateLabel }}</span>
+            <button class="nav-btn" @click="statsDateNext">&#9654;</button>
+          </div>
+        </template>
+        <div class="stats-daily-grid">
+          <div class="stat-item">
+            <span class="stat-value">{{ daily.count || 0 }}</span>
+            <span class="stat-label">专注次数</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value">{{ fmtDuration(daily.duration) }}</span>
+            <span class="stat-label">专注时长</span>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard class="stats-distribution">
+        <template #header>
+          <div class="stats-section-header">
+            <h3>专注时长分布</h3>
+            <div class="stats-period-tabs">
+              <button class="period-tab" :class="{ active: statsPeriod === 'day' }" @click="switchStatsPeriod('day')">日</button>
+              <button class="period-tab" :class="{ active: statsPeriod === 'week' }" @click="switchStatsPeriod('week')">周</button>
+              <button class="period-tab" :class="{ active: statsPeriod === 'month' }" @click="switchStatsPeriod('month')">月</button>
+            </div>
+          </div>
+        </template>
+        <div class="distribution-body">
+          <div class="stats-chart-container">
+            <canvas ref="donutCanvas" width="280" height="280"></canvas>
+          </div>
+          <div class="stats-legend" v-html="donutLegendHtml"></div>
+        </div>
+      </GlassCard>
+
+      <GlassCard class="stats-monthly">
+        <template #header>
+          <div class="stats-section-header">
+            <h3>月度趋势</h3>
+            <div class="stats-date-nav" style="margin:0">
+              <button class="nav-btn" @click="statsMonthPrev">&#9664;</button>
+              <span class="month-label">{{ statsMonthLabel }}</span>
+              <button class="nav-btn" @click="statsMonthNext">&#9654;</button>
+            </div>
+          </div>
+        </template>
+        <div class="stats-chart-container stats-bar-container">
+          <canvas ref="barCanvas" width="600" height="300"></canvas>
+        </div>
+      </GlassCard>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import api from '@/api'
+import GlassCard from '@/components/common/GlassCard.vue'
 import { Chart, DoughnutController, ArcElement, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
 
 Chart.register(DoughnutController, ArcElement, BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend)
@@ -158,3 +187,140 @@ const loadAll = async () => {
 
 onMounted(() => { loadAll() })
 </script>
+
+<style scoped>
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stats-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.date-since {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+  margin-left: 8px;
+}
+
+.stats-cumulative-grid,
+.stats-daily-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.stats-daily-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  background: rgba(124, 110, 240, 0.04);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: rgba(124, 110, 240, 0.08);
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin-top: 4px;
+}
+
+.stats-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s var(--ease-default);
+}
+
+.nav-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  transform: scale(1.1);
+}
+
+.stats-period-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 4px;
+  border-radius: 10px;
+  gap: 4px;
+}
+
+.period-tab {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.period-tab:hover {
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.period-tab.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 4px 12px rgba(124, 110, 240, 0.2);
+  transform: scale(1.05);
+}
+
+body.theme-dark .period-tab.active {
+  background: var(--glass-border);
+  color: white;
+}
+
+.distribution-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 20px 0;
+}
+
+@media (max-width: 800px) {
+  .distribution-body {
+    flex-direction: column;
+  }
+}
+</style>
