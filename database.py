@@ -259,6 +259,7 @@ def init_db():
         # Migration: add indexes for time-period queries
         conn.execute("CREATE INDEX IF NOT EXISTS idx_plans_created_at ON plans(created_at)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_plans_type_created ON plans(plan_type, created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at)")
 
         conn.commit()
 
@@ -269,10 +270,18 @@ def get_plans(plan_type=None, include_completed=False):
     with _conn() as conn:
         completed_filter = "" if include_completed else "AND completed=0"
         if plan_type:
-            rows = conn.execute(
-                f"SELECT * FROM plans WHERE plan_type=? {completed_filter} ORDER BY priority DESC, created_at DESC",
-                (plan_type,)
-            ).fetchall()
+            if plan_type == 'today':
+                today = date.today().isoformat()
+                rows = conn.execute(
+                    f"SELECT * FROM plans WHERE plan_type=? {completed_filter} "
+                    "ORDER BY CASE WHEN due_date IS NULL OR due_date = ? THEN 0 ELSE 1 END, due_date ASC, priority DESC, created_at DESC",
+                    (plan_type, today)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"SELECT * FROM plans WHERE plan_type=? {completed_filter} ORDER BY priority DESC, created_at DESC",
+                    (plan_type,)
+                ).fetchall()
         else:
             rows = conn.execute(
                 f"SELECT * FROM plans WHERE 1=1 {completed_filter} ORDER BY plan_type, priority DESC, created_at DESC"
@@ -547,9 +556,31 @@ def reset_balance():
     return balance
 
 
-def get_transactions():
+def cleanup_old_transactions():
+    """清理7天前的流水记录，先将金额结转为一条记录以保持余额正确"""
     with _conn() as conn:
-        rows = conn.execute("SELECT * FROM transactions ORDER BY created_at DESC").fetchall()
+        cutoff = (datetime.now() - timedelta(days=7)).isoformat()
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total FROM transactions WHERE created_at < ?",
+            (cutoff,)
+        ).fetchone()
+        cnt = row['cnt'] or 0
+        if cnt == 0:
+            return
+        total = row['total']
+        # Insert carry-forward record before deleting
+        conn.execute(
+            "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'carry_forward', NULL, ?)",
+            (total, f"7天前流水结转 (共{cnt}条)")
+        )
+        conn.execute("DELETE FROM transactions WHERE created_at < ?", (cutoff,))
+        conn.commit()
+
+
+def get_transactions():
+    cleanup_old_transactions()
+    with _conn() as conn:
+        rows = conn.execute("SELECT * FROM transactions WHERE source != 'carry_forward' ORDER BY created_at DESC").fetchall()
         return [dict(r) for r in rows]
 
 
@@ -790,12 +821,22 @@ def get_plan_progress(plan_type):
         period_start = today.isoformat()
 
     with _conn() as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
-            "FROM plans WHERE plan_type = ? "
-            "AND (completed = 0 OR completed_at >= ?)",
-            (plan_type, period_start)
-        ).fetchone()
+        if plan_type == 'today':
+            # Only count tasks due today or without due_date
+            row = conn.execute(
+                "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
+                "FROM plans WHERE plan_type = ? "
+                "AND (completed = 0 OR completed_at >= ?) "
+                "AND (due_date IS NULL OR due_date = ?)",
+                (plan_type, period_start, today.isoformat())
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COUNT(*) as total, SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed "
+                "FROM plans WHERE plan_type = ? "
+                "AND (completed = 0 OR completed_at >= ?)",
+                (plan_type, period_start)
+            ).fetchone()
         total = row['total'] or 0
         completed = row['completed'] or 0
         percentage = round(completed / total * 100) if total > 0 else 0

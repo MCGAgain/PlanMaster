@@ -26,7 +26,7 @@
     </div>
 
     <!-- 优先级圆形徽章 -->
-    <div v-if="mode !== 'recycle'" class="priority-ring">
+    <div v-if="mode !== 'recycle' && plan.plan_type !== 'important'" class="priority-ring">
       <svg width="54" height="54" viewBox="0 0 54 54">
         <circle class="ring-bg" cx="27" cy="27" r="24" />
         <circle

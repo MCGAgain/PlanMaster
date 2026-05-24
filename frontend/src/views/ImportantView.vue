@@ -4,19 +4,6 @@
       <h2>重要事项</h2>
       <div class="page-actions">
         <button class="btn btn-glass" @click="showAddImportantModal">+ 新增事项</button>
-        <button 
-          class="btn btn-gradient ai-sort-btn" 
-          :class="{ loading: aiSorting }"
-          @click="aiSortImportant"
-          :disabled="aiSorting"
-        >
-          <Transition name="fade-scale" mode="out-in">
-            <span v-if="!aiSorting" key="text">AI 智能排序</span>
-            <div v-else class="ai-loader-dots" key="loader">
-              <span></span><span></span><span></span>
-            </div>
-          </Transition>
-        </button>
       </div>
     </div>
     
@@ -30,9 +17,9 @@
       <span class="search-clear" v-show="searchKeyword" @click="searchKeyword = ''">&times;</span>
     </div>
 
-    <GlassCard v-if="currentSignature" class="status-card">
+    <div v-if="currentSignature" class="status-group">
       <div class="signature-content">{{ currentSignature }}</div>
-    </GlassCard>
+    </div>
 
     <div class="plan-list">
       <TransitionGroup 
@@ -102,7 +89,6 @@ const currentSignature = ref('')
 const showModal = ref(false)
 const editingId = ref(null)
 const form = ref({ title: '', description: '', due_date: '' })
-const aiSorting = ref(false)
 const loading = ref(true)
 
 const filteredItems = computed(() => {
@@ -181,20 +167,6 @@ const deleteImportant = async (p) => {
     allItems.value = allItems.value.filter(x => x.id !== p.id)
   } catch (e) { 
     window.toast('删除失败: ' + e.message, true) 
-  }
-}
-
-const aiSortImportant = async () => {
-  if (aiSorting.value) return
-  aiSorting.value = true
-  try {
-    const d = await api.sortPlans('important')
-    window.toast('AI 智能排序完成')
-    await loadImportantItems()
-  } catch (e) {
-    window.toast('排序失败: ' + e.message, true)
-  } finally {
-    aiSorting.value = false
   }
 }
 

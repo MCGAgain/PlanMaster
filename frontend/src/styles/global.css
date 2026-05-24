@@ -711,14 +711,19 @@ body.theme-dark .wish-card::before {
   background-clip: text;
 }
 
-/* ---- Unified Status Card ---- */
-.status-card {
+/* ---- Unified Status Area (Framed & Transparent) ---- */
+.status-group {
+  width: 100%;
   margin-bottom: 56px !important;
-  padding: 28px 32px !important;
   display: flex;
   flex-direction: column;
   gap: 20px;
   transform: translateZ(0);
+  padding: 24px 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Ultra-fine, nearly transparent border */
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.01); /* Subtlest hint of a container */
+  box-sizing: border-box;
 }
 
 .category-progress-area {
@@ -729,16 +734,16 @@ body.theme-dark .wish-card::before {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .category-progress-label {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   color: var(--text-soft);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  opacity: 0.8;
+  letter-spacing: 0.12em;
+  opacity: 0.7;
 }
 
 .category-progress-text {
@@ -746,49 +751,34 @@ body.theme-dark .wish-card::before {
   font-weight: 900;
   color: var(--primary);
   line-height: 1;
-  text-shadow: 0 0 20px rgba(124, 110, 240, 0.2);
 }
 
 .category-progress-track {
   height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   overflow: hidden;
   position: relative;
+  width: 100%;
 }
 
 .category-progress-bar {
   height: 100%;
   background: linear-gradient(90deg, #7c6ef0, #a78bfa, #c4b5fd);
-  border-radius: 10px;
+  border-radius: 12px;
   transition: width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 0 15px rgba(124, 110, 240, 0.3);
 }
 
-.status-divider {
-  height: 1px;
-  background: var(--glass-border);
-  opacity: 0.3;
-  margin: 4px 0;
-}
-
 .signature-content {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--primary);
   line-height: 1.5;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.signature-content::before {
-  content: "";
-  display: block;
-  width: 4px;
-  height: 18px;
-  background: var(--primary);
-  border-radius: 4px;
+  font-style: italic;
+  opacity: 0.9;
+  border-left: 3px solid var(--primary);
+  padding-left: 14px;
 }
 
 
@@ -959,48 +949,45 @@ body.theme-dark .wish-card::before {
 
 .plan-card-meta {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
-.plan-badge {
-  padding: 3px 12px;
-  border-radius: 20px;
+.plan-type-tag,
+.plan-badge,
+.timer-btn,
+.focus-btn {
+  height: 28px;
+  padding: 0 12px;
   font-size: 12px;
-  font-weight: 600;
-  
-  
-  
-}
-
-.badge-value {
-  background: var(--primary-light);
-  color: var(--primary);
-  border: 1px solid rgba(124,110,240,.2);
-}
-
-.badge-time {
-  background: rgba(59,130,246,.1);
-  color: #3b82f6;
-  border: 1px solid rgba(59,130,246,.2);
-}
-
-.plan-date-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 400;
-  margin-left: 8px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border: none;
+  transition: all 0.2s ease;
 }
 
 .plan-type-tag {
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
   color: #fff;
-  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-value {
+  background: rgba(52, 211, 153, 0.08);
+  color: var(--success);
+  border: 1px solid rgba(52, 211, 153, 0.15);
+}
+
+.badge-time {
+  background: rgba(124, 110, 240, 0.08);
+  color: var(--primary);
+  border: 1px solid rgba(124, 110, 240, 0.15);
 }
 
 .plan-card-desc {
@@ -1477,11 +1464,18 @@ body.theme-dark .wish-card::before {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
-/* ---- Search ---- */
+.search-wrap,
+.recycle-search-wrap,
+.status-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .search-wrap,
 .recycle-search-wrap {
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .search-input,

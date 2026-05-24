@@ -23,7 +23,7 @@
       <input type="text" class="search-input" placeholder="搜索计划... (支持拼音)" v-model="searchKeyword">
       <span class="search-clear" v-show="searchKeyword" @click="searchKeyword = ''">&times;</span>
     </div>
-    <GlassCard class="status-card">
+    <div class="status-group">
       <div class="category-progress-area">
         <div class="category-progress-info">
           <span class="category-progress-label">本周完成进度</span>
@@ -33,9 +33,8 @@
           <div class="category-progress-bar" :style="{ width: categoryProgress + '%' }"></div>
         </div>
       </div>
-      <div v-if="currentSignature" class="status-divider"></div>
       <div v-if="currentSignature" class="signature-content">{{ currentSignature }}</div>
-    </GlassCard>
+    </div>
     <div class="plan-list">
       <TransitionGroup 
         name="list" 

@@ -93,24 +93,32 @@ const handleOverlayClick = () => {
 // GSAP Animations
 const onBeforeEnter = (el) => {
   gsap.set(el, { opacity: 0 })
+  const modal = el.querySelector('.glass-modal')
+  if (modal) gsap.set(modal, { scale: 0.9, y: 20, opacity: 0 })
 }
 
 const onEnter = (el, done) => {
   gsap.to(el, { opacity: 1, duration: 0.3 })
-  if (modalRef.value) {
-    gsap.fromTo(modalRef.value,
-      { scale: 0.9, y: 20, opacity: 0 },
-      { scale: 1, y: 0, opacity: 1, duration: 0.5, ease: 'back.out(1.7)', onComplete: done }
-    )
+  const modal = el.querySelector('.glass-modal')
+  if (modal) {
+    gsap.to(modal, {
+      scale: 1,
+      y: 0,
+      opacity: 1,
+      duration: 0.5,
+      ease: 'back.out(1.7)',
+      onComplete: done
+    })
   } else {
     done()
   }
 }
 
 const onLeave = (el, done) => {
+  const modal = el.querySelector('.glass-modal')
   gsap.to(el, { opacity: 0, duration: 0.3, delay: 0.1 })
-  if (modalRef.value) {
-    gsap.to(modalRef.value, {
+  if (modal) {
+    gsap.to(modal, {
       scale: 0.95,
       y: 10,
       opacity: 0,

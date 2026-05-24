@@ -31,7 +31,7 @@
       <span class="search-clear" v-show="searchKeyword" @click="clearSearch">&times;</span>
     </div>
 
-    <GlassCard class="status-card">
+    <div class="status-group">
       <div class="category-progress-area">
         <div class="category-progress-info">
           <span class="category-progress-label">今日完成进度</span>
@@ -41,9 +41,8 @@
           <div class="category-progress-bar" :style="{ width: categoryProgress + '%' }"></div>
         </div>
       </div>
-      <div v-if="currentSignature" class="status-divider"></div>
       <div v-if="currentSignature" class="signature-content">{{ currentSignature }}</div>
-    </GlassCard>
+    </div>
 
     <div class="plan-list">
       <TransitionGroup 
@@ -88,6 +87,10 @@
         <label>计划描述</label>
         <textarea v-model="form.description" rows="3" placeholder="详细描述你的计划..."></textarea>
       </div>
+      <div class="form-group">
+        <label>计划日期</label>
+        <input type="date" v-model="form.due_date">
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label>优先级 (1-100)</label>
@@ -131,7 +134,8 @@ const signatures = ref([])
 const currentSignature = ref('')
 const showModal = ref(false)
 const editingPlanId = ref(null)
-const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0 })
+const todayStr = () => new Date().toISOString().slice(0, 10)
+const form = ref({ title: '', description: '', priority: '', virtual_value: '', progress: 0, due_date: todayStr() })
 const aiSorting = ref(false)
 const loading = ref(true)
 
@@ -180,18 +184,19 @@ const loadSignatures = async () => {
 
 const showAddPlanModal = () => {
   editingPlanId.value = null
-  form.value = { title: '', description: '', priority: '', virtual_value: '', progress: 0 }
+  form.value = { title: '', description: '', priority: '', virtual_value: '', progress: 0, due_date: todayStr() }
   showModal.value = true
 }
 
 const editPlan = (p) => {
   editingPlanId.value = p.id
-  form.value = { 
-    title: p.title, 
-    description: p.description || '', 
-    priority: p.priority || '', 
-    virtual_value: p.virtual_value || '', 
-    progress: p.progress || 0 
+  form.value = {
+    title: p.title,
+    description: p.description || '',
+    priority: p.priority || '',
+    virtual_value: p.virtual_value || '',
+    progress: p.progress || 0,
+    due_date: p.due_date || ''
   }
   showModal.value = true
 }
@@ -204,10 +209,11 @@ const savePlan = async () => {
   if (!title) { window.toast('请输入标题', true); return }
   planSaving = true
   try {
-    const body = { 
-      title, 
-      description: form.value.description.trim(), 
-      progress: parseInt(form.value.progress) || 0 
+    const body = {
+      title,
+      description: form.value.description.trim(),
+      progress: parseInt(form.value.progress) || 0,
+      due_date: form.value.due_date || null
     }
     if (form.value.priority !== '') body.priority = parseInt(form.value.priority)
     if (form.value.virtual_value !== '') body.virtual_value = parseFloat(form.value.virtual_value)
