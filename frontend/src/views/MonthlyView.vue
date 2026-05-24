@@ -265,6 +265,8 @@ const updateProgress = async (id, val) => {
   }
   try { 
     await api.updatePlan(id, { progress: v })
+    const p = plans.value.find(x => x.id === id)
+    if (p) p.progress = v
     const progress = await api.getPlanProgress(planType)
     categoryProgress.value = progress.percentage || 0
   } catch (e) { 
@@ -301,13 +303,24 @@ const stopFocus = async () => {
 
 const toggleTimer = (id, timeStr) => {
   id = parseInt(id)
-  if (ui.activeTimers[id]) { ui.stopTimer(id); return }
+  if (ui.activeTimers[id]) { 
+    // CANCEL: Restore original progress
+    const originalProgress = ui.activeTimers[id].originalProgress || 0
+    ui.stopTimer(id)
+    updateProgress(id, originalProgress)
+    return 
+  }
+  
   const sec = parseSuggestedTime(timeStr)
   if (sec > 0) {
-    api.updatePlan(id, { progress: 0 }).catch(() => {})
     const plan = plans.value.find(p => p.id === id)
+    const currentProg = plan ? plan.progress : 0
+    
+    // START: Immediately clear progress in UI and backend
     if (plan) plan.progress = 0
-    ui.startTimer(id, sec, onTimerTick, onTimerEnd)
+    api.updatePlan(id, { progress: 0 }).catch(() => {})
+    
+    ui.startTimer(id, sec, currentProg, onTimerTick, onTimerEnd)
   }
 }
 

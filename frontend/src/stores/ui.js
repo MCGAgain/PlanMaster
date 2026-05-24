@@ -11,14 +11,15 @@ export const useUiStore = defineStore('ui', {
   }),
 
   actions: {
-    startTimer(id, totalSec, onTick, onEnd) {
+    startTimer(id, totalSec, originalProgress, onTick, onEnd) {
       id = parseInt(id)
       if (intervals[id]) return
       this.activeTimers[id] = {
         remaining: totalSec,
         total: totalSec,
         startAt: Date.now(),
-        progress: 0
+        progress: 0,
+        originalProgress: originalProgress || 0
       }
       intervals[id] = setInterval(() => {
         const t = this.activeTimers[id]
