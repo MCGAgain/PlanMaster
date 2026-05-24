@@ -270,6 +270,56 @@ const aiSortPlans = async () => {
   }
 }
 
+function parseSuggestedTime(str) {
+  if (!str) return 0
+  const m = str.match(/([\d.]+)\s*(秒|分钟|小时|天|周)/)
+  if (!m) return 0
+  const v = parseFloat(m[1])
+  const unitMap = { '秒': 1, '分钟': 60, '小时': 3600, '天': 86400, '周': 604800 }
+  return v * (unitMap[m[2]] || 1)
+}
+
+const toggleTimer = (id, timeStr) => {
+  id = parseInt(id)
+  if (ui.activeTimers[id]) { ui.stopTimer(id); return }
+  const sec = parseSuggestedTime(timeStr)
+  if (sec > 0) {
+    api.updatePlan(id, { progress: 0 }).catch(() => {})
+    const plan = plans.value.find(p => p.id === id)
+    if (plan) plan.progress = 0
+    ui.startTimer(id, sec, onTimerTick, onTimerEnd)
+  }
+}
+
+const toggleFocus = async (p) => {
+  const planId = p.id
+  if (ui.activeFocusSession && ui.activeFocusSession.plan_id === planId) {
+    await stopFocus()
+  } else {
+    if (ui.activeFocusSession) await stopFocus()
+    try {
+      const session = await api.createSession({ plan_id: planId, start_time: new Date().toISOString() })
+      ui.activeFocusSession = { id: session.id, plan_id: planId, start_time: new Date() }
+      window.toast('专注已开始')
+    } catch (e) {
+      window.toast('启动失败: ' + e.message, true)
+    }
+  }
+}
+
+const onTimerTick = async (id, progress) => {
+  const plan = plans.value.find(p => p.id === id)
+  if (plan) plan.progress = progress
+}
+
+const onTimerEnd = async (id) => {
+  window.toast('计时结束！')
+  try {
+    await api.updatePlan(id, { progress: 100 })
+    await loadPlans()
+  } catch (e) {}
+}
+
 // Focus Logic
 const stopFocus = async () => {
   if (!ui.activeFocusSession) return
