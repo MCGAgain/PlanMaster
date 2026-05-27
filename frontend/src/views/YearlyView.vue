@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>年计划</h2>
       <div class="page-actions">
-        <button class="btn btn-glass" @click="showAddModal = true">+ 新增计划</button>
+        <button class="btn btn-glass" @click="showAddPlanModal">+ 新增计划</button>
         <button 
           class="btn btn-gradient ai-sort-btn" 
           :class="{ loading: aiSorting }"
@@ -27,7 +27,7 @@
       <div class="category-progress-area">
         <div class="category-progress-info">
           <span class="category-progress-label">今年完成进度</span>
-          <div v-if="categoryProgress === 0" class="page-agent-hint">
+          <div v-if="!categoryProgress || Number(categoryProgress) <= 0" class="page-agent-hint">
             不知道如何开始？按 <kbd>Cmd + K</kbd> 召唤 Agent
           </div>
           <span class="category-progress-text">{{ categoryProgress }}%</span>

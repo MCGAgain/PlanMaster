@@ -35,7 +35,7 @@
       <div class="category-progress-area">
         <div class="category-progress-info">
           <span class="category-progress-label">今日完成进度</span>
-          <div v-if="categoryProgress === 0" class="page-agent-hint">
+          <div v-if="!categoryProgress || Number(categoryProgress) <= 0" class="page-agent-hint">
             不知道如何开始？按 <kbd>Cmd + K</kbd> 召唤 Agent
           </div>
           <span class="category-progress-text">{{ categoryProgress }}%</span>
