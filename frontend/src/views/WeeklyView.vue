@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>周计划</h2>
       <div class="page-actions">
-        <button class="btn btn-glass" @click="showAddPlanModal">+ 新增计划</button>
+        <button class="btn btn-glass" @click="showAddModal = true">+ 新增计划</button>
         <button 
           class="btn btn-gradient ai-sort-btn" 
           :class="{ loading: aiSorting }"
@@ -11,7 +11,7 @@
           :disabled="aiSorting"
         >
           <Transition name="fade-scale" mode="out-in">
-            <span v-if="!aiSorting" key="text">AI 智能排序</span>
+            <span v-if="!aiSorting" key="text">✨ 智能排序</span>
             <div v-else class="ai-loader-dots" key="loader">
               <span></span><span></span><span></span>
             </div>
@@ -27,6 +27,9 @@
       <div class="category-progress-area">
         <div class="category-progress-info">
           <span class="category-progress-label">本周完成进度</span>
+          <div v-if="categoryProgress === 0" class="page-agent-hint">
+            不知道如何开始？按 <kbd>Cmd + K</kbd> 召唤 Agent
+          </div>
           <span class="category-progress-text">{{ categoryProgress }}%</span>
         </div>
         <div class="category-progress-track">

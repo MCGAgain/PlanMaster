@@ -29,7 +29,7 @@ if not os.environ.get('GITHUB_TOKEN') and not os.environ.get('GH_TOKEN'):
     except Exception:
         pass
 
-CURRENT_VERSION = '2.4.2'
+CURRENT_VERSION = '2.5.0'
 
 def _parse_version(v):
     """解析版本号为元组用于语义比较"""
@@ -247,6 +247,104 @@ def api_batch_delete_plans():
     return jsonify({'ok': True, 'deleted': deleted})
 
 
+@app.route('/api/plans/<int:plan_id>/logs', methods=['GET'])
+def api_get_task_logs(plan_id):
+    logs = db.get_task_logs(plan_id)
+    return jsonify(logs)
+
+
+@app.route('/api/plans/<int:plan_id>/logs', methods=['POST'])
+def api_create_task_log(plan_id):
+    data = request.json
+    content = data.get('content', '').strip()
+    if not content:
+        return jsonify({'error': '请输入日志内容'}), 400
+    log = db.create_task_log(
+        plan_id,
+        content,
+        progress=data.get('progress', ''),
+        next_step=data.get('next_step', ''),
+        tags=data.get('tags', '')
+    )
+    return jsonify(log), 201
+
+
+@app.route('/api/logs/<int:log_id>', methods=['PUT'])
+def api_update_task_log(log_id):
+    data = request.json
+    log = db.update_task_log(
+        log_id,
+        content=data.get('content'),
+        progress=data.get('progress'),
+        next_step=data.get('next_step'),
+        tags=data.get('tags')
+    )
+    if not log:
+        return jsonify({'error': '日志不存在'}), 404
+    return jsonify(log)
+
+
+@app.route('/api/logs/<int:log_id>', methods=['DELETE'])
+def api_delete_task_log(log_id):
+    db.delete_task_log(log_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/daily-plans', methods=['GET'])
+def api_get_daily_plans():
+    plan_date = request.args.get('date', date.today().isoformat())
+    plans = db.get_daily_plans(plan_date)
+    return jsonify(plans)
+
+
+@app.route('/api/daily-plans', methods=['POST'])
+def api_create_daily_plan():
+    data = request.json
+    title = data.get('title', '').strip()
+    if not title:
+        return jsonify({'error': '请输入标题'}), 400
+    plan = db.create_daily_plan(
+        plan_date=data.get('date', date.today().isoformat()),
+        title=title,
+        note=data.get('note', ''),
+        sort_order=data.get('sort_order', 0),
+        linked_plan_id=data.get('linked_plan_id')
+    )
+    return jsonify(plan), 201
+
+
+@app.route('/api/daily-plans/<int:plan_id>', methods=['PUT'])
+def api_update_daily_plan(plan_id):
+    data = request.json
+    linked = data.get('linked_plan_id', db._UNSET) if 'linked_plan_id' in data else db._UNSET
+    plan = db.update_daily_plan(
+        plan_id,
+        title=data.get('title'),
+        note=data.get('note'),
+        sort_order=data.get('sort_order'),
+        status=data.get('status'),
+        linked_plan_id=linked
+    )
+    if not plan:
+        return jsonify({'error': '不存在'}), 404
+    return jsonify(plan)
+
+
+@app.route('/api/daily-plans/<int:plan_id>', methods=['DELETE'])
+def api_delete_daily_plan(plan_id):
+    db.delete_daily_plan(plan_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/daily-plans/reorder', methods=['POST'])
+def api_reorder_daily_plans():
+    data = request.json
+    plan_date = data.get('date', date.today().isoformat())
+    ordered_ids = data.get('ids', [])
+    db.reorder_daily_plans(plan_date, ordered_ids)
+    return jsonify({'ok': True})
+
+
 @app.route('/api/plans/sort', methods=['POST'])
 def api_sort_plans():
     data = request.json
@@ -352,6 +450,100 @@ def api_fetch_models():
         return jsonify({'error': f'HTTP {e.response.status_code}: {e.response.text[:200]}'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/ai/chat', methods=['POST'])
+def api_ai_chat():
+    import agent_tools
+
+    data = request.json
+    messages = data.get('messages', [])
+    if not messages:
+        return jsonify({'error': '消息不能为空'}), 400
+
+    ai_cfg = db.get_ai_settings()
+    if not ai_cfg.get('base_url') or not ai_cfg.get('api_key'):
+        return jsonify({'error': '请先在设置中配置 AI API'}), 400
+
+    try:
+        extra_headers = json.loads(ai_cfg.get('extra_headers', '{}'))
+    except json.JSONDecodeError:
+        extra_headers = {}
+
+    url = ai_cfg['base_url'].rstrip('/') + '/chat/completions'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f"Bearer {ai_cfg['api_key']}",
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+
+    # Inject system prompt with tool descriptions if not already present
+    if not messages or messages[0].get('role') != 'system':
+        tool_desc = "\n".join([
+            f"- {t['function']['name']}: {t['function']['description']}"
+            for t in agent_tools.TOOLS
+        ])
+        messages.insert(0, {
+            "role": "system",
+            "content": (
+                "你是 PlanMaster 的 AI 助手。你可以帮用户管理任务、查看专注统计、操作规划等。\n"
+                "你可以通过调用工具来操作应用。根据用户的自然语言，判断需要调用哪些工具。\n"
+                "如果需要多个步骤，可以依次调用多个工具。\n"
+                "最后用自然语言回复用户，告诉它你做了什么或查到了什么。\n\n"
+                f"可用工具：\n{tool_desc}"
+            )
+        })
+
+    # Tool-calling loop (max 5 iterations to prevent infinite loops)
+    for _ in range(5):
+        try:
+            payload = {
+                'model': ai_cfg.get('model_name', 'gpt-4'),
+                'messages': messages,
+                'tools': agent_tools.TOOLS,
+                'tool_choice': 'auto',
+                'temperature': 0.3,
+                'max_tokens': 2000,
+            }
+
+            resp = requests.post(url, json=payload, headers=headers, timeout=60)
+            resp.raise_for_status()
+            result = resp.json()
+        except requests.exceptions.RequestException as e:
+            return jsonify({'error': f'AI 请求失败: {str(e)}'}), 500
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+        choice = result['choices'][0]
+        msg = choice['message']
+
+        # If AI wants to call tools
+        if msg.get('tool_calls'):
+            messages.append(msg)
+            for tc in msg['tool_calls']:
+                fn_name = tc['function']['name']
+                try:
+                    fn_args = json.loads(tc['function']['arguments'])
+                except (json.JSONDecodeError, KeyError):
+                    fn_args = {}
+
+                # Execute the tool
+                tool_result = agent_tools.execute_tool(fn_name, fn_args)
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": json.dumps(tool_result, ensure_ascii=False, default=str)
+                })
+
+            # Continue loop - send results back to AI
+            continue
+
+        # AI returned a text response - done
+        content = msg.get('content', '')
+        return jsonify({'content': content})
+
+    return jsonify({'content': '操作步骤过多，请简化请求后重试。'})
 
 
 # ---- Wishes API ----
@@ -571,6 +763,23 @@ def api_clear_focus_sessions():
 def api_stats_daily():
     date_str = request.args.get('date', date.today().isoformat())
     return jsonify(db.get_daily_stats(date_str))
+
+
+@app.route('/api/stats/focus-value', methods=['GET'])
+def api_focus_value():
+    date_str = request.args.get('date', date.today().isoformat())
+    with db._conn() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) as today_value FROM transactions "
+            "WHERE source='focus_session' AND substr(created_at, 1, 10) = ?",
+            (date_str,)
+        ).fetchone()
+        today_value = row['today_value'] or 0
+        row2 = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) as total_value FROM transactions WHERE source='focus_session'"
+        ).fetchone()
+        total_value = row2['total_value'] or 0
+    return jsonify({'today_value': round(today_value, 1), 'total_value': round(total_value, 1)})
 
 
 @app.route('/api/stats/distribution', methods=['GET'])
@@ -1038,6 +1247,7 @@ def api_deepseek_balance():
 @app.route('/transactions')
 @app.route('/recycle')
 @app.route('/apibalance')
+@app.route('/daily-plan')
 def spa_catchall(**kwargs):
     vue_index = os.path.join(_sta_dir, 'dist', 'index.html')
     if os.path.isfile(vue_index):

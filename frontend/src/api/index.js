@@ -67,6 +67,37 @@ class ApiClient {
     return this.request('/api/plans/sort', { method: 'POST', body: { plan_type: planType } })
   }
 
+  // Task Logs
+  getTaskLogs(planId) {
+    return this.request(`/api/plans/${planId}/logs`)
+  }
+  createTaskLog(planId, log) {
+    return this.request(`/api/plans/${planId}/logs`, { method: 'POST', body: log })
+  }
+  updateTaskLog(logId, log) {
+    return this.request(`/api/logs/${logId}`, { method: 'PUT', body: log })
+  }
+  deleteTaskLog(logId) {
+    return this.request(`/api/logs/${logId}`, { method: 'DELETE' })
+  }
+
+  // Daily Plans
+  getDailyPlans(date) {
+    return this.request(`/api/daily-plans?date=${encodeURIComponent(date)}`)
+  }
+  createDailyPlan(plan) {
+    return this.request('/api/daily-plans', { method: 'POST', body: plan })
+  }
+  updateDailyPlan(id, plan) {
+    return this.request(`/api/daily-plans/${id}`, { method: 'PUT', body: plan })
+  }
+  deleteDailyPlan(id) {
+    return this.request(`/api/daily-plans/${id}`, { method: 'DELETE' })
+  }
+  reorderDailyPlans(date, ids) {
+    return this.request('/api/daily-plans/reorder', { method: 'POST', body: { date, ids } })
+  }
+
   // Wishes
   getWishes() { return this.request('/api/wishes') }
   createWish(wish) { return this.request('/api/wishes', { method: 'POST', body: wish }) }
@@ -105,6 +136,9 @@ class ApiClient {
   }
   getMonthlyStats(month) { return this.request(`/api/stats/monthly?month=${encodeURIComponent(month || '')}`) }
   clearFocusSessions() { return this.request('/api/stats/clear', { method: 'POST' }) }
+  getFocusValue(dateStr) {
+    return this.request(`/api/stats/focus-value?date=${encodeURIComponent(dateStr || '')}`)
+  }
 
   // Settings
   getSettings() { return this.request('/api/settings') }

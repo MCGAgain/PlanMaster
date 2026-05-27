@@ -3,7 +3,13 @@
     <div class="page-header">
       <h2>专注模式</h2>
     </div>
-    
+
+    <div class="focus-value-bar" v-if="focusValueStats">
+      <span class="fv-item">今日价值: <strong>{{ focusValueStats.today_value }}</strong></span>
+      <span class="fv-divider">|</span>
+      <span class="fv-item">累计价值: <strong>{{ focusValueStats.total_value }}</strong></span>
+    </div>
+
     <div class="focus-container">
       <Transition name="focus-fade" mode="out-in">
         <GlassCard v-if="focusState === 'setup'" key="setup" class="focus-setup">
@@ -102,6 +108,7 @@
           <div class="focus-complete-icon">&#10003;</div>
           <div class="focus-complete-title">{{ focusCompleteTitle }}</div>
           <div class="focus-complete-duration">{{ focusCompleteDuration }}</div>
+          <div v-if="focusCompleteValue > 0" class="focus-complete-value">+{{ focusCompleteValue }} 价值</div>
           <div class="focus-complete-category">任务: {{ focusCurrentTask }}</div>
           <button 
             class="btn btn-gradient" 
@@ -122,6 +129,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
 import api from '@/api'
+import { calculateFocusValue } from '@/services/focusValueService'
 import GlassCard from '@/components/common/GlassCard.vue'
 
 const FOCUS_RING_CIRCUMFERENCE = 2 * Math.PI * 120
@@ -140,6 +148,8 @@ const focusTimerDisplay = ref('00:00:00')
 const focusModeLabel = ref('')
 const focusCompleteTitle = ref('专注完成')
 const focusCompleteDuration = ref('')
+const focusCompleteValue = ref(0)
+const focusValueStats = ref(null)
 const focusRingFill = ref(null)
 let focusTimerInterval = null
 
@@ -223,7 +233,9 @@ const stopFocusTimer = async () => {
   focusState.value = 'complete'
   focusCompleteTitle.value = focusMode.value === 'countdown' && focusElapsed.value >= focusTotalSec.value ? '倒计时结束' : '专注完成'
   focusCompleteDuration.value = fmtHMS(focusElapsed.value)
+  focusCompleteValue.value = calculateFocusValue(focusElapsed.value)
   focusCurrentSessionId.value = null
+  loadFocusValueStats()
 }
 
 const cancelFocusTimer = async () => {
@@ -261,7 +273,14 @@ const restoreFocusSession = async () => {
   } catch (e) {}
 }
 
-onMounted(() => { restoreFocusSession() })
+const loadFocusValueStats = async () => {
+  try { focusValueStats.value = await api.getFocusValue() } catch (e) {}
+}
+
+onMounted(() => {
+  restoreFocusSession()
+  loadFocusValueStats()
+})
 onUnmounted(() => { if (focusTimerInterval) clearInterval(focusTimerInterval) })
 </script>
 
@@ -421,6 +440,36 @@ onUnmounted(() => { if (focusTimerInterval) clearInterval(focusTimerInterval) })
   font-size: 14px;
   color: var(--text-soft);
   margin-bottom: 30px;
+}
+
+.focus-complete-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--success);
+  margin-bottom: 8px;
+}
+
+.focus-value-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.fv-item strong {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.fv-divider {
+  opacity: 0.3;
 }
 /* Focus Transitions */
 .focus-fade-enter-active,

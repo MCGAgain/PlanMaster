@@ -6,6 +6,10 @@ import './styles/global.css'
 import './styles/blur-fix.css'
 import './styles/liquid-glass.css'
 import { vGsap } from './utils/animations'
+import { initActions } from './core/actions'
+
+// Initialize Action Registry
+initActions()
 
 const app = createApp(App)
 const pinia = createPinia()

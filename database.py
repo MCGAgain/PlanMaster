@@ -189,6 +189,31 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_focus_sessions_start ON focus_sessions(start_time);
             CREATE INDEX IF NOT EXISTS idx_focus_sessions_category ON focus_sessions(category);
+
+            CREATE TABLE IF NOT EXISTS task_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                plan_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                progress TEXT DEFAULT '',
+                next_step TEXT DEFAULT '',
+                tags TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_task_logs_plan ON task_logs(plan_id);
+
+            CREATE TABLE IF NOT EXISTS daily_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                plan_date TEXT NOT NULL,
+                title TEXT NOT NULL,
+                note TEXT DEFAULT '',
+                sort_order INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'pending',
+                linked_plan_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (linked_plan_id) REFERENCES plans(id) ON DELETE SET NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_daily_plans_date ON daily_plans(plan_date);
         """)
 
         # Migration: add progress column if missing
@@ -857,12 +882,32 @@ def create_focus_session(plan_id, category, start_time):
         return dict(row)
 
 
+def _focus_value(duration_seconds):
+    """Calculate virtual value from focus duration. Returns rounded value.
+    Base: ~10 value for 24h continuous focus."""
+    minutes = duration_seconds / 60
+    base_rate = 0.005
+    multiplier = 1.0
+    if minutes >= 120:
+        multiplier = 1.5
+    elif minutes >= 50:
+        multiplier = 1.2
+    return round(minutes * base_rate * multiplier, 1)
+
+
 def end_focus_session(session_id, end_time, duration):
     with _conn() as conn:
         conn.execute(
             "UPDATE focus_sessions SET end_time=?, duration=? WHERE id=?",
             (end_time, int(duration), session_id)
         )
+        # Create transaction for focus value
+        value = _focus_value(int(duration))
+        if value > 0:
+            conn.execute(
+                "INSERT INTO transactions (amount, source, reference_id, note) VALUES (?, 'focus_session', ?, ?)",
+                (value, session_id, f"专注 {int(duration//60)} 分钟")
+            )
         conn.commit()
         row = conn.execute("SELECT * FROM focus_sessions WHERE id=?", (session_id,)).fetchone()
         return dict(row) if row else None
@@ -910,6 +955,123 @@ def delete_focus_session(session_id):
 def delete_all_focus_sessions():
     with _conn() as conn:
         conn.execute("DELETE FROM focus_sessions")
+        conn.commit()
+
+
+# ---- Task Logs ----
+
+def get_task_logs(plan_id):
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM task_logs WHERE plan_id=? ORDER BY created_at DESC",
+            (plan_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def create_task_log(plan_id, content, progress='', next_step='', tags=''):
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO task_logs (plan_id, content, progress, next_step, tags) VALUES (?, ?, ?, ?, ?)",
+            (plan_id, content, progress, next_step, tags)
+        )
+        log_id = cur.lastrowid
+        conn.commit()
+        row = conn.execute("SELECT * FROM task_logs WHERE id=?", (log_id,)).fetchone()
+        return dict(row)
+
+
+def update_task_log(log_id, content=None, progress=None, next_step=None, tags=None):
+    with _conn() as conn:
+        if content is not None:
+            conn.execute("UPDATE task_logs SET content=? WHERE id=?", (content, log_id))
+        if progress is not None:
+            conn.execute("UPDATE task_logs SET progress=? WHERE id=?", (progress, log_id))
+        if next_step is not None:
+            conn.execute("UPDATE task_logs SET next_step=? WHERE id=?", (next_step, log_id))
+        if tags is not None:
+            conn.execute("UPDATE task_logs SET tags=? WHERE id=?", (tags, log_id))
+        conn.commit()
+        row = conn.execute("SELECT * FROM task_logs WHERE id=?", (log_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def delete_task_log(log_id):
+    with _conn() as conn:
+        conn.execute("DELETE FROM task_logs WHERE id=?", (log_id,))
+        conn.commit()
+
+
+def get_task_logs_summary(plan_id):
+    """Get the latest log for a plan (for card preview)."""
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM task_logs WHERE plan_id=? ORDER BY created_at DESC LIMIT 1",
+            (plan_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+# ---- Daily Plans ----
+
+def get_daily_plans(plan_date):
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT dp.*, p.title as linked_title FROM daily_plans dp "
+            "LEFT JOIN plans p ON dp.linked_plan_id = p.id "
+            "WHERE dp.plan_date=? ORDER BY dp.sort_order ASC, dp.id ASC",
+            (plan_date,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def create_daily_plan(plan_date, title, note='', sort_order=0, linked_plan_id=None):
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO daily_plans (plan_date, title, note, sort_order, linked_plan_id) VALUES (?, ?, ?, ?, ?)",
+            (plan_date, title, note, sort_order, linked_plan_id)
+        )
+        plan_id = cur.lastrowid
+        conn.commit()
+        row = conn.execute(
+            "SELECT dp.*, p.title as linked_title FROM daily_plans dp "
+            "LEFT JOIN plans p ON dp.linked_plan_id = p.id WHERE dp.id=?",
+            (plan_id,)
+        ).fetchone()
+        return dict(row)
+
+
+def update_daily_plan(plan_id, title=None, note=None, sort_order=None, status=None, linked_plan_id=_UNSET):
+    with _conn() as conn:
+        if title is not None:
+            conn.execute("UPDATE daily_plans SET title=? WHERE id=?", (title, plan_id))
+        if note is not None:
+            conn.execute("UPDATE daily_plans SET note=? WHERE id=?", (note, plan_id))
+        if sort_order is not None:
+            conn.execute("UPDATE daily_plans SET sort_order=? WHERE id=?", (sort_order, plan_id))
+        if status is not None:
+            conn.execute("UPDATE daily_plans SET status=? WHERE id=?", (status, plan_id))
+        if linked_plan_id is not _UNSET:
+            conn.execute("UPDATE daily_plans SET linked_plan_id=? WHERE id=?", (linked_plan_id, plan_id))
+        conn.commit()
+        row = conn.execute(
+            "SELECT dp.*, p.title as linked_title FROM daily_plans dp "
+            "LEFT JOIN plans p ON dp.linked_plan_id = p.id WHERE dp.id=?",
+            (plan_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def delete_daily_plan(plan_id):
+    with _conn() as conn:
+        conn.execute("DELETE FROM daily_plans WHERE id=?", (plan_id,))
+        conn.commit()
+
+
+def reorder_daily_plans(plan_date, ordered_ids):
+    with _conn() as conn:
+        for i, pid in enumerate(ordered_ids):
+            conn.execute("UPDATE daily_plans SET sort_order=? WHERE id=? AND plan_date=?", (i, pid, plan_date))
         conn.commit()
 
 

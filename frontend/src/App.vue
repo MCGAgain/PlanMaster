@@ -42,13 +42,21 @@
         >
           <span class="nav-icon">&#9888;</span><span>重要事项</span>
         </li>
-        <li 
-          class="nav-item" 
-          :class="{ active: currentRoute === '/' }" 
+        <li
+          class="nav-item"
+          :class="{ active: currentRoute === '/' }"
           data-path="/"
           @click="navigate('/')"
         >
           <span class="nav-icon">&#9728;</span><span>今日待办</span>
+        </li>
+        <li
+          class="nav-item"
+          :class="{ active: currentRoute === '/daily-plan' }"
+          data-path="/daily-plan"
+          @click="navigate('/daily-plan')"
+        >
+          <span class="nav-icon">&#128221;</span><span>今日规划</span>
         </li>
         <li class="nav-group">
           <div 
@@ -164,6 +172,8 @@
     <transition @enter="onToastEnter" @leave="onToastLeave">
       <div v-if="toastVisible" class="toast" :class="{ error: toastIsError }">{{ toastMessage }}</div>
     </transition>
+
+    <AICommandPalette />
   </div>
 </template>
 
@@ -172,6 +182,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import gsap from 'gsap'
 import api from '@/api'
+import AICommandPalette from '@/components/common/AICommandPalette.vue'
 
 const route = useRoute()
 const router = useRouter()

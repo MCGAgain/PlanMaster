@@ -82,6 +82,8 @@
           class="btn timer-btn btn-sm"
           :class="{ counting: timerRemaining !== null }"
           @click.stop="$emit('toggleTimer', plan.id, plan.suggested_time)"
+          @mousedown.stop
+          @mouseup.stop
         >
           {{ timerRemaining !== null ? fmtCountdown(timerRemaining) : '开始' }}
         </button>
@@ -92,6 +94,8 @@
           class="btn focus-btn btn-sm"
           :class="{ focusing: isFocusing }"
           @click.stop="$emit('toggleFocus', plan)"
+          @mousedown.stop
+          @mouseup.stop
         >
           {{ isFocusing ? '&#9632; 停止' : '&#9654; 专注' }}
         </button>
@@ -130,13 +134,15 @@
             :value="currentProgress"
             @input="onProgressInput"
             @change="onProgressChange"
+            @mousedown.stop
+            @mouseup.stop
           />
         </div>
         <span class="plan-progress-text">{{ currentProgress }}%</span>
       </div>
 
       <!-- 操作按钮 -->
-      <div class="plan-card-actions">
+      <div class="plan-card-actions" @mousedown.stop @mouseup.stop>
         <template v-if="mode === 'recycle'">
           <button class="btn btn-glass btn-sm" @click.stop="$emit('restore', plan)">恢复</button>
           <button class="btn btn-danger btn-sm" @click.stop="$emit('deletePermanent', plan)">永久删除</button>
@@ -153,6 +159,14 @@
           <button class="btn btn-danger btn-sm" @click.stop="$emit('delete', plan)">删除</button>
         </template>
       </div>
+
+      <!-- Task Log Section -->
+      <TaskLog
+        v-if="mode !== 'recycle' && plan.plan_type !== 'important'"
+        :planId="plan.id"
+        @mousedown.stop
+        @mouseup.stop
+      />
     </div>
   </div>
 </template>
@@ -160,6 +174,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import gsap from 'gsap'
+import TaskLog from './TaskLog.vue'
 
 const props = defineProps({
   plan: { type: Object, required: true },

@@ -8,6 +8,12 @@ const routes = [
     meta: { title: '今日待办', icon: '&#9728;' }
   },
   {
+    path: '/daily-plan',
+    name: 'daily-plan',
+    component: () => import('@/views/DailyPlanView.vue'),
+    meta: { title: '今日规划', icon: '&#128221;' }
+  },
+  {
     path: '/checkin',
     name: 'checkin',
     component: () => import('@/views/CheckinView.vue'),

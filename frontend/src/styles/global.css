@@ -633,6 +633,11 @@ body.bg-image {
   background-clip: text;
 }
 
+.page-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
 .settings-form,
 .stats-content {
   display: flex;
@@ -779,6 +784,26 @@ body.theme-dark .wish-card::before {
   opacity: 0.9;
   border-left: 3px solid var(--primary);
   padding-left: 14px;
+}
+
+.page-agent-hint {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 auto;
+}
+
+.page-agent-hint kbd {
+  background: rgba(124, 110, 240, 0.1);
+  border: 1px solid rgba(124, 110, 240, 0.2);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  font-family: inherit;
+  font-weight: 700;
+  color: var(--primary);
 }
 
 
