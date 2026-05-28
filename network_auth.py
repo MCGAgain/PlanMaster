@@ -28,33 +28,42 @@ def _get_portal_url():
 
 def check_network_status():
     """Check if network needs authentication.
-    Returns: 'connected', 'portal', or 'error'
+    Returns: (status: str, portal_url: str)
+    status: 'connected', 'portal', or 'error'
+    portal_url: the redirect URL with query params (only for 'portal')
     """
     try:
         resp = requests.get(CHECK_URL, timeout=5, allow_redirects=False)
         if resp.status_code == 204:
-            return 'connected'
+            return 'connected', ''
         if resp.status_code in (301, 302):
             location = resp.headers.get('Location', '')
             if PORTAL_IP in location or 'eportal' in location:
-                return 'portal'
-        return 'portal'
+                return 'portal', location
+        # Try direct portal check
+        resp2 = requests.get(f'http://{PORTAL_IP}/eportal/index.jsp', timeout=5, allow_redirects=False)
+        if resp2.status_code in (301, 302):
+            return 'portal', resp2.headers.get('Location', '')
+        if resp2.status_code == 200:
+            return 'portal', resp2.url
+        return 'error', ''
     except requests.exceptions.RequestException:
         try:
-            resp = requests.get(f'http://{PORTAL_IP}/eportal/index.jsp', timeout=5)
+            resp = requests.get(f'http://{PORTAL_IP}/eportal/index.jsp', timeout=5, allow_redirects=False)
+            if resp.status_code in (301, 302):
+                return 'portal', resp.headers.get('Location', '')
             if resp.status_code == 200:
-                return 'portal'
+                return 'portal', resp.url
         except Exception:
             pass
-        return 'error'
+        return 'error', ''
 
 
-def parse_portal_params(url):
-    """Extract portal parameters from the redirect URL."""
-    parsed = urlparse(url)
-    params = parse_qs(parsed.query)
-    # Flatten single-value lists
-    return {k: v[0] if isinstance(v, list) and len(v) == 1 else v for k, v in params.items()}
+def get_query_string(portal_url):
+    """Extract queryString from portal redirect URL for login POST."""
+    parsed = urlparse(portal_url)
+    # The queryString is the entire query string from the URL
+    return parsed.query if parsed.query else ''
 
 
 def login(userId, password, queryString=''):
@@ -102,14 +111,15 @@ def auto_login_if_needed(userId, password):
     Returns: (action: str, message: str)
     action: 'connected', 'login_success', 'login_failed', 'error'
     """
-    status = check_network_status()
+    status, portal_url = check_network_status()
     if status == 'connected':
         return 'connected', '网络已连接'
     if status == 'error':
         return 'error', '无法检测网络状态'
 
-    # Portal detected, try login
-    success, msg = login(userId, password)
+    # Portal detected, extract queryString from redirect URL
+    qs = get_query_string(portal_url)
+    success, msg = login(userId, password, queryString=qs)
     if success:
         return 'login_success', '自动登录成功'
     return 'login_failed', msg

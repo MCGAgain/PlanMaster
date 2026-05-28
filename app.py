@@ -927,7 +927,7 @@ def api_save_network_settings():
 @app.route('/api/network/status', methods=['GET'])
 def api_network_status():
     import network_auth
-    status = network_auth.check_network_status()
+    status, _ = network_auth.check_network_status()
     return jsonify({'status': status})
 
 
@@ -939,7 +939,10 @@ def api_network_login():
     password = request.json.get('password') or s.get('network_password', '')
     if not userId or not password:
         return jsonify({'ok': False, 'message': '请先设置账号密码'}), 400
-    success, msg = network_auth.login(userId, password)
+    # Capture portal queryString
+    _, portal_url = network_auth.check_network_status()
+    qs = network_auth.get_query_string(portal_url)
+    success, msg = network_auth.login(userId, password, queryString=qs)
     return jsonify({'ok': success, 'message': msg})
 
 
