@@ -101,6 +101,29 @@
       </GlassCard>
 
       <GlassCard class="settings-card">
+        <template #header><h3>校园网自动登录</h3></template>
+        <p class="form-hint" style="margin-top:0;margin-bottom:12px;">连接校园网时自动登录认证，免去手动操作。</p>
+        <div class="form-group">
+          <label>启用自动登录</label>
+          <label class="toggle-label">
+            <input type="checkbox" v-model="netForm.enabled">
+            <span>{{ netForm.enabled ? '已启用' : '已关闭' }}</span>
+          </label>
+        </div>
+        <div class="form-group"><label>学号 / 账号</label><input type="text" v-model="netForm.userId" placeholder="输入校园网账号"></div>
+        <div class="form-group"><label>密码</label><input type="password" v-model="netForm.password" placeholder="输入校园网密码"></div>
+        <div class="form-group"><label>认证服务器 IP</label><input type="text" v-model="netForm.portal_ip" placeholder="10.60.208.4"></div>
+        <div class="form-actions">
+          <button class="btn btn-glass" @click="saveNetworkSettings">保存设置</button>
+          <button class="btn btn-gradient" @click="manualLogin" :disabled="netLogging">{{ netLogging ? '登录中...' : '立即登录' }}</button>
+        </div>
+        <div class="test-result" :class="netResultClass" v-if="netResultText">{{ netResultText }}</div>
+        <div v-if="netStatus" class="form-hint" style="margin-top:8px;">
+          网络状态：<strong>{{ { connected: '已连接', portal: '需要认证', error: '检测失败' }[netStatus] || netStatus }}</strong>
+        </div>
+      </GlassCard>
+
+      <GlassCard class="settings-card">
         <template #header><h3>应用信息</h3></template>
         <div class="app-info"><span class="app-version">Todo v{{ appVersion }}</span></div>
         <div class="form-actions" style="margin-top:12px;">
@@ -147,6 +170,11 @@ const updateProgressPct = ref(0)
 const bgMode = ref('orb')
 const bgColor = ref('#f0eef8')
 const bgColors = ['#f0eef8', '#e8e8e8', '#1a1a2e', '#16213e', '#0f3460', '#2d2d2d', '#1b4332', '#3c1642']
+const netForm = ref({ userId: '', password: '', enabled: false, portal_ip: '10.60.208.4' })
+const netLogging = ref(false)
+const netResultText = ref('')
+const netResultClass = ref('')
+const netStatus = ref('')
 const bgFileName = ref('')
 const bgPreviewSrc = ref('')
 
@@ -285,7 +313,45 @@ const pollUpdateStatus = () => {
   }, 1000)
 }
 
-onMounted(() => { loadSettings() })
+const loadNetworkSettings = async () => {
+  try {
+    const s = await api.getNetworkSettings()
+    netForm.value = { userId: s.userId || '', password: s.password || '', enabled: !!s.enabled, portal_ip: s.portal_ip || '10.60.208.4' }
+    const status = await api.getNetworkStatus()
+    netStatus.value = status.status
+  } catch (e) {}
+}
+
+const saveNetworkSettings = async () => {
+  try {
+    await api.saveNetworkSettings(netForm.value)
+    netResultText.value = '已保存'
+    netResultClass.value = 'success'
+    setTimeout(() => { netResultText.value = '' }, 2000)
+  } catch (e) {
+    netResultText.value = '保存失败: ' + e.message
+    netResultClass.value = 'error'
+  }
+}
+
+const manualLogin = async () => {
+  netLogging.value = true
+  netResultText.value = ''
+  try {
+    const r = await api.networkLogin({ userId: netForm.value.userId, password: netForm.value.password })
+    netResultText.value = r.message
+    netResultClass.value = r.ok ? 'success' : 'error'
+    const status = await api.getNetworkStatus()
+    netStatus.value = status.status
+  } catch (e) {
+    netResultText.value = '登录失败: ' + e.message
+    netResultClass.value = 'error'
+  } finally {
+    netLogging.value = false
+  }
+}
+
+onMounted(() => { loadSettings(); loadNetworkSettings() })
 </script>
 
 <style scoped>
@@ -423,5 +489,18 @@ onMounted(() => { loadSettings() })
   font-size: 14px;
   font-weight: 600;
   color: var(--text-soft);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
 }
 </style>

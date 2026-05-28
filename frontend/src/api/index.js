@@ -188,6 +188,13 @@ class ApiClient {
 
   // Health
   getHealth() { return this.request('/api/health') }
+
+  // Network Auth
+  getNetworkSettings() { return this.request('/api/network/settings') }
+  saveNetworkSettings(settings) { return this.request('/api/network/settings', { method: 'PUT', body: settings }) }
+  getNetworkStatus() { return this.request('/api/network/status') }
+  networkLogin(params) { return this.request('/api/network/login', { method: 'POST', body: params || {} }) }
+  networkLogout() { return this.request('/api/network/logout', { method: 'POST' }) }
 }
 
 export const api = new ApiClient()

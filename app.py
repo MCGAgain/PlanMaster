@@ -889,6 +889,83 @@ PROGRESS_FILE = os.path.join(_update_dir, 'planmaster_update_progress.txt')
 def api_version():
     return jsonify({'version': CURRENT_VERSION})
 
+
+# ---- Campus Network Auth ----
+
+@app.route('/api/network/settings', methods=['GET'])
+def api_get_network_settings():
+    s = db.get_settings()
+    return jsonify({
+        'userId': s.get('network_userId', ''),
+        'password': s.get('network_password', ''),
+        'enabled': s.get('network_enabled', '0') == '1',
+        'portal_ip': s.get('network_portal_ip', '10.60.208.4'),
+    })
+
+
+@app.route('/api/network/settings', methods=['PUT'])
+def api_save_network_settings():
+    import network_auth
+    data = request.json
+    updates = {}
+    if 'userId' in data:
+        updates['network_userId'] = data['userId']
+    if 'password' in data:
+        updates['network_password'] = data['password']
+    if 'enabled' in data:
+        updates['network_enabled'] = '1' if data['enabled'] else '0'
+    if 'portal_ip' in data and data['portal_ip']:
+        updates['network_portal_ip'] = data['portal_ip']
+        network_auth.PORTAL_IP = data['portal_ip']
+    db.update_settings(updates)
+
+    # Start/stop monitor based on enabled state
+    _restart_network_monitor()
+    return jsonify({'ok': True})
+
+
+@app.route('/api/network/status', methods=['GET'])
+def api_network_status():
+    import network_auth
+    status = network_auth.check_network_status()
+    return jsonify({'status': status})
+
+
+@app.route('/api/network/login', methods=['POST'])
+def api_network_login():
+    import network_auth
+    s = db.get_settings()
+    userId = request.json.get('userId') or s.get('network_userId', '')
+    password = request.json.get('password') or s.get('network_password', '')
+    if not userId or not password:
+        return jsonify({'ok': False, 'message': '请先设置账号密码'}), 400
+    success, msg = network_auth.login(userId, password)
+    return jsonify({'ok': success, 'message': msg})
+
+
+@app.route('/api/network/logout', methods=['POST'])
+def api_network_logout():
+    import network_auth
+    success, msg = network_auth.logout()
+    return jsonify({'ok': success, 'message': msg})
+
+
+def _restart_network_monitor():
+    import network_auth
+    network_auth.stop_monitor()
+
+    def _get_creds():
+        s = db.get_settings()
+        if s.get('network_enabled') != '1':
+            return None
+        return (s.get('network_userId', ''), s.get('network_password', ''))
+
+    def _on_status(action, msg):
+        if action == 'login_success':
+            logger.info(f'[Network] {msg}')
+
+    network_auth.start_monitor(_get_creds, _on_status)
+
 def _gh_headers():
     """返回带认证的 GitHub API 请求头（如有 token）"""
     token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
@@ -1264,6 +1341,7 @@ if __name__ == '__main__':
         db.init_db()
         db.close_stale_focus_sessions()
         db.checkin_missed_penalty()
+        _restart_network_monitor()
         print(f"PlanMaster Flask backend starting on port {port}")
         app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
     elif getattr(sys, 'frozen', False):
