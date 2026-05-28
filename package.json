@@ -1,6 +1,6 @@
 {
   "name": "planmaster",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "PlanMaster - 计划管理 & 心愿兑换",
   "main": "electron/main.js",
   "author": "MCGAgain",
